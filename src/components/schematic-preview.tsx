@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -48,27 +49,30 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
 
     const { pixels, width, height } = schematicOutput;
     
-    // Ensure pixels is a valid array, otherwise return null
-    if (!Array.isArray(pixels) || pixels.length !== width * height) {
+    // Fallback for cases where AI might return incomplete data
+    if (!Array.isArray(pixels) || pixels.length === 0 || !width || !height) {
        return null;
     }
+    
+    // Create a normalized grid, filling missing pixels with `false`
+    const normalizedPixels = Array.from({ length: width * height }, (_, i) => pixels[i] ?? false);
 
     return Array.from({ length: height }).map((_, y) => (
       Array.from({ length: width }).map((_, x) => {
         const index = y * width + x;
-        const isFilled = pixels[index];
+        const isFilled = normalizedPixels[index];
         const isTopBoundary = y > 0 && y % CHUNK_SIZE === 0;
         const isLeftBoundary = x > 0 && x % CHUNK_SIZE === 0;
 
         return (
           <div
             key={`${y}-${x}`}
-            className="w-full h-full"
+            className="w-full h-full border border-foreground/10"
             style={{
-              backgroundColor: isFilled ? 'hsl(var(--primary))' : 'hsl(var(--accent) / 20%)',
+              backgroundColor: isFilled ? 'hsl(var(--primary))' : 'hsl(var(--background))',
               boxShadow: `
-                ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--destructive))' : ''}
-                ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--destructive))' : ''}
+                ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--destructive) / 0.7)' : ''}
+                ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--destructive) / 0.7)' : ''}
               `.trim().replace(/\s+/g, ' ') || 'none'
             }}
           ></div>
