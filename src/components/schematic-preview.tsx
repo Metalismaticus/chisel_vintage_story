@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,9 +16,14 @@ interface SchematicPreviewProps {
 }
 
 const CHUNK_SIZE = 16;
+const PIXEL_SCALE = 20; // Size of each pixel in the downloaded image
+const GRID_COLOR = 'rgba(0, 0, 0, 0.1)';
+const CHUNK_BORDER_COLOR = 'rgba(255, 0, 0, 0.7)';
+
 
 export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
   const { toast } = useToast();
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const finalSchematicData = schematicOutput?.schematicData;
 
@@ -28,18 +34,81 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     }
   };
 
-  const handleDownload = () => {
-    if (finalSchematicData) {
-      const blob = new Blob([finalSchematicData], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'schematic.txt';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    if (!schematicOutput || !schematicOutput.pixels) {
+      toast({ title: "No schematic data to download.", variant: 'destructive' });
+      return;
     }
+    
+    const { pixels, width, height } = schematicOutput;
+
+    if (!width || !height || !pixels) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width * PIXEL_SCALE;
+    canvas.height = height * PIXEL_SCALE;
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) {
+      toast({ title: "Failed to create image.", variant: 'destructive' });
+      return;
+    }
+
+    // Background
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw pixels
+    ctx.fillStyle = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()})`;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (pixels[y * width + x]) {
+          ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+        }
+      }
+    }
+    
+    // Draw grid lines
+    ctx.strokeStyle = GRID_COLOR;
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= width; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * PIXEL_SCALE, 0);
+      ctx.lineTo(x * PIXEL_SCALE, height * PIXEL_SCALE);
+      ctx.stroke();
+    }
+     for (let y = 0; y <= height; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * PIXEL_SCALE);
+      ctx.lineTo(width * PIXEL_SCALE, y * PIXEL_SCALE);
+      ctx.stroke();
+    }
+
+    // Draw chunk borders
+    ctx.strokeStyle = CHUNK_BORDER_COLOR;
+    ctx.lineWidth = 2;
+     for (let x = 0; x <= width; x += CHUNK_SIZE) {
+      ctx.beginPath();
+      ctx.moveTo(x * PIXEL_SCALE, 0);
+      ctx.lineTo(x * PIXEL_SCALE, height * PIXEL_SCALE);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= height; y += CHUNK_SIZE) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * PIXEL_SCALE);
+      ctx.lineTo(width * PIXEL_SCALE, y * PIXEL_SCALE);
+      ctx.stroke();
+    }
+
+
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'schematic.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const renderPixelGrid = () => {
@@ -49,12 +118,10 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
 
     const { pixels, width, height } = schematicOutput;
     
-    // Fallback for cases where AI might return incomplete data
     if (!Array.isArray(pixels) || pixels.length === 0 || !width || !height) {
        return null;
     }
     
-    // Create a normalized grid, filling missing pixels with `false`
     const normalizedPixels = Array.from({ length: width * height }, (_, i) => pixels[i] ?? false);
 
     return Array.from({ length: height }).map((_, y) => (
@@ -98,7 +165,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         ) : finalSchematicData ? (
           <div className="space-y-4">
             {pixelGrid && schematicOutput && schematicOutput.width > 0 && schematicOutput.height > 0 ? (
-               <div className="w-full overflow-auto border rounded-lg p-1 bg-background/50 aspect-square">
+               <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-background/50 aspect-square">
                 <div
                   className="w-full h-full"
                   style={{ 
