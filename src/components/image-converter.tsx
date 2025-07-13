@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { SchematicPreview } from './schematic-preview';
 import { UploadCloud } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
-import { imageToSchematic } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
 
 
@@ -21,7 +20,29 @@ export function ImageConverter() {
   const [threshold, setThreshold] = useState([128]);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const workerRef = useRef<Worker>();
   const { toast } = useToast();
+
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
+    workerRef.current.onmessage = (event: MessageEvent<SchematicOutput>) => {
+      setSchematic(event.data);
+    };
+    workerRef.current.onerror = (error) => {
+       console.error(error);
+        toast({
+          title: "Conversion failed",
+          description: "An error occurred in the conversion worker. Please try again.",
+          variant: "destructive",
+        });
+        setSchematic(null);
+    }
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, [toast]);
+
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -45,20 +66,10 @@ export function ImageConverter() {
       });
       return;
     }
-
-    startTransition(async () => {
-      try {
-        const result = await imageToSchematic(previewUrl, threshold[0]);
-        setSchematic(result);
-      } catch (error) {
-        console.error(error);
-        toast({
-          title: "Conversion failed",
-          description: "An error occurred while converting the image. Please try again.",
-          variant: "destructive",
-        });
-        setSchematic(null);
-      }
+    
+    startTransition(() => {
+      setSchematic(null); // Clear previous result
+      workerRef.current?.postMessage({ dataUri: previewUrl, threshold: threshold[0] });
     });
   };
 

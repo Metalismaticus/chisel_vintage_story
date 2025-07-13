@@ -53,6 +53,7 @@ export function ShapeGenerator() {
             result = shapeToSchematic({ type: 'triangle', side: parsedSide });
             break;
           default:
+             toast({ title: "Unknown shape", description: "Please select a valid shape.", variant: "destructive" });
             return;
         }
         setSchematicOutput(result);

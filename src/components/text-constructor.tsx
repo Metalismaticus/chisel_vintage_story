@@ -10,14 +10,36 @@ import { Slider } from '@/components/ui/slider';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
 import { textToSchematic, type SchematicOutput, type FontStyle } from '@/lib/schematic-utils';
+import { Upload } from 'lucide-react';
 
 export function TextConstructor() {
   const [text, setText] = useState('Vintage');
   const [fontSize, setFontSize] = useState([24]);
   const [font, setFont] = useState<FontStyle>('monospace');
+  const [fontFile, setFontFile] = useState<File | null>(null);
+  const [fontFileUrl, setFontFileUrl] = useState<string | null>(null);
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  
+  const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type !== 'font/ttf' && file.type !== 'font/otf' && file.type !== 'application/font-woff' && file.type !== 'font/woff' && file.type !== 'font/woff2') {
+        toast({
+            title: "Invalid font file",
+            description: "Please upload a valid .ttf or .otf file.",
+            variant: "destructive",
+        });
+        return;
+      }
+      setFontFile(file);
+      const url = URL.createObjectURL(file);
+      setFontFileUrl(url);
+      setFont('custom'); // Set a placeholder to know we're using a custom font
+    }
+  };
+
 
   const handleGenerate = () => {
     if (!text) {
@@ -31,7 +53,7 @@ export function TextConstructor() {
 
     startTransition(async () => {
       try {
-        const result = textToSchematic(text, font, fontSize[0]);
+        const result = await textToSchematic(text, font, fontSize[0], fontFileUrl ?? undefined);
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);
@@ -59,7 +81,14 @@ export function TextConstructor() {
           </div>
           <div className="space-y-2">
             <Label>Font Family</Label>
-            <Select value={font} onValueChange={(v) => setFont(v as FontStyle)}>
+            <Select value={font} onValueChange={(v) => {
+              setFont(v as FontStyle);
+              setFontFile(null);
+              if (fontFileUrl) {
+                URL.revokeObjectURL(fontFileUrl);
+                setFontFileUrl(null);
+              }
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a font" />
               </SelectTrigger>
@@ -67,15 +96,28 @@ export function TextConstructor() {
                 <SelectItem value="monospace">Monospace</SelectItem>
                 <SelectItem value="serif">Serif</SelectItem>
                 <SelectItem value="sans-serif">Sans-Serif</SelectItem>
+                 {fontFile && <SelectItem value="custom" disabled>{fontFile.name}</SelectItem>}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="font-upload">Upload Custom Font (.ttf, .otf)</Label>
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" className="flex-1">
+                <label className="cursor-pointer">
+                  <Upload className="mr-2" />
+                  {fontFile ? fontFile.name : 'Choose Font'}
+                  <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
+                </label>
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="font-size">Font Size: {fontSize[0]}px</Label>
             <Slider
               id="font-size"
               min={8}
-              max={64}
+              max={128}
               step={1}
               value={fontSize}
               onValueChange={setFontSize}
