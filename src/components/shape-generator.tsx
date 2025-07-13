@@ -7,11 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
-import { shapeToSchematic } from '@/ai/flows/shape-to-schematic';
 import { useToast } from '@/hooks/use-toast';
-import type { ShapeToSchematicInput, SchematicOutput } from '@/ai/flows/schemas';
+import { shapeToSchematic, type Shape, type SchematicOutput } from '@/lib/schematic-utils';
 
-type Shape = 'circle' | 'square' | 'triangle';
 
 export function ShapeGenerator() {
   const [shape, setShape] = useState<Shape>('circle');
@@ -25,41 +23,38 @@ export function ShapeGenerator() {
   };
 
   const handleGenerate = () => {
-    let input: ShapeToSchematicInput;
-
-    const parsedRadius = parseInt(dimensions.radius, 10);
-    const parsedWidth = parseInt(dimensions.width, 10);
-    const parsedSide = parseInt(dimensions.side, 10);
-
-    switch(shape) {
-      case 'circle':
-        if (isNaN(parsedRadius) || parsedRadius <= 0) {
-          toast({ title: "Invalid radius", description: "Please enter a positive number for the radius.", variant: "destructive" });
-          return;
-        }
-        input = { shape, dimensions: { radius: parsedRadius } };
-        break;
-      case 'square':
-        if (isNaN(parsedWidth) || parsedWidth <= 0) {
-          toast({ title: "Invalid width", description: "Please enter a positive number for the width.", variant: "destructive" });
-          return;
-        }
-        input = { shape, dimensions: { width: parsedWidth } };
-        break;
-      case 'triangle':
-        if (isNaN(parsedSide) || parsedSide <= 0) {
-          toast({ title: "Invalid side length", description: "Please enter a positive number for the side length.", variant: "destructive" });
-          return;
-        }
-        input = { shape, dimensions: { side: parsedSide } };
-        break;
-      default:
-        return;
-    }
-
-    startTransition(async () => {
+    startTransition(() => {
       try {
-        const result = await shapeToSchematic(input);
+        let result: SchematicOutput;
+        const parsedRadius = parseInt(dimensions.radius, 10);
+        const parsedWidth = parseInt(dimensions.width, 10);
+        const parsedSide = parseInt(dimensions.side, 10);
+
+        switch(shape) {
+          case 'circle':
+            if (isNaN(parsedRadius) || parsedRadius <= 0) {
+              toast({ title: "Invalid radius", description: "Please enter a positive number for the radius.", variant: "destructive" });
+              return;
+            }
+            result = shapeToSchematic({ type: 'circle', radius: parsedRadius });
+            break;
+          case 'square':
+            if (isNaN(parsedWidth) || parsedWidth <= 0) {
+              toast({ title: "Invalid width", description: "Please enter a positive number for the width.", variant: "destructive" });
+              return;
+            }
+            result = shapeToSchematic({ type: 'square', width: parsedWidth, height: parsedWidth });
+            break;
+          case 'triangle':
+             if (isNaN(parsedSide) || parsedSide <= 0) {
+              toast({ title: "Invalid side length", description: "Please enter a positive number for the side length.", variant: "destructive" });
+              return;
+            }
+            result = shapeToSchematic({ type: 'triangle', side: parsedSide });
+            break;
+          default:
+            return;
+        }
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);

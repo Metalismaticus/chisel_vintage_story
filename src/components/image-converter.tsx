@@ -2,7 +2,6 @@
 
 import { useState, useRef, useTransition } from 'react';
 import Image from 'next/image';
-import { imageToSchematic, type SchematicOutput } from '@/ai/flows/image-to-schematic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,12 +9,16 @@ import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { SchematicPreview } from './schematic-preview';
 import { UploadCloud } from 'lucide-react';
-import type { ImageToSchematicInput } from '@/ai/flows/schemas';
+import type { SchematicOutput } from '@/lib/schematic-utils';
+import { imageToSchematic } from '@/lib/schematic-utils';
+import { Slider } from '@/components/ui/slider';
+
 
 export function ImageConverter() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [schematic, setSchematic] = useState<SchematicOutput | null>(null);
+  const [threshold, setThreshold] = useState([128]);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -45,10 +48,7 @@ export function ImageConverter() {
 
     startTransition(async () => {
       try {
-        const input: ImageToSchematicInput = {
-          photoDataUri: previewUrl,
-        };
-        const result: SchematicOutput = await imageToSchematic(input);
+        const result = await imageToSchematic(previewUrl, threshold[0]);
         setSchematic(result);
       } catch (error) {
         console.error(error);
@@ -104,6 +104,17 @@ export function ImageConverter() {
                 />
               </div>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="threshold">Black & White Threshold: {threshold[0]}</Label>
+            <Slider
+              id="threshold"
+              min={0}
+              max={255}
+              step={1}
+              value={threshold}
+              onValueChange={setThreshold}
+            />
           </div>
           <Button onClick={handleConvert} disabled={isPending || !file} className="w-full">
             {isPending ? 'Converting...' : 'Convert to Schematic'}

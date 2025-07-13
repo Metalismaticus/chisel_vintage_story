@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Download } from 'lucide-react';
-import type { SchematicOutput } from '@/ai/flows/schemas';
+import type { SchematicOutput } from '@/lib/schematic-utils';
 
 interface SchematicPreviewProps {
   schematicOutput?: SchematicOutput | null;
