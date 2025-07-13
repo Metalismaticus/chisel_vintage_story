@@ -1,0 +1,73 @@
+'use client';
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { SchematicPreview } from './schematic-preview';
+
+export function TextConstructor() {
+  const [text, setText] = useState('Vintage');
+  const [fontSize, setFontSize] = useState([16]);
+  const [font, setFont] = useState('default');
+  const [schematic, setSchematic] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleGenerate = () => {
+    setLoading(true);
+    // Mock generation
+    setTimeout(() => {
+      const generatedSchematic = `Generated schematic for text "${text}" with font "${font}" at ${fontSize[0]}px.`;
+      setSchematic(generatedSchematic);
+      setLoading(false);
+    }, 1000);
+  };
+
+  return (
+    <div className="grid md:grid-cols-2 gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Text Constructor</CardTitle>
+          <CardDescription>Create pixel art text for your world.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="text-input">Text</Label>
+            <Input id="text-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Enter your text" />
+          </div>
+          <div className="space-y-2">
+            <Label>Font Family</Label>
+            <Select value={font} onValueChange={setFont}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a font" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">Default Pixel</SelectItem>
+                <SelectItem value="script">Script Pixel</SelectItem>
+                <SelectItem value="blocky">Blocky</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="font-size">Font Size: {fontSize[0]}px</Label>
+            <Slider
+              id="font-size"
+              min={8}
+              max={64}
+              step={1}
+              value={fontSize}
+              onValueChange={setFontSize}
+            />
+          </div>
+          <Button onClick={handleGenerate} disabled={loading} className="w-full">
+            {loading ? 'Generating...' : 'Generate Schematic'}
+          </Button>
+        </CardContent>
+      </Card>
+      <SchematicPreview schematicData={schematic} loading={loading} />
+    </div>
+  );
+}
