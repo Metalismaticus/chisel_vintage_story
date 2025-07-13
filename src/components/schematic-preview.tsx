@@ -6,28 +6,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Download } from 'lucide-react';
-import { useMemo } from 'react';
+import type { TextToSchematicOutput } from '@/ai/flows/text-to-schematic';
 
 interface SchematicPreviewProps {
-  schematicData: string | null;
+  schematicData?: string | null; // For simple schematic strings
+  schematicOutput?: TextToSchematicOutput | null; // For detailed schematic objects
   loading: boolean;
 }
 
-const GRID_DIMENSION = 32;
+const CHUNK_SIZE = 16;
 
-export function SchematicPreview({ schematicData, loading }: SchematicPreviewProps) {
+export function SchematicPreview({ schematicData, schematicOutput, loading }: SchematicPreviewProps) {
   const { toast } = useToast();
 
+  const finalSchematicData = schematicOutput?.schematicData ?? schematicData;
+
   const handleCopy = () => {
-    if (schematicData) {
-      navigator.clipboard.writeText(schematicData);
+    if (finalSchematicData) {
+      navigator.clipboard.writeText(finalSchematicData);
       toast({ title: 'Copied to clipboard!' });
     }
   };
 
   const handleDownload = () => {
-    if (schematicData) {
-      const blob = new Blob([schematicData], { type: 'text/plain' });
+    if (finalSchematicData) {
+      const blob = new Blob([finalSchematicData], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -39,36 +42,38 @@ export function SchematicPreview({ schematicData, loading }: SchematicPreviewPro
     }
   };
 
-  const pixelGrid = useMemo(() => {
-    if (!schematicData) {
+  const renderPixelGrid = () => {
+    if (!schematicOutput || !schematicOutput.pixels || !schematicOutput.width || !schematicOutput.height) {
       return null;
     }
-    // This is a simplified visual representation.
-    // We'll create a pseudo-random grid based on the schematic data hash.
-    let hash = 0;
-    for (let i = 0; i < schematicData.length; i++) {
-      const char = schematicData.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
 
-    return Array.from({ length: GRID_DIMENSION * GRID_DIMENSION }).map((_, i) => {
-      // Use the hash to create a deterministic but "random" looking pattern
-      const pseudoRandom = (hash + i * 16807) % 100 / 100;
-      const isPrimary = pseudoRandom > 0.5;
-      const opacity = Math.floor((pseudoRandom * 50) + 25); // Opacity between 25% and 75%
-      
-      return (
-        <div
-          key={i}
-          className="w-full h-full"
-          style={{ 
-            backgroundColor: isPrimary ? `hsl(var(--primary) / ${opacity}%)` : `hsl(var(--accent) / ${opacity}%)` 
-          }}
-        ></div>
-      );
-    });
-  }, [schematicData]);
+    const { pixels, width, height } = schematicOutput;
+
+    return Array.from({ length: height }).map((_, y) => (
+      Array.from({ length: width }).map((_, x) => {
+        const index = y * width + x;
+        const isFilled = pixels[index];
+        const isTopBoundary = y % CHUNK_SIZE === 0 && y > 0;
+        const isLeftBoundary = x % CHUNK_SIZE === 0 && x > 0;
+
+        return (
+          <div
+            key={`${y}-${x}`}
+            className="w-full h-full"
+            style={{
+              backgroundColor: isFilled ? 'hsl(var(--primary))' : 'hsl(var(--accent) / 20%)',
+              boxShadow: `
+                ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--destructive))' : ''}
+                ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--destructive))' : ''}
+              `
+            }}
+          ></div>
+        );
+      })
+    )).flat();
+  };
+  
+  const pixelGrid = renderPixelGrid();
 
   return (
     <Card className="flex flex-col">
@@ -82,15 +87,28 @@ export function SchematicPreview({ schematicData, loading }: SchematicPreviewPro
             <Skeleton className="aspect-square w-full rounded-lg" />
             <Skeleton className="h-24 w-full rounded-lg" />
           </div>
-        ) : schematicData ? (
+        ) : finalSchematicData ? (
           <div className="space-y-4">
-            <div 
-              className="border rounded-lg p-2 bg-background/50 aspect-square overflow-hidden"
-              style={{ display: 'grid', gridTemplateColumns: `repeat(${GRID_DIMENSION}, 1fr)`, gridTemplateRows: `repeat(${GRID_DIMENSION}, 1fr)`, gap: '1px' }}
-            >
-              {pixelGrid}
-            </div>
-            <Textarea readOnly value={schematicData} className="h-24 font-code text-xs" />
+            {pixelGrid && schematicOutput ? (
+               <div className="w-full overflow-auto border rounded-lg p-1 bg-background/50 aspect-square">
+                <div
+                  className="w-full h-full"
+                  style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: `repeat(${schematicOutput.width}, 1fr)`,
+                    gridTemplateRows: `repeat(${schematicOutput.height}, 1fr)`,
+                    aspectRatio: `${schematicOutput.width} / ${schematicOutput.height}`
+                  }}
+                >
+                  {pixelGrid}
+                </div>
+              </div>
+            ) : (
+              <div className="border rounded-lg p-2 bg-background/50 aspect-square overflow-hidden">
+                <p className="text-muted-foreground text-sm">Preview not available for this schematic type.</p>
+              </div>
+            )}
+            <Textarea readOnly value={finalSchematicData} className="h-24 font-code text-xs" />
           </div>
         ) : (
           <div className="flex items-center justify-center h-full border-2 border-dashed rounded-lg">
@@ -98,7 +116,7 @@ export function SchematicPreview({ schematicData, loading }: SchematicPreviewPro
           </div>
         )}
       </CardContent>
-      {schematicData && !loading && (
+      {finalSchematicData && !loading && (
         <CardFooter className="flex gap-2 pt-4">
           <Button onClick={handleCopy} variant="outline" className="w-full">
             <Copy className="mr-2 h-4 w-4" /> Copy

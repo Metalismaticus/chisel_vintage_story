@@ -15,7 +15,7 @@ export function TextConstructor() {
   const [text, setText] = useState('Vintage');
   const [fontSize, setFontSize] = useState([16]);
   const [font, setFont] = useState('default');
-  const [schematic, setSchematic] = useState<string | null>(null);
+  const [schematicOutput, setSchematicOutput] = useState<TextToSchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -36,7 +36,7 @@ export function TextConstructor() {
           font,
           fontSize: fontSize[0],
         });
-        setSchematic(result.schematicData);
+        setSchematicOutput(result);
       } catch (error) {
         console.error(error);
         toast({
@@ -44,7 +44,7 @@ export function TextConstructor() {
           description: "An error occurred while generating the schematic. Please try again.",
           variant: "destructive",
         });
-        setSchematic(null);
+        setSchematicOutput(null);
       }
     });
   };
@@ -90,7 +90,7 @@ export function TextConstructor() {
           </Button>
         </CardContent>
       </Card>
-      <SchematicPreview schematicData={schematic} loading={isPending} />
+      <SchematicPreview schematicOutput={schematicOutput} loading={isPending} />
     </div>
   );
 }
