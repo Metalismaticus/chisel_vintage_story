@@ -17,7 +17,7 @@ interface SchematicPreviewProps {
 
 const CHUNK_SIZE = 16;
 const PIXEL_SCALE = 20; // Size of each pixel in the downloaded image
-const GRID_COLOR = 'rgba(0, 0, 0, 0.1)';
+const GRID_COLOR = 'rgba(0, 255, 0, 0.5)'; // Bright green for pixel grid
 const CHUNK_BORDER_COLOR = 'rgba(255, 0, 0, 0.7)';
 
 
