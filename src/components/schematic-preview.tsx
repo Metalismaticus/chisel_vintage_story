@@ -6,20 +6,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Download } from 'lucide-react';
-import type { TextToSchematicOutput } from '@/ai/flows/text-to-schematic';
+import type { SchematicOutput } from '@/ai/flows/schemas';
 
 interface SchematicPreviewProps {
-  schematicData?: string | null; // For simple schematic strings
-  schematicOutput?: TextToSchematicOutput | null; // For detailed schematic objects
+  schematicOutput?: SchematicOutput | null;
   loading: boolean;
 }
 
 const CHUNK_SIZE = 16;
 
-export function SchematicPreview({ schematicData, schematicOutput, loading }: SchematicPreviewProps) {
+export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
   const { toast } = useToast();
 
-  const finalSchematicData = schematicOutput?.schematicData ?? schematicData;
+  const finalSchematicData = schematicOutput?.schematicData;
 
   const handleCopy = () => {
     if (finalSchematicData) {
@@ -48,13 +47,18 @@ export function SchematicPreview({ schematicData, schematicOutput, loading }: Sc
     }
 
     const { pixels, width, height } = schematicOutput;
+    
+    // Ensure pixels is a valid array, otherwise return null
+    if (!Array.isArray(pixels) || pixels.length !== width * height) {
+       return null;
+    }
 
     return Array.from({ length: height }).map((_, y) => (
       Array.from({ length: width }).map((_, x) => {
         const index = y * width + x;
         const isFilled = pixels[index];
-        const isTopBoundary = y % CHUNK_SIZE === 0 && y > 0;
-        const isLeftBoundary = x % CHUNK_SIZE === 0 && x > 0;
+        const isTopBoundary = y > 0 && y % CHUNK_SIZE === 0;
+        const isLeftBoundary = x > 0 && x % CHUNK_SIZE === 0;
 
         return (
           <div
@@ -65,7 +69,7 @@ export function SchematicPreview({ schematicData, schematicOutput, loading }: Sc
               boxShadow: `
                 ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--destructive))' : ''}
                 ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--destructive))' : ''}
-              `
+              `.trim().replace(/\s+/g, ' ') || 'none'
             }}
           ></div>
         );
@@ -89,7 +93,7 @@ export function SchematicPreview({ schematicData, schematicOutput, loading }: Sc
           </div>
         ) : finalSchematicData ? (
           <div className="space-y-4">
-            {pixelGrid && schematicOutput ? (
+            {pixelGrid && schematicOutput && schematicOutput.width > 0 && schematicOutput.height > 0 ? (
                <div className="w-full overflow-auto border rounded-lg p-1 bg-background/50 aspect-square">
                 <div
                   className="w-full h-full"
@@ -104,8 +108,8 @@ export function SchematicPreview({ schematicData, schematicOutput, loading }: Sc
                 </div>
               </div>
             ) : (
-              <div className="border rounded-lg p-2 bg-background/50 aspect-square overflow-hidden">
-                <p className="text-muted-foreground text-sm">Preview not available for this schematic type.</p>
+               <div className="border rounded-lg p-2 bg-background/50 aspect-square overflow-hidden flex items-center justify-center">
+                <p className="text-muted-foreground text-sm text-center">Preview not available for this schematic type, but you can copy or download the data below.</p>
               </div>
             )}
             <Textarea readOnly value={finalSchematicData} className="h-24 font-code text-xs" />

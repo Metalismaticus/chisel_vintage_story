@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { textToSchematic, type TextToSchematicOutput } from '@/ai/flows/text-to-schematic';
+import { textToSchematic } from '@/ai/flows/text-to-schematic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
+import type { TextToSchematicInput, SchematicOutput } from '@/ai/flows/schemas';
 
 export function TextConstructor() {
   const [text, setText] = useState('Vintage');
   const [fontSize, setFontSize] = useState([16]);
   const [font, setFont] = useState('default');
-  const [schematicOutput, setSchematicOutput] = useState<TextToSchematicOutput | null>(null);
+  const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -31,11 +32,12 @@ export function TextConstructor() {
 
     startTransition(async () => {
       try {
-        const result: TextToSchematicOutput = await textToSchematic({
+        const input: TextToSchematicInput = {
           text,
           font,
           fontSize: fontSize[0],
-        });
+        };
+        const result: SchematicOutput = await textToSchematic(input);
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);

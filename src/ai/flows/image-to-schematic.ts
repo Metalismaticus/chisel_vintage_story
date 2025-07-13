@@ -5,48 +5,49 @@
  * @fileOverview Converts an image into a pixel art schematic suitable for Vintage Story.
  *
  * - imageToSchematic - A function that handles the image conversion process.
- * - ImageToSchematicInput - The input type for the imageToSchematic function.
- * - ImageToSchematicOutput - The return type for the imageToSchematic function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {
+  ImageToSchematicInputSchema, 
+  type ImageToSchematicInput, 
+  SchematicOutputSchema, 
+  type SchematicOutput
+} from './schemas';
 
-const ImageToSchematicInputSchema = z.object({
-  photoDataUri: z
-    .string()
-    .describe(
-      "A photo to convert to a schematic, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
-});
-export type ImageToSchematicInput = z.infer<typeof ImageToSchematicInputSchema>;
+export type { ImageToSchematicInput, SchematicOutput };
 
-const ImageToSchematicOutputSchema = z.object({
-  schematicData: z.string().describe('The generated schematic data for Vintage Story.'),
-});
-export type ImageToSchematicOutput = z.infer<typeof ImageToSchematicOutputSchema>;
 
-export async function imageToSchematic(input: ImageToSchematicInput): Promise<ImageToSchematicOutput> {
+export async function imageToSchematic(input: ImageToSchematicInput): Promise<SchematicOutput> {
   return imageToSchematicFlow(input);
 }
 
 const prompt = ai.definePrompt({
   name: 'imageToSchematicPrompt',
   input: {schema: ImageToSchematicInputSchema},
-  output: {schema: ImageToSchematicOutputSchema},
-  prompt: `You are an expert in converting images into pixel art schematics for the game Vintage Story, which uses a block grid with each block divisible into 16x16 pixels.
+  output: {schema: SchematicOutputSchema},
+  prompt: `You are an expert in converting images into pixel art schematics for the game Vintage Story.
 
-  Take the image and create schematic data that represents the image as pixel art using Vintage Story blocks. The schematic data should be optimized for the game's block grid.
+Your task is to take the user's image and convert it into a monochrome pixel art representation. The output must be a JSON object conforming to the output schema.
 
-  Photo: {{media url=photoDataUri}}
-  `,
+1.  **Analyze Image**: Determine the best way to represent the image as monochrome pixel art.
+2.  **Determine Dimensions**: Calculate the width and height of the resulting pixel art.
+3.  **Rasterize Image**: Generate a monochrome (on/off) pixel grid for the image. 'true' represents a filled pixel (ink), and 'false' represents an empty pixel (background).
+4.  **Flatten Pixel Data**: Create a one-dimensional array ('pixels') from the 2D pixel grid in row-major order (top to bottom, left to right). The length of this array must be exactly width * height.
+5.  **Generate Schematic Data**: Create a compact text-based schematic data string suitable for Vintage Story that represents the generated pixel art. This can be a simple string like "Schematic for: image".
+6.  **Format Output**: Return a JSON object with all four required fields: 'schematicData', 'width', 'height', and the 'pixels' array. Ensure all fields are present.
+
+**User Input:**
+- Photo: {{media url=photoDataUri}}
+
+Generate the pixel art and the corresponding schematic data now.`,
 });
 
 const imageToSchematicFlow = ai.defineFlow(
   {
     name: 'imageToSchematicFlow',
     inputSchema: ImageToSchematicInputSchema,
-    outputSchema: ImageToSchematicOutputSchema,
+    outputSchema: SchematicOutputSchema,
   },
   async input => {
     const {output} = await prompt(input);

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from 'react';
 import Image from 'next/image';
-import { imageToSchematic, type ImageToSchematicOutput } from '@/ai/flows/image-to-schematic';
+import { imageToSchematic, type SchematicOutput } from '@/ai/flows/image-to-schematic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { SchematicPreview } from './schematic-preview';
 import { UploadCloud } from 'lucide-react';
+import type { ImageToSchematicInput } from '@/ai/flows/schemas';
 
 export function ImageConverter() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [schematic, setSchematic] = useState<string | null>(null);
+  const [schematic, setSchematic] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -44,10 +45,11 @@ export function ImageConverter() {
 
     startTransition(async () => {
       try {
-        const result: ImageToSchematicOutput = await imageToSchematic({
+        const input: ImageToSchematicInput = {
           photoDataUri: previewUrl,
-        });
-        setSchematic(result.schematicData);
+        };
+        const result: SchematicOutput = await imageToSchematic(input);
+        setSchematic(result);
       } catch (error) {
         console.error(error);
         toast({
@@ -108,7 +110,7 @@ export function ImageConverter() {
           </Button>
         </CardContent>
       </Card>
-      <SchematicPreview schematicData={schematic} loading={isPending} />
+      <SchematicPreview schematicOutput={schematic} loading={isPending} />
     </div>
   );
 }

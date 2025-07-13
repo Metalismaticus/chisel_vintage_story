@@ -1,5 +1,8 @@
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/image-to-schematic.ts';
-import '@/ai/flows/text-to-schematic.ts';
+// Schemas need to be imported before the flows that use them.
+import '@/ai/flows/schemas';
+import '@/ai/flows/image-to-schematic';
+import '@/ai/flows/text-to-schematic';
+import '@/ai/flows/shape-to-schematic';

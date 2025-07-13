@@ -1,36 +1,76 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
+import { shapeToSchematic } from '@/ai/flows/shape-to-schematic';
+import { useToast } from '@/hooks/use-toast';
+import type { ShapeToSchematicInput, SchematicOutput } from '@/ai/flows/schemas';
 
 type Shape = 'circle' | 'square' | 'triangle';
 
 export function ShapeGenerator() {
   const [shape, setShape] = useState<Shape>('circle');
   const [dimensions, setDimensions] = useState({ radius: '16', width: '16', side: '16' });
-  const [schematic, setSchematic] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const handleDimensionChange = (field: keyof typeof dimensions, value: string) => {
     setDimensions(prev => ({...prev, [field]: value}));
   };
 
   const handleGenerate = () => {
-    setLoading(true);
-    // Mock generation
-    setTimeout(() => {
-      let generatedSchematic = `Generated schematic for a ${shape}`;
-      if (shape === 'circle') generatedSchematic += ` with radius ${dimensions.radius}px.`;
-      if (shape === 'square') generatedSchematic += ` with width ${dimensions.width}px.`;
-      if (shape === 'triangle') generatedSchematic += ` with side length ${dimensions.side}px.`;
-      setSchematic(generatedSchematic);
-      setLoading(false);
-    }, 1000);
+    let input: ShapeToSchematicInput;
+
+    const parsedRadius = parseInt(dimensions.radius, 10);
+    const parsedWidth = parseInt(dimensions.width, 10);
+    const parsedSide = parseInt(dimensions.side, 10);
+
+    switch(shape) {
+      case 'circle':
+        if (isNaN(parsedRadius) || parsedRadius <= 0) {
+          toast({ title: "Invalid radius", description: "Please enter a positive number for the radius.", variant: "destructive" });
+          return;
+        }
+        input = { shape, dimensions: { radius: parsedRadius } };
+        break;
+      case 'square':
+        if (isNaN(parsedWidth) || parsedWidth <= 0) {
+          toast({ title: "Invalid width", description: "Please enter a positive number for the width.", variant: "destructive" });
+          return;
+        }
+        input = { shape, dimensions: { width: parsedWidth } };
+        break;
+      case 'triangle':
+        if (isNaN(parsedSide) || parsedSide <= 0) {
+          toast({ title: "Invalid side length", description: "Please enter a positive number for the side length.", variant: "destructive" });
+          return;
+        }
+        input = { shape, dimensions: { side: parsedSide } };
+        break;
+      default:
+        return;
+    }
+
+    startTransition(async () => {
+      try {
+        const result = await shapeToSchematic(input);
+        setSchematicOutput(result);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Generation failed",
+          description: "An error occurred while generating the shape. Please try again.",
+          variant: "destructive",
+        });
+        setSchematicOutput(null);
+      }
+    });
   };
   
   const renderDimensionInputs = () => {
@@ -87,12 +127,12 @@ export function ShapeGenerator() {
             </RadioGroup>
           </div>
           {renderDimensionInputs()}
-          <Button onClick={handleGenerate} disabled={loading} className="w-full">
-            {loading ? 'Generating...' : 'Generate Schematic'}
+          <Button onClick={handleGenerate} disabled={isPending} className="w-full">
+            {isPending ? 'Generating...' : 'Generate Schematic'}
           </Button>
         </CardContent>
       </Card>
-      <SchematicPreview schematicData={schematic} loading={loading} />
+      <SchematicPreview schematicOutput={schematicOutput} loading={isPending} />
     </div>
   );
 }
