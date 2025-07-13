@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { textToSchematic, type TextToSchematicOutput } from '@/ai/flows/text-to-schematic';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,22 +9,44 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { SchematicPreview } from './schematic-preview';
+import { useToast } from '@/hooks/use-toast';
 
 export function TextConstructor() {
   const [text, setText] = useState('Vintage');
   const [fontSize, setFontSize] = useState([16]);
   const [font, setFont] = useState('default');
   const [schematic, setSchematic] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
 
   const handleGenerate = () => {
-    setLoading(true);
-    // Mock generation
-    setTimeout(() => {
-      const generatedSchematic = `Generated schematic for text "${text}" with font "${font}" at ${fontSize[0]}px.`;
-      setSchematic(generatedSchematic);
-      setLoading(false);
-    }, 1000);
+    if (!text) {
+      toast({
+        title: "Text is empty",
+        description: "Please enter some text to generate a schematic.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const result: TextToSchematicOutput = await textToSchematic({
+          text,
+          font,
+          fontSize: fontSize[0],
+        });
+        setSchematic(result.schematicData);
+      } catch (error) {
+        console.error(error);
+        toast({
+          title: "Generation failed",
+          description: "An error occurred while generating the schematic. Please try again.",
+          variant: "destructive",
+        });
+        setSchematic(null);
+      }
+    });
   };
 
   return (
@@ -62,12 +85,12 @@ export function TextConstructor() {
               onValueChange={setFontSize}
             />
           </div>
-          <Button onClick={handleGenerate} disabled={loading} className="w-full">
-            {loading ? 'Generating...' : 'Generate Schematic'}
+          <Button onClick={handleGenerate} disabled={isPending} className="w-full">
+            {isPending ? 'Generating...' : 'Generate Schematic'}
           </Button>
         </CardContent>
       </Card>
-      <SchematicPreview schematicData={schematic} loading={loading} />
+      <SchematicPreview schematicData={schematic} loading={isPending} />
     </div>
   );
 }
