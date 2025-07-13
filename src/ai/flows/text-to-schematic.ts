@@ -42,8 +42,8 @@ const prompt = ai.definePrompt({
   1.  **Determine Dimensions**: Calculate the width and height of the bounding box required for the text with the given font properties.
   2.  **Rasterize Text**: Generate a monochrome (on/off) pixel grid for the text. 'true' represents a filled pixel (ink), and 'false' represents an empty pixel (background).
   3.  **Flatten Pixel Data**: Create a one-dimensional array ('pixels') from the 2D pixel grid in row-major order (top to bottom, left to right). The length of this array must be exactly width * height.
-  4.  **Generate Schematic Data**: Create a text-based schematic data string suitable for Vintage Story that represents the generated pixel art. This should be a compact representation.
-  5.  **Format Output**: Return a JSON object with 'schematicData', 'width', 'height', and the 'pixels' array.
+  4.  **Generate Schematic Data**: Create a compact text-based schematic data string suitable for Vintage Story that represents the generated pixel art. This can be a simple string like "Schematic for: [text]".
+  5.  **Format Output**: Return a JSON object with all four required fields: 'schematicData', 'width', 'height', and the 'pixels' array. Ensure all fields are present.
 
   **User Input:**
   - Text: \`{{{text}}}\`
