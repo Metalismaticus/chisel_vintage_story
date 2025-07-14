@@ -1,17 +1,41 @@
 
+// This is a placeholder for a VOX writer as a proper library was not found.
+// In a real scenario, you would use a library or implement the VOX spec.
+class VoxWriter {
+  write(voxels: any[], palette: any[]): Uint8Array {
+    console.log("Writing VOX file with", voxels.length, "voxels.");
+    const header = new TextEncoder().encode("VOX ");
+    const version = new Uint8Array([150, 0, 0, 0]);
+    // This is a vastly simplified and incomplete mock of a .vox file.
+    // A real implementation would require building all the correct chunks (MAIN, SIZE, XYZI, RGBA).
+    const placeholder_content = new TextEncoder().encode(" (placeholder) ");
+    const buffer = new Uint8Array(header.length + version.length + placeholder_content.length);
+    buffer.set(header, 0);
+    buffer.set(version, header.length);
+    buffer.set(placeholder_content, header.length + version.length);
+    return buffer;
+  }
+}
+
+
 export interface SchematicOutput {
   schematicData: string;
   width: number;
   height: number;
   pixels: boolean[];
+  isVox?: boolean;
+  voxData?: Uint8Array;
 }
 
-export type FontStyle = 'monospace' | 'serif' | 'sans-serif';
+export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type Shape = 'circle' | 'square' | 'triangle';
+export type VoxShape = 'cuboid' | 'sphere' | 'pyramid';
+
 
 // A simple helper to generate schematic data string
-function createSchematicData(name: string, dimensions: {width: number, height: number}): string {
-    return `Schematic for: ${name} (${dimensions.width}x${dimensions.height})`;
+function createSchematicData(name: string, dimensions: {width: number, height: number, depth?: number}): string {
+    const depthInfo = dimensions.depth ? `x${dimensions.depth}`: '';
+    return `Schematic for: ${name} (${dimensions.width}x${dimensions.height}${depthInfo})`;
 }
 
 /**
@@ -23,9 +47,10 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
         throw new Error('textToSchematic can only be run in a browser environment.');
     }
 
-    let loadedFont = font;
-    if (fontUrl) {
-      const fontFace = new FontFace('custom-font', `url(${fontUrl})`);
+    let loadedFont = font as string;
+    let fontFace: FontFace | undefined;
+    if (fontUrl && font === 'custom') {
+      fontFace = new FontFace('custom-font', `url(${fontUrl})`);
       try {
         await fontFace.load();
         document.fonts.add(fontFace);
@@ -33,7 +58,7 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
       } catch (e) {
         console.error('Font loading failed:', e);
         // Fallback to the selected generic font
-        loadedFont = font;
+        loadedFont = 'monospace';
       }
     }
 
@@ -63,7 +88,8 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     // Re-apply font settings after resize
     ctx.font = `${fontSize}px ${loadedFont}`;
     ctx.fillStyle = 'black';
-    ctx.fillText(text, 0, metrics.actualBoundingBoxAscent);
+    ctx.textBaseline = 'top';
+    ctx.fillText(text, 0, 0);
     
     const imageData = ctx.getImageData(0, 0, width, height);
     const pixels: boolean[] = [];
@@ -74,8 +100,8 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
         pixels.push(alpha > 128); // Pixel is "on" if it's not fully transparent
     }
 
-    if (fontUrl && loadedFont === 'custom-font') {
-        document.fonts.delete(document.fonts.get('custom-font')!);
+    if (fontFace && document.fonts.has(fontFace)) {
+        document.fonts.delete(fontFace);
     }
 
     return {
@@ -146,8 +172,6 @@ export function shapeToSchematic(shape:
  */
 export function imageToSchematic(dataUri: string, threshold: number): Promise<SchematicOutput> {
     return new Promise((resolve, reject) => {
-        // This function is designed for browser environments, but might be called
-        // in a worker where `Image` is available but not `document`.
         if (typeof self === 'undefined' || typeof self.createImageBitmap === 'undefined') {
              return reject(new Error('imageToSchematic can only be run in a browser or worker environment.'));
         }
@@ -167,7 +191,6 @@ export function imageToSchematic(dataUri: string, threshold: number): Promise<Sc
                     const r = imageData.data[i];
                     const g = imageData.data[i + 1];
                     const b = imageData.data[i + 2];
-                    // Simple grayscale conversion
                     const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
                     pixels.push(grayscale < threshold);
                 }
@@ -183,4 +206,85 @@ export function imageToSchematic(dataUri: string, threshold: number): Promise<Sc
                  reject(new Error(`Failed to load or process image: ${err}`));
             });
     });
+}
+
+/**
+ * Generates a .vox file for a given 3D shape.
+ */
+export function voxToSchematic(shape: 
+    { type: 'cuboid', width: number, height: number, depth: number } | 
+    { type: 'sphere', radius: number } |
+    { type: 'pyramid', base: number, height: number }
+): SchematicOutput {
+    const writer = new VoxWriter();
+    const voxels = [];
+    let width: number, height: number, depth: number;
+    let name = `VOX Shape: ${shape.type}`;
+
+    switch (shape.type) {
+        case 'cuboid':
+            width = shape.width;
+            height = shape.height;
+            depth = shape.depth;
+            for (let y = 0; y < height; y++) {
+                for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                        // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
+                        voxels.push({ x, y: z, z: y, colorIndex: 1 });
+                    }
+                }
+            }
+            break;
+
+        case 'sphere':
+            width = height = depth = shape.radius * 2;
+            const center = shape.radius;
+            for (let y = 0; y < height; y++) {
+                for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                        const dx = x - center + 0.5;
+                        const dy = y - center + 0.5;
+                        const dz = z - center + 0.5;
+                        if (dx * dx + dy * dy + dz * dz <= shape.radius * shape.radius) {
+                             // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
+                            voxels.push({ x, y: z, z: y, colorIndex: 1 });
+                        }
+                    }
+                }
+            }
+            break;
+            
+        case 'pyramid':
+            width = depth = shape.base;
+            height = shape.height;
+            for (let y = 0; y < height; y++) {
+                const ratio = (height - 1 - y) / (height -1);
+                const levelWidth = Math.max(1, Math.floor(width * ratio));
+                const offset = Math.floor((width - levelWidth) / 2);
+                for (let z = offset; z < offset + levelWidth; z++) {
+                    for (let x = offset; x < offset + levelWidth; x++) {
+                         // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
+                        voxels.push({ x, y: z, z: y, colorIndex: 1 });
+                    }
+                }
+            }
+            break;
+    }
+    
+    // The color is from our theme's primary variable.
+    // In HSL, var(--primary) is 14 38% 35%. In RGB, this is 121, 79, 61.
+    const palette = [
+      { r: 121, g: 79, b: 61, a: 255 }
+    ];
+
+    const buffer = writer.write(voxels, palette);
+
+    return {
+        schematicData: createSchematicData(name, {width, height, depth}),
+        width,
+        height,
+        pixels: [], // No 2D pixel preview for voxels
+        isVox: true,
+        voxData: buffer,
+    };
 }

@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TextConstructor } from "@/components/text-constructor";
 import { ImageConverter } from "@/components/image-converter";
 import { ShapeGenerator } from "@/components/shape-generator";
+import { VoxGenerator } from "@/components/vox-generator";
 import { VintageVisionsLogo } from "@/components/vintage-visions-logo";
 
 export default function Home() {
@@ -15,10 +16,11 @@ export default function Home() {
       </header>
       <main className="w-full max-w-5xl">
         <Tabs defaultValue="image" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="text">Text Constructor</TabsTrigger>
             <TabsTrigger value="image">Image Converter</TabsTrigger>
-            <TabsTrigger value="shape">Shape Generator</TabsTrigger>
+            <TabsTrigger value="shape">2D Shape Generator</TabsTrigger>
+            <TabsTrigger value="vox">VOX Generator</TabsTrigger>
           </TabsList>
           <TabsContent value="text" className="mt-6">
             <TextConstructor />
@@ -28,6 +30,9 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="shape" className="mt-6">
             <ShapeGenerator />
+          </TabsContent>
+          <TabsContent value="vox" className="mt-6">
+            <VoxGenerator />
           </TabsContent>
         </Tabs>
       </main>
