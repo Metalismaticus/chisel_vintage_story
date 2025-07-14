@@ -19,8 +19,6 @@ export function VoxGenerator() {
     height: '16', 
     depth: '16', 
     radius: '16', 
-    latitudeSegments: '12',
-    longitudeSegments: '24',
     base: '16',
     pyramidHeight: '16' 
   });
@@ -57,10 +55,8 @@ export function VoxGenerator() {
           }
           case 'sphere': {
             const radius = validateAndParse(dimensions.radius, 'radius');
-            const latitudeSegments = validateAndParse(dimensions.latitudeSegments, 'latitude segments', 3);
-            const longitudeSegments = validateAndParse(dimensions.longitudeSegments, 'longitude segments', 3);
-            if (radius === null || latitudeSegments === null || longitudeSegments === null) return;
-            result = voxToSchematic({ type: 'sphere', radius, latitudeSegments, longitudeSegments });
+            if (radius === null) return;
+            result = voxToSchematic({ type: 'sphere', radius });
             break;
           }
           case 'pyramid': {
@@ -79,7 +75,7 @@ export function VoxGenerator() {
         console.error(error);
         toast({
           title: "Generation failed",
-          description: "An error occurred while generating the VOX file.",
+          description: "An error occurred while generating the VOX file. Check console for details.",
           variant: "destructive",
         });
         setSchematicOutput(null);
@@ -108,18 +104,10 @@ export function VoxGenerator() {
         );
       case 'sphere':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <Label htmlFor="radius">Radius (voxels)</Label>
               <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="latitudeSegments">Latitude Segments</Label>
-              <Input id="latitudeSegments" type="number" value={dimensions.latitudeSegments} onChange={e => handleDimensionChange('latitudeSegments', e.target.value)} placeholder="e.g. 12" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="longitudeSegments">Longitude Segments</Label>
-              <Input id="longitudeSegments" type="number" value={dimensions.longitudeSegments} onChange={e => handleDimensionChange('longitudeSegments', e.target.value)} placeholder="e.g. 24" />
             </div>
           </div>
         );

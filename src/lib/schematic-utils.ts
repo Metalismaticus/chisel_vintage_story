@@ -1,21 +1,4 @@
-
-// This is a placeholder for a VOX writer as a proper library was not found.
-// In a real scenario, you would use a library or implement the VOX spec.
-class VoxWriter {
-  write(voxels: any[], palette: any[]): Uint8Array {
-    console.log("Writing VOX file with", voxels.length, "voxels.");
-    const header = new TextEncoder().encode("VOX ");
-    const version = new Uint8Array([150, 0, 0, 0]);
-    // This is a vastly simplified and incomplete mock of a .vox file.
-    // A real implementation would require building all the correct chunks (MAIN, SIZE, XYZI, RGBA).
-    const placeholder_content = new TextEncoder().encode(" (placeholder) ");
-    const buffer = new Uint8Array(header.length + version.length + placeholder_content.length);
-    buffer.set(header, 0);
-    buffer.set(version, header.length);
-    buffer.set(placeholder_content, header.length + version.length);
-    return buffer;
-  }
-}
+import { writeVox } from './vox-writer';
 
 
 export interface SchematicOutput {
@@ -213,22 +196,18 @@ export function imageToSchematic(dataUri: string, threshold: number): Promise<Sc
  */
 export function voxToSchematic(shape: 
     { type: 'cuboid', width: number, height: number, depth: number } | 
-    { type: 'sphere', radius: number, latitudeSegments: number, longitudeSegments: number } |
+    { type: 'sphere', radius: number } |
     { type: 'pyramid', base: number, height: number }
 ): SchematicOutput {
-    const writer = new VoxWriter();
     const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
-    const addedCoords = new Set<string>();
-
+    
+    // In our app, Y is up. In MagicaVoxel, Z is up. We will perform the coordinate swap
+    // right before adding the voxel to the list.
     const addVoxel = (x: number, y: number, z: number) => {
-        const key = `${x},${y},${z}`;
-        if (!addedCoords.has(key)) {
-            // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
-            voxels.push({ x, y: z, z: y, colorIndex: 1 });
-            addedCoords.add(key);
-        }
+        // The color index is 1, which will map to the first color in our palette.
+        voxels.push({ x, y: z, z: y, colorIndex: 1 });
     };
 
 
@@ -248,28 +227,20 @@ export function voxToSchematic(shape:
 
         case 'sphere':
             width = height = depth = shape.radius * 2;
-            const { radius, latitudeSegments, longitudeSegments } = shape;
-            
-            for (let lat = 0; lat <= latitudeSegments; lat++) {
-                const theta = lat * Math.PI / latitudeSegments;
-                const sinTheta = Math.sin(theta);
-                const cosTheta = Math.cos(theta);
+            const { radius } = shape;
+            const center = radius;
 
-                for (let lon = 0; lon <= longitudeSegments; lon++) {
-                    const phi = lon * 2 * Math.PI / longitudeSegments;
-                    const sinPhi = Math.sin(phi);
-                    const cosPhi = Math.cos(phi);
-
-                    const x = radius * cosPhi * sinTheta;
-                    const y = radius * cosTheta;
-                    const z = radius * sinPhi * sinTheta;
-                    
-                    addVoxel(
-                        Math.round(x + radius),
-                        Math.round(y + radius),
-                        Math.round(z + radius)
-                    );
+            for (let y = 0; y < height; y++) {
+              for (let z = 0; z < depth; z++) {
+                for (let x = 0; x < width; x++) {
+                  const dx = x - center + 0.5;
+                  const dy = y - center + 0.5;
+                  const dz = z - center + 0.5;
+                  if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                    addVoxel(x, y, z);
+                  }
                 }
+              }
             }
             break;
             
@@ -294,8 +265,14 @@ export function voxToSchematic(shape:
     const palette = [
       { r: 121, g: 79, b: 61, a: 255 }
     ];
-
-    const buffer = writer.write(voxels, palette);
+    
+    const size = {
+        x: width,
+        y: depth, // y and z are swapped for MagicaVoxel's coordinate system
+        z: height,
+    };
+    
+    const buffer = writeVox({size, voxels, palette});
 
     return {
         schematicData: createSchematicData(name, {width, height, depth}),
