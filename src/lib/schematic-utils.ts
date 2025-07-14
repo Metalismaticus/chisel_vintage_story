@@ -213,13 +213,24 @@ export function imageToSchematic(dataUri: string, threshold: number): Promise<Sc
  */
 export function voxToSchematic(shape: 
     { type: 'cuboid', width: number, height: number, depth: number } | 
-    { type: 'sphere', radius: number } |
+    { type: 'sphere', radius: number, latitudeSegments: number, longitudeSegments: number } |
     { type: 'pyramid', base: number, height: number }
 ): SchematicOutput {
     const writer = new VoxWriter();
-    const voxels = [];
+    const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
+    const addedCoords = new Set<string>();
+
+    const addVoxel = (x: number, y: number, z: number) => {
+        const key = `${x},${y},${z}`;
+        if (!addedCoords.has(key)) {
+            // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
+            voxels.push({ x, y: z, z: y, colorIndex: 1 });
+            addedCoords.add(key);
+        }
+    };
+
 
     switch (shape.type) {
         case 'cuboid':
@@ -229,8 +240,7 @@ export function voxToSchematic(shape:
             for (let y = 0; y < height; y++) {
                 for (let z = 0; z < depth; z++) {
                     for (let x = 0; x < width; x++) {
-                        // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
-                        voxels.push({ x, y: z, z: y, colorIndex: 1 });
+                        addVoxel(x, y, z);
                     }
                 }
             }
@@ -238,18 +248,27 @@ export function voxToSchematic(shape:
 
         case 'sphere':
             width = height = depth = shape.radius * 2;
-            const center = shape.radius;
-            for (let y = 0; y < height; y++) {
-                for (let z = 0; z < depth; z++) {
-                    for (let x = 0; x < width; x++) {
-                        const dx = x - center + 0.5;
-                        const dy = y - center + 0.5;
-                        const dz = z - center + 0.5;
-                        if (dx * dx + dy * dy + dz * dz <= shape.radius * shape.radius) {
-                             // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
-                            voxels.push({ x, y: z, z: y, colorIndex: 1 });
-                        }
-                    }
+            const { radius, latitudeSegments, longitudeSegments } = shape;
+            
+            for (let lat = 0; lat <= latitudeSegments; lat++) {
+                const theta = lat * Math.PI / latitudeSegments;
+                const sinTheta = Math.sin(theta);
+                const cosTheta = Math.cos(theta);
+
+                for (let lon = 0; lon <= longitudeSegments; lon++) {
+                    const phi = lon * 2 * Math.PI / longitudeSegments;
+                    const sinPhi = Math.sin(phi);
+                    const cosPhi = Math.cos(phi);
+
+                    const x = radius * cosPhi * sinTheta;
+                    const y = radius * cosTheta;
+                    const z = radius * sinPhi * sinTheta;
+                    
+                    addVoxel(
+                        Math.round(x + radius),
+                        Math.round(y + radius),
+                        Math.round(z + radius)
+                    );
                 }
             }
             break;
@@ -263,8 +282,7 @@ export function voxToSchematic(shape:
                 const offset = Math.floor((width - levelWidth) / 2);
                 for (let z = offset; z < offset + levelWidth; z++) {
                     for (let x = offset; x < offset + levelWidth; x++) {
-                         // In our app, Y is up. In MagicaVoxel, Z is up. So we swap them.
-                        voxels.push({ x, y: z, z: y, colorIndex: 1 });
+                        addVoxel(x, y, z);
                     }
                 }
             }
