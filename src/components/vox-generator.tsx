@@ -89,15 +89,15 @@ export function VoxGenerator() {
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="width">Width</Label>
+              <Label htmlFor="width">Width (voxels)</Label>
               <Input id="width" type="number" value={dimensions.width} onChange={e => handleDimensionChange('width', e.target.value)} placeholder="e.g. 16" />
             </div>
              <div className="space-y-2">
-              <Label htmlFor="height">Height</Label>
+              <Label htmlFor="height">Height (voxels)</Label>
               <Input id="height" type="number" value={dimensions.height} onChange={e => handleDimensionChange('height', e.target.value)} placeholder="e.g. 16" />
             </div>
              <div className="space-y-2">
-              <Label htmlFor="depth">Depth</Label>
+              <Label htmlFor="depth">Depth (voxels)</Label>
               <Input id="depth" type="number" value={dimensions.depth} onChange={e => handleDimensionChange('depth', e.target.value)} placeholder="e.g. 16" />
             </div>
           </div>
@@ -105,7 +105,7 @@ export function VoxGenerator() {
       case 'sphere':
         return (
           <div className="space-y-2">
-            <Label htmlFor="radius">Radius</Label>
+            <Label htmlFor="radius">Radius (voxels)</Label>
             <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
@@ -113,11 +113,11 @@ export function VoxGenerator() {
         return (
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="base">Base Size</Label>
+              <Label htmlFor="base">Base Size (voxels)</Label>
               <Input id="base" type="number" value={dimensions.base} onChange={e => handleDimensionChange('base', e.target.value)} placeholder="e.g. 16" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pyramidHeight">Height</Label>
+              <Label htmlFor="pyramidHeight">Height (voxels)</Label>
               <Input id="pyramidHeight" type="number" value={dimensions.pyramidHeight} onChange={e => handleDimensionChange('pyramidHeight', e.target.value)} placeholder="e.g. 16" />
             </div>
           </div>
