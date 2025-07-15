@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Download, Package } from 'lucide-react';
+import { Copy, Download, Package, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Progress } from '@/components/ui/progress';
 
@@ -172,9 +172,10 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="flex flex-col items-center justify-center h-full gap-4">
-          <p className="text-muted-foreground">Generating schematic...</p>
-          <Progress value={50} className="w-[60%] animate-pulse" />
+        <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-4">
+          <Loader2 className="w-12 h-12 text-primary animate-spin" />
+          <p className="text-muted-foreground font-semibold">Generating schematic...</p>
+          <p className="text-sm text-muted-foreground">Please wait, this may take a moment for large images.</p>
         </div>
       );
     }
@@ -234,7 +235,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         <CardTitle className="font-headline uppercase tracking-wider">Schematic Preview</CardTitle>
         <CardDescription>Your generated schematic will appear here.</CardDescription>
       </CardHeader>
-      <CardContent className="flex-grow space-y-4">
+      <CardContent className="flex-grow space-y-4 min-h-[300px]">
         {renderContent()}
       </CardContent>
       {finalSchematicData && !loading && (

@@ -26,27 +26,33 @@ export function ImageConverter() {
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
+    
     workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
-      if ('error' in event.data) {
-        console.error('Worker error:', event.data.error);
-        toast({
-          title: "Conversion failed",
-          description: event.data.error,
-          variant: "destructive",
-        });
-        setSchematic(null);
-      } else {
-        setSchematic(event.data);
-      }
+      startTransition(() => {
+        if ('error' in event.data) {
+          console.error('Worker error:', event.data.error);
+          toast({
+            title: "Conversion failed",
+            description: event.data.error,
+            variant: "destructive",
+          });
+          setSchematic(null);
+        } else {
+          setSchematic(event.data);
+        }
+      });
     };
+    
     workerRef.current.onerror = (error) => {
        console.error('Worker onerror:', error);
-        toast({
-          title: "Conversion failed",
-          description: "An unexpected error occurred in the conversion worker. Check the console for details.",
-          variant: "destructive",
-        });
-        setSchematic(null);
+       startTransition(() => {
+          toast({
+            title: "Conversion failed",
+            description: "An unexpected error occurred in the conversion worker. Check the console for details.",
+            variant: "destructive",
+          });
+          setSchematic(null);
+       });
     }
 
     return () => {
@@ -68,7 +74,7 @@ export function ImageConverter() {
     }
   };
 
-  const handleConvert = async () => {
+  const handleConvert = () => {
     if (!file) {
       toast({
         title: "No image selected",
@@ -79,11 +85,14 @@ export function ImageConverter() {
     }
     
     startTransition(() => {
-      setSchematic(null); // Clear previous result
-      // Post the file object directly to the worker.
-      // All heavy processing, including createImageBitmap, will happen off the main thread.
-      workerRef.current?.postMessage({ file, threshold: threshold[0] });
+        setSchematic(null);
     });
+    
+    // Give React time to update the UI and show the loading state
+    // before we post the message to the worker.
+    setTimeout(() => {
+        workerRef.current?.postMessage({ file, threshold: threshold[0] });
+    }, 0);
   };
 
   return (
