@@ -168,18 +168,17 @@ export function shapeToSchematic(shape:
         case 'triangle': {
             width = shape.base;
             height = shape.height;
-            const apexX = Math.floor((width - 1) / 2) + shape.apexOffset;
+            const apexX = width / 2 + shape.apexOffset;
 
             for (let y = 0; y < height; y++) {
-                // Determine the start and end x-coordinates for this row
-                // using integer arithmetic to avoid floating point inaccuracies.
-                // This is a simplified version of Bresenham's line algorithm.
-                const startX = Math.round(y * apexX / (height - 1));
-                const endX = apexX + Math.round(y * (width - 1 - apexX) / (height - 1));
-                
-                for (let x = 0; x < width; x++) {
-                    pixels.push(x >= startX && x <= endX);
-                }
+              const yRatio = (y + 1) / height;
+              const currentWidth = width * yRatio;
+              const leftEdge = apexX - currentWidth / 2;
+              const rightEdge = apexX + currentWidth / 2;
+
+              for (let x = 0; x < width; x++) {
+                 pixels.push(x >= leftEdge && x < rightEdge);
+              }
             }
             
             // The triangle is drawn from top to bottom, so we need to reverse the rows.
