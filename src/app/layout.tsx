@@ -22,12 +22,12 @@ export const metadata: Metadata = {
   description: 'Create pixel art schematics for Vintage Story',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = getCurrentLocale();
+  const locale = await getCurrentLocale();
   return (
     <html lang={locale} className="dark">
       <head>
