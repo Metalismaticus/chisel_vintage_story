@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Download, Package, Loader2 } from 'lucide-react';
+import { Copy, Download, Package, Loader2, Info } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 interface SchematicPreviewProps {
   schematicOutput?: SchematicOutput | null;
@@ -23,6 +24,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
 
   const finalSchematicData = schematicOutput?.schematicData;
   const isVox = schematicOutput?.isVox;
+  const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight);
+
 
   const handleCopy = () => {
     if (finalSchematicData) {
@@ -211,6 +214,15 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
 
     return (
       <div className="space-y-4">
+        {isScaled && (
+            <Alert variant="default" className="border-primary/30 bg-primary/10">
+                <Info className="h-4 w-4 text-primary" />
+                <AlertTitle>Preview Scaled</AlertTitle>
+                <AlertDescription>
+                    Original image ({schematicOutput.originalWidth}x{schematicOutput.originalHeight}) was scaled down for preview. The exported schematic will use the full resolution.
+                </AlertDescription>
+            </Alert>
+        )}
         {pixelGrid && schematicOutput && schematicOutput.width > 0 && schematicOutput.height > 0 ? (
            <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-black/20" style={{maxHeight: '400px'}}>
             <div

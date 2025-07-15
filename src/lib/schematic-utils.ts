@@ -7,6 +7,8 @@ export interface SchematicOutput {
   pixels: boolean[];
   isVox?: boolean;
   voxData?: Uint8Array;
+  originalWidth?: number;
+  originalHeight?: number;
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
@@ -26,8 +28,9 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
     const yChunks = Math.ceil(height / 16);
     const zChunks = depth ? Math.ceil(depth / 16) : 1;
     const totalChunks = xChunks * yChunks * zChunks;
+    const blockCount = width * height * (depth || 1);
 
-    return `Schematic: ${name} (${width}x${height}${depthInfo}). Blocks needed: ${totalChunks}`;
+    return `Schematic: ${name} (${width}x${height}${depthInfo}). Total Chunks: ${totalChunks}. Total Blocks: ${blockCount}`;
 }
 
 /**
@@ -167,19 +170,62 @@ export function shapeToSchematic(shape:
             width = shape.base;
             height = shape.height;
             pixels = Array(width * height).fill(false);
-            const isBaseEven = width % 2 === 0;
             const apexX = Math.floor(width / 2) + shape.apexOffset;
 
+            // Determine if the top should be 1 or 2 pixels wide
+            const isBaseEven = width % 2 === 0;
+            const topWidth = isBaseEven ? 2 : 1;
+            const topStartX = apexX - (isBaseEven ? 1 : 0);
+
+            // Draw the top of the triangle
+            for (let i = 0; i < topWidth; i++) {
+                if(topStartX + i >= 0 && topStartX + i < width) {
+                    pixels[topStartX + i] = true;
+                }
+            }
+            
+            // Draw the lines from the top to the base corners
+            const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
+                let dx = Math.abs(x2 - x1);
+                let dy = -Math.abs(y2 - y1);
+                let sx = x1 < x2 ? 1 : -1;
+                let sy = y1 < y2 ? 1 : -1;
+                let err = dx + dy;
+
+                while (true) {
+                    if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height) {
+                        pixels[y1 * width + x1] = true;
+                    }
+                    if (x1 === x2 && y1 === y2) break;
+                    let e2 = 2 * err;
+                    if (e2 >= dy) {
+                        err += dy;
+                        x1 += sx;
+                    }
+                    if (e2 <= dx) {
+                        err += dx;
+                        y1 += sy;
+                    }
+                }
+            };
+            
+            // Left line
+            drawLine(topStartX, 0, 0, height - 1);
+            // Right line
+            drawLine(topStartX + topWidth - 1, 0, width - 1, height - 1);
+
+            // Fill the triangle scanline by scanline
             for (let y = 0; y < height; y++) {
-                const stepRatio = y / (height > 1 ? height - 1 : 1);
-                const currentWidth = Math.round((1 - stepRatio) * (width - (isBaseEven ? 2 : 1))) + (isBaseEven ? 2 : 1);
-                
-                const startX = apexX - Math.floor(currentWidth / 2);
-                
-                for (let x = 0; x < currentWidth; x++) {
-                    const pixelX = startX + x;
-                    if (pixelX >= 0 && pixelX < width) {
-                        pixels[(height - 1 - y) * width + pixelX] = true;
+                let startX = -1, endX = -1;
+                for (let x = 0; x < width; x++) {
+                    if (pixels[y * width + x]) {
+                        if (startX === -1) startX = x;
+                        endX = x;
+                    }
+                }
+                if (startX !== -1) {
+                    for (let x = startX; x <= endX; x++) {
+                        pixels[y * width + x] = true;
                     }
                 }
             }
@@ -227,23 +273,31 @@ export function shapeToSchematic(shape:
 /**
  * Converts an image from an ImageBitmap to a pixel-based schematic.
  * This function uses the OffscreenCanvas API and is intended to be run in a Web Worker.
+ * Can return either full schematic data or just the pixel array.
  */
-export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number): Promise<SchematicOutput> {
+export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number, generatePixels: true): Promise<SchematicOutput>;
+export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number, generatePixels: false): string;
+export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number, generatePixels: boolean): Promise<SchematicOutput> | string {
+    const { width, height } = imageBitmap;
+    const schematicData = createSchematicData('Imported Image', {width: width, height: height});
+
+    if (!generatePixels) {
+        return schematicData;
+    }
+    
     return new Promise((resolve, reject) => {
         if (typeof self === 'undefined' || typeof OffscreenCanvas === 'undefined') {
              return reject(new Error('imageToSchematic with ImageBitmap can only be run in a worker environment.'));
         }
 
         try {
-            const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height);
+            const canvas = new OffscreenCanvas(width, height);
             const ctx = canvas.getContext('2d');
             if (!ctx) {
                 return reject(new Error('Failed to get OffscreenCanvas context.'));
             }
             
             ctx.drawImage(imageBitmap, 0, 0);
-            imageBitmap.close(); // Free up memory
-
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const pixels: boolean[] = [];
 
@@ -256,7 +310,7 @@ export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number): P
             }
 
             resolve({
-                schematicData: createSchematicData('Imported Image', {width: canvas.width, height: canvas.height}),
+                schematicData,
                 width: canvas.width,
                 height: canvas.height,
                 pixels,

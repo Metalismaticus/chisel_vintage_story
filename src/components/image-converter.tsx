@@ -30,6 +30,7 @@ export function ImageConverter() {
     
     workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
       console.log('[Main] Received message from worker:', event.data);
+      setIsPending(false); 
       if ('error' in event.data) {
         console.error('[Main] Worker reported an error:', event.data.error);
         toast({
@@ -42,7 +43,6 @@ export function ImageConverter() {
         console.log('[Main] Conversion successful. Setting schematic.');
         setSchematic(event.data);
       }
-      setIsPending(false); 
     };
     
     workerRef.current.onerror = (error) => {
