@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Download, Package, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
-import { Progress } from '@/components/ui/progress';
 
 interface SchematicPreviewProps {
   schematicOutput?: SchematicOutput | null;
@@ -16,9 +15,6 @@ interface SchematicPreviewProps {
 }
 
 const CHUNK_SIZE = 16;
-const PIXEL_SCALE = 20;
-const GRID_COLOR = 'rgba(192, 164, 100, 0.2)';
-const CHUNK_BORDER_COLOR = 'rgba(200, 164, 100, 0.5)';
 
 
 export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
@@ -54,80 +50,89 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       return;
     }
 
-    if (!schematicOutput.pixels) {
-       toast({ title: "No schematic data to download.", variant: 'destructive' });
+    if (!gridRef.current) {
+       toast({ title: "Preview element not found.", variant: 'destructive' });
        return;
     }
-    
-    const { pixels, width, height } = schematicOutput;
 
-    if (!width || !height || !pixels) return;
+    try {
+        // Use a library like html2canvas or manually create canvas from DOM
+        // For simplicity, we'll create a new canvas and redraw, but this should be optimized
+        const { pixels, width, height } = schematicOutput;
+        if (!width || !height || !pixels) {
+            toast({ title: "No pixel data to render for download.", variant: 'destructive' });
+            return;
+        };
 
-    const canvas = document.createElement('canvas');
-    canvas.width = width * PIXEL_SCALE;
-    canvas.height = height * PIXEL_SCALE;
-    const ctx = canvas.getContext('2d');
+        const PIXEL_SCALE = 20;
+        const GRID_COLOR = 'rgba(192, 164, 100, 0.2)';
+        const CHUNK_BORDER_COLOR = 'rgba(200, 164, 100, 0.5)';
 
-    if (!ctx) {
-      toast({ title: "Failed to create image.", variant: 'destructive' });
-      return;
-    }
+        const canvas = document.createElement('canvas');
+        canvas.width = width * PIXEL_SCALE;
+        canvas.height = height * PIXEL_SCALE;
+        const ctx = canvas.getContext('2d');
 
-    // Background
-    ctx.fillStyle = '#2A3A4D'; // Blueprint background
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw pixels
-    ctx.fillStyle = '#F0F0F0'; // White lines for pixels
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (pixels[y * width + x]) {
-          ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+        if (!ctx) {
+            toast({ title: "Failed to create image context.", variant: 'destructive' });
+            return;
         }
-      }
-    }
-    
-    // Draw grid lines
-    ctx.strokeStyle = GRID_COLOR;
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= width; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * PIXEL_SCALE, 0);
-      ctx.lineTo(x * PIXEL_SCALE, height * PIXEL_SCALE);
-      ctx.stroke();
-    }
-     for (let y = 0; y <= height; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * PIXEL_SCALE);
-      ctx.lineTo(width * PIXEL_SCALE, y * PIXEL_SCALE);
-      ctx.stroke();
-    }
 
-    // Draw chunk borders
-    ctx.strokeStyle = CHUNK_BORDER_COLOR;
-    ctx.lineWidth = 2;
-     for (let x = 0; x <= width; x += CHUNK_SIZE) {
-      ctx.beginPath();
-      ctx.moveTo(x * PIXEL_SCALE, 0);
-      ctx.lineTo(x * PIXEL_SCALE, height * PIXEL_SCALE);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= height; y += CHUNK_SIZE) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * PIXEL_SCALE);
-      ctx.lineTo(width * PIXEL_SCALE, y * PIXEL_SCALE);
-      ctx.stroke();
-    }
+        ctx.fillStyle = '#2A3A4D';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        ctx.fillStyle = '#F0F0F0';
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (pixels[y * width + x]) {
+                    ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+                }
+            }
+        }
 
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'schematic.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+        ctx.strokeStyle = GRID_COLOR;
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= width; i++) {
+            ctx.beginPath();
+            ctx.moveTo(i * PIXEL_SCALE, 0);
+            ctx.lineTo(i * PIXEL_SCALE, height * PIXEL_SCALE);
+            ctx.stroke();
+        }
+        for (let i = 0; i <= height; i++) {
+            ctx.beginPath();
+            ctx.moveTo(0, i * PIXEL_SCALE);
+            ctx.lineTo(width * PIXEL_SCALE, i * PIXEL_SCALE);
+            ctx.stroke();
+        }
+
+        ctx.strokeStyle = CHUNK_BORDER_COLOR;
+        ctx.lineWidth = 2;
+        for (let i = 0; i <= width; i += CHUNK_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(i * PIXEL_SCALE, 0);
+            ctx.lineTo(i * PIXEL_SCALE, height * PIXEL_SCALE);
+            ctx.stroke();
+        }
+        for (let i = 0; i <= height; i += CHUNK_SIZE) {
+            ctx.beginPath();
+            ctx.moveTo(0, i * PIXEL_SCALE);
+            ctx.lineTo(width * PIXEL_SCALE, i * PIXEL_SCALE);
+            ctx.stroke();
+        }
+
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'schematic.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error("Download failed:", error);
+        toast({ title: "Failed to generate download.", description: "There was an error creating the image file.", variant: "destructive" });
+    }
   };
 
   const renderPixelGrid = () => {
