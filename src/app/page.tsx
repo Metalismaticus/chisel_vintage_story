@@ -3,15 +3,15 @@ import { TextConstructor } from "@/components/text-constructor";
 import { ImageConverter } from "@/components/image-converter";
 import { ShapeGenerator } from "@/components/shape-generator";
 import { VoxGenerator } from "@/components/vox-generator";
-import { VintageVisionsLogo } from "@/components/vintage-visions-logo";
+import { Cog } from "lucide-react";
 
 export default function Home() {
   return (
     <div className="flex flex-col items-center min-h-screen p-4 sm:p-6 md:p-8">
       <header className="flex items-center gap-4 mb-8 border-b-2 border-primary/50 pb-4 px-8">
-        <VintageVisionsLogo className="w-16 h-16 text-primary" />
+        <Cog className="w-16 h-16 text-primary animate-spin" style={{ animationDuration: '10s' }} />
         <h1 className="text-4xl md:text-5xl font-headline text-foreground font-bold tracking-wider uppercase">
-          Vintage Visions
+          Vintage Story Helper
         </h1>
       </header>
       <main className="w-full max-w-6xl p-4 border border-foreground/30 bg-background/50 rounded-lg shadow-2xl">

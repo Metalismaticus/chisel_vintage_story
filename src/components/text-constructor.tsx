@@ -35,23 +35,9 @@ export function TextConstructor() {
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const validExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
-      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
-
-      if (!validExtensions.includes(fileExtension)) {
-        toast({
-          title: "Invalid font file",
-          description: "Please upload a valid .ttf, .otf, .woff or .woff2 file.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Revoke the old URL if it exists
       if (fontFileUrlRef.current) {
         URL.revokeObjectURL(fontFileUrlRef.current);
       }
-      
       setFontFile(file);
       const url = URL.createObjectURL(file);
       fontFileUrlRef.current = url;
@@ -70,6 +56,7 @@ export function TextConstructor() {
       return;
     }
 
+    setSchematicOutput(null);
     startTransition(async () => {
       try {
         const result = await textToSchematic(text, font, fontSize[0], fontFileUrlRef.current ?? undefined);

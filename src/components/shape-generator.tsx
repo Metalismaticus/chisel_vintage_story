@@ -23,6 +23,7 @@ export function ShapeGenerator() {
   };
 
   const handleGenerate = () => {
+    setSchematicOutput(null);
     startTransition(() => {
       try {
         let result: SchematicOutput;

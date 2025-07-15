@@ -16,7 +16,7 @@ const robotoCondensed = Roboto_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: 'Vintage Visions',
+  title: 'Vintage Story Helper',
   description: 'Create pixel art schematics for Vintage Story',
 };
 

@@ -4,11 +4,11 @@
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Download, Package } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
+import { Progress } from '@/components/ui/progress';
 
 interface SchematicPreviewProps {
   schematicOutput?: SchematicOutput | null;
@@ -172,9 +172,9 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="space-y-4">
-          <Skeleton className="aspect-square w-full rounded-lg bg-white/5" />
-          <Skeleton className="h-24 w-full rounded-lg bg-white/5" />
+        <div className="flex flex-col items-center justify-center h-full gap-4">
+          <p className="text-muted-foreground">Generating schematic...</p>
+          <Progress value={50} className="w-[60%] animate-pulse" />
         </div>
       );
     }

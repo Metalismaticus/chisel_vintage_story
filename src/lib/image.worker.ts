@@ -8,12 +8,9 @@ self.onmessage = async (event: MessageEvent<{ dataUri: string; threshold: number
     const result = await imageToSchematic(dataUri, threshold);
     self.postMessage(result);
   } catch (error) {
-    // Propagate the error back to the main thread
-    if (error instanceof Error) {
-        self.postMessage({ error: error.message });
-    } else {
-        self.postMessage({ error: 'An unknown error occurred in the worker.' });
-    }
+    // Ensure a proper error message is sent back
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred in the worker.';
+    self.postMessage({ error: errorMessage });
   }
 };
 

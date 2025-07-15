@@ -40,6 +40,7 @@ export function VoxGenerator() {
   }
 
   const handleGenerate = () => {
+    setSchematicOutput(null);
     startTransition(() => {
       try {
         let result: SchematicOutput;

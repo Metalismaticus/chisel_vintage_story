@@ -25,14 +25,24 @@ export function ImageConverter() {
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
-    workerRef.current.onmessage = (event: MessageEvent<SchematicOutput>) => {
-      setSchematic(event.data);
-    };
-    workerRef.current.onerror = (error) => {
-       console.error(error);
+    workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
+      if ('error' in event.data) {
+        console.error('Worker error:', event.data.error);
         toast({
           title: "Conversion failed",
-          description: "An error occurred in the conversion worker. Please try again.",
+          description: event.data.error,
+          variant: "destructive",
+        });
+        setSchematic(null);
+      } else {
+        setSchematic(event.data);
+      }
+    };
+    workerRef.current.onerror = (error) => {
+       console.error('Worker onerror:', error);
+        toast({
+          title: "Conversion failed",
+          description: "An unexpected error occurred in the conversion worker. Check the console for details.",
           variant: "destructive",
         });
         setSchematic(null);
