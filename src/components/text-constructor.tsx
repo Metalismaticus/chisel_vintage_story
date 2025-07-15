@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,11 +18,20 @@ export function TextConstructor() {
   const [fontSize, setFontSize] = useState([24]);
   const [font, setFont] = useState<FontStyle>('monospace');
   const [fontFile, setFontFile] = useState<File | null>(null);
-  const [fontFileUrl, setFontFileUrl] = useState<string | null>(null);
+  const fontFileUrlRef = useRef<string | null>(null);
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
+  useEffect(() => {
+    // Cleanup function to revoke the object URL when the component unmounts
+    return () => {
+      if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+      }
+    };
+  }, []);
+
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -33,9 +43,15 @@ export function TextConstructor() {
         });
         return;
       }
+      
+      // Revoke the old URL if it exists
+      if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+      }
+      
       setFontFile(file);
       const url = URL.createObjectURL(file);
-      setFontFileUrl(url);
+      fontFileUrlRef.current = url;
       setFont('custom'); // Set to custom to indicate a file is selected
     }
   };
@@ -53,7 +69,7 @@ export function TextConstructor() {
 
     startTransition(async () => {
       try {
-        const result = await textToSchematic(text, font, fontSize[0], fontFileUrl ?? undefined);
+        const result = await textToSchematic(text, font, fontSize[0], fontFileUrlRef.current ?? undefined);
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);
@@ -66,6 +82,17 @@ export function TextConstructor() {
       }
     });
   };
+
+  const handleFontChange = (value: FontStyle) => {
+    setFont(value);
+    if (value !== 'custom') {
+      setFontFile(null);
+      if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+        fontFileUrlRef.current = null;
+      }
+    }
+  }
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -83,17 +110,7 @@ export function TextConstructor() {
             <Label>Font Family</Label>
             <Select 
               value={font} 
-              onValueChange={(v) => {
-                const newFont = v as FontStyle;
-                setFont(newFont);
-                if (newFont !== 'custom') {
-                  setFontFile(null);
-                  if (fontFileUrl) {
-                    URL.revokeObjectURL(fontFileUrl);
-                    setFontFileUrl(null);
-                  }
-                }
-            }}>
+              onValueChange={(v) => handleFontChange(v as FontStyle)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a font" />
               </SelectTrigger>
