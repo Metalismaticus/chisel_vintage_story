@@ -25,11 +25,13 @@ export function ImageConverter() {
   const { toast } = useToast();
 
   useEffect(() => {
+    console.log('[Main] Initializing worker...');
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
     
     workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
+      console.log('[Main] Received message from worker:', event.data);
       if ('error' in event.data) {
-        console.error('Worker error:', event.data.error);
+        console.error('[Main] Worker reported an error:', event.data.error);
         toast({
           title: 'Conversion Error',
           description: event.data.error,
@@ -37,15 +39,16 @@ export function ImageConverter() {
         });
         setSchematic(null);
       } else {
+        console.log('[Main] Conversion successful. Setting schematic.');
         setSchematic(event.data);
       }
       setIsPending(false); 
     };
     
     workerRef.current.onerror = (error) => {
-       console.error('Worker onerror:', error);
+       console.error('[Main] Unhandled worker error:', error);
        toast({
-         title: 'Conversion Error',
+         title: 'Critical Worker Error',
          description: 'An unexpected error occurred in the background process. Check the console for details.',
          variant: "destructive",
        });
@@ -54,6 +57,7 @@ export function ImageConverter() {
     }
 
     return () => {
+      console.log('[Main] Terminating worker.');
       workerRef.current?.terminate();
     };
   }, [toast]);
@@ -62,6 +66,7 @@ export function ImageConverter() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
+      console.log('[Main] File selected:', selectedFile.name);
       setFile(selectedFile);
       setSchematic(null);
       
@@ -84,9 +89,11 @@ export function ImageConverter() {
       return;
     }
     
+    console.log(`[Main] Starting conversion for ${file.name} with threshold ${threshold[0]}`);
     setSchematic(null);
     setIsPending(true);
     
+    console.log('[Main] Posting message to worker...');
     workerRef.current?.postMessage({ file, threshold: threshold[0] });
   };
   
