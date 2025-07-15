@@ -1,4 +1,3 @@
-
 import { writeVox } from './vox-writer';
 
 
@@ -18,8 +17,15 @@ export type VoxShape = 'cuboid' | 'sphere' | 'pyramid';
 
 // A simple helper to generate schematic data string
 function createSchematicData(name: string, dimensions: {width: number, height: number, depth?: number}): string {
-    const depthInfo = dimensions.depth ? `x${dimensions.depth}`: '';
-    return `Schematic for: ${name} (${dimensions.width}x${dimensions.height}${depthInfo})`;
+    const { width, height, depth } = dimensions;
+    const depthInfo = depth ? `x${depth}`: '';
+
+    const xChunks = Math.ceil(width / 16);
+    const yChunks = Math.ceil(height / 16);
+    const zChunks = depth ? Math.ceil(depth / 16) : 1;
+    const totalChunks = xChunks * yChunks * zChunks;
+
+    return `Schematic: ${name} (${width}x${height}${depthInfo}). Blocks needed: ${totalChunks} (16x16)`;
 }
 
 /**
