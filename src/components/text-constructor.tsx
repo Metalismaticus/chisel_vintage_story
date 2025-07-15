@@ -28,7 +28,7 @@ export function TextConstructor() {
       if (file.type !== 'font/ttf' && file.type !== 'font/otf' && file.type !== 'application/font-woff' && file.type !== 'font/woff' && file.type !== 'font/woff2') {
         toast({
             title: "Invalid font file",
-            description: "Please upload a valid .ttf or .otf file.",
+            description: "Please upload a valid .ttf, .otf or .woff file.",
             variant: "destructive",
         });
         return;
@@ -36,7 +36,7 @@ export function TextConstructor() {
       setFontFile(file);
       const url = URL.createObjectURL(file);
       setFontFileUrl(url);
-      setFont('custom'); // Set a placeholder to know we're using a custom font
+      setFont('custom'); // Set to custom to indicate a file is selected
     }
   };
 
@@ -81,13 +81,18 @@ export function TextConstructor() {
           </div>
           <div className="space-y-2">
             <Label>Font Family</Label>
-            <Select value={font} onValueChange={(v) => {
-              setFont(v as FontStyle);
-              setFontFile(null);
-              if (fontFileUrl) {
-                URL.revokeObjectURL(fontFileUrl);
-                setFontFileUrl(null);
-              }
+            <Select 
+              value={font} 
+              onValueChange={(v) => {
+                const newFont = v as FontStyle;
+                setFont(newFont);
+                if (newFont !== 'custom') {
+                  setFontFile(null);
+                  if (fontFileUrl) {
+                    URL.revokeObjectURL(fontFileUrl);
+                    setFontFileUrl(null);
+                  }
+                }
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a font" />
@@ -101,16 +106,14 @@ export function TextConstructor() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="font-upload">Upload Custom Font (.ttf, .otf)</Label>
-            <div className="flex items-center gap-2">
-              <Button asChild variant="outline" className="flex-1">
-                <label className="cursor-pointer">
-                  <Upload className="mr-2" />
-                  {fontFile ? fontFile.name : 'Choose Font'}
-                  <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
-                </label>
-              </Button>
-            </div>
+            <Label htmlFor="font-upload">Upload Custom Font (.ttf, .otf, .woff)</Label>
+            <Button asChild variant="outline" className="w-full">
+              <label className="cursor-pointer flex items-center justify-center">
+                <Upload className="mr-2 h-4 w-4" />
+                {fontFile ? fontFile.name : 'Choose Font'}
+                <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
+              </label>
+            </Button>
           </div>
           <div className="space-y-2">
             <Label htmlFor="font-size">Font Size: {fontSize[0]}px</Label>

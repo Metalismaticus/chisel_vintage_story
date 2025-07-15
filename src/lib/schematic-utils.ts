@@ -40,7 +40,7 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
         loadedFont = 'custom-font';
       } catch (e) {
         console.error('Font loading failed:', e);
-        // Fallback to the selected generic font
+        // Fallback to a default font if loading fails
         loadedFont = 'monospace';
       }
     }
@@ -54,7 +54,9 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     
     // Calculate dimensions
     const width = Math.ceil(metrics.width);
-    const height = Math.ceil(metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent);
+    const ascent = metrics.actualBoundingBoxAscent;
+    const descent = metrics.actualBoundingBoxDescent;
+    const height = Math.ceil(ascent + descent);
     
     if (width === 0 || height === 0) {
       return {
@@ -71,7 +73,7 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     // Re-apply font settings after resize
     ctx.font = `${fontSize}px ${loadedFont}`;
     ctx.fillStyle = 'black';
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'top'; // Use top to align with actualBoundingBoxAscent
     ctx.fillText(text, 0, 0);
     
     const imageData = ctx.getImageData(0, 0, width, height);
