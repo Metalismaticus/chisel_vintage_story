@@ -5,17 +5,17 @@ import { imageToSchematic } from './schematic-utils';
 self.onmessage = async (event: MessageEvent<{ file: File; threshold: number }>) => {
   try {
     const { file, threshold } = event.data;
-    // Create an ImageBitmap from the file *inside the worker*.
-    // This is the most critical step to ensure the main thread is not blocked.
+    // Создаем ImageBitmap из файла *внутри worker'а*.
+    // Это самый важный шаг, чтобы основной поток не блокировался.
     const imageBitmap = await createImageBitmap(file);
     const result = await imageToSchematic(imageBitmap, threshold);
     self.postMessage(result);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred in the worker.';
-    // If an error happens, post an error object back to the main thread.
+    const errorMessage = error instanceof Error ? error.message : 'Произошла неизвестная ошибка в worker.';
+    // Если происходит ошибка, отправляем объект ошибки обратно в основной поток.
     self.postMessage({ error: errorMessage });
   }
 };
 
-// This export is needed to satisfy the module system.
+// Этот экспорт нужен для удовлетворения системы модулей.
 export {};
