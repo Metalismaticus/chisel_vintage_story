@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   description: 'Create pixel art schematics for Vintage Story',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode;
