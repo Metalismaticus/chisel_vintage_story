@@ -89,7 +89,7 @@ export function ImageConverter() {
     });
     
     // Give React time to update the UI and show the loading state
-    // before we post the message to the worker.
+    // before we post the message to the worker. This is the key fix.
     setTimeout(() => {
         workerRef.current?.postMessage({ file, threshold: threshold[0] });
     }, 0);
