@@ -1,9 +1,7 @@
 import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster";
-import '../globals.css';
+import './globals.css';
 import { Oswald, Roboto_Condensed } from 'next/font/google';
-import I18nProviderClient from '@/locales/provider';
-import { getCurrentLocale } from '@/locales/server';
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -23,21 +21,16 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({
-  children,
-  params: { locale }
+  children
 }: Readonly<{
   children: React.ReactNode;
-  params: { locale: string };
 }>) {
-  const currentLocale = await getCurrentLocale();
   return (
-    <html className="dark" lang={currentLocale}>
+    <html className="dark" lang="en">
       <head>
       </head>
       <body className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased`}>
-        <I18nProviderClient locale={locale}>
-          {children}
-        </I18nProviderClient>
+        {children}
         <Toaster />
       </body>
     </html>

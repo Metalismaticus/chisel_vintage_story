@@ -12,7 +12,6 @@ import { SchematicPreview } from './schematic-preview';
 import { UploadCloud, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
-import { useI18n } from '@/locales/client';
 
 
 export function ImageConverter() {
@@ -24,7 +23,6 @@ export function ImageConverter() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker>();
   const { toast } = useToast();
-  const t = useI18n();
 
   useEffect(() => {
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
@@ -33,7 +31,7 @@ export function ImageConverter() {
       if ('error' in event.data) {
         console.error('Worker error:', event.data.error);
         toast({
-          title: t('toast.error.title'),
+          title: 'Conversion Error',
           description: event.data.error,
           variant: "destructive",
         });
@@ -47,8 +45,8 @@ export function ImageConverter() {
     workerRef.current.onerror = (error) => {
        console.error('Worker onerror:', error);
        toast({
-         title: t('toast.error.title'),
-         description: t('toast.error.worker'),
+         title: 'Conversion Error',
+         description: 'An unexpected error occurred in the background process. Check the console for details.',
          variant: "destructive",
        });
        setSchematic(null);
@@ -58,7 +56,7 @@ export function ImageConverter() {
     return () => {
       workerRef.current?.terminate();
     };
-  }, [toast, t]);
+  }, [toast]);
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,8 +77,8 @@ export function ImageConverter() {
   const handleConvert = () => {
     if (!file) {
       toast({
-        title: t('toast.error.noImageTitle'),
-        description: t('toast.error.noImageDescription'),
+        title: 'Image not selected',
+        description: 'Please select a file to convert.',
         variant: "destructive",
       });
       return;
@@ -104,12 +102,12 @@ export function ImageConverter() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">{t('image.title')}</CardTitle>
-          <CardDescription>{t('image.description')}</CardDescription>
+          <CardTitle className="font-headline uppercase tracking-wider">Image to Pixel Art</CardTitle>
+          <CardDescription>Convert any image into a Vintage Story schematic.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="image-upload">{t('image.uploadLabel')}</Label>
+            <Label htmlFor="image-upload">Upload Image</Label>
             <div 
               className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -118,7 +116,7 @@ export function ImageConverter() {
                 {previewUrl ? (
                   <Image
                     src={previewUrl}
-                    alt={t('image.previewAlt')}
+                    alt={'Image preview'}
                     width={200}
                     height={200}
                     className="mx-auto h-32 w-auto rounded-md object-contain"
@@ -127,9 +125,9 @@ export function ImageConverter() {
                   <>
                     <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
                     <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                      <p className="pl-1">{t('image.uploadPrompt')}</p>
+                      <p className="pl-1">Click to upload or drag and drop</p>
                     </div>
-                    <p className="text-xs leading-5 text-muted-foreground">{t('image.uploadHint')}</p>
+                    <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
                   </>
                 )}
                 <Input
@@ -144,7 +142,7 @@ export function ImageConverter() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="threshold">{t('image.thresholdLabel')}: {threshold[0]}</Label>
+            <Label htmlFor="threshold">Black and White Threshold: {threshold[0]}</Label>
             <Slider
               id="threshold"
               min={0}
@@ -158,10 +156,10 @@ export function ImageConverter() {
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('buttons.converting')}
+                Converting...
               </>
             ) : (
-              t('buttons.convertToSchematic')
+              'Convert to Schematic'
             )}
           </Button>
         </CardContent>

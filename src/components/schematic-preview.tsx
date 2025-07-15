@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Copy, Download, Package, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
-import { useI18n } from '@/locales/client';
 
 interface SchematicPreviewProps {
   schematicOutput?: SchematicOutput | null;
@@ -21,7 +20,6 @@ const CHUNK_SIZE = 16;
 export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
   const { toast } = useToast();
   const gridRef = useRef<HTMLDivElement>(null);
-  const t = useI18n();
 
   const finalSchematicData = schematicOutput?.schematicData;
   const isVox = schematicOutput?.isVox;
@@ -29,13 +27,13 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const handleCopy = () => {
     if (finalSchematicData) {
       navigator.clipboard.writeText(finalSchematicData);
-      toast({ title: t('toast.success.copied') });
+      toast({ title: 'Copied to clipboard!' });
     }
   };
 
   const handleDownload = async () => {
     if (!schematicOutput) {
-      toast({ title: t('toast.error.noDownloadData'), variant: 'destructive' });
+      toast({ title: 'No data to download.', variant: 'destructive' });
       return;
     }
     
@@ -53,14 +51,14 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     }
 
     if (!gridRef.current) {
-       toast({ title: t('toast.error.noPreviewElement'), variant: 'destructive' });
+       toast({ title: 'Preview element not found.', variant: 'destructive' });
        return;
     }
 
     try {
         const { pixels, width, height } = schematicOutput;
         if (!width || !height || !pixels) {
-            toast({ title: t('toast.error.noPixelData'), variant: 'destructive' });
+            toast({ title: 'No pixel data to download.', variant: 'destructive' });
             return;
         };
 
@@ -74,7 +72,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         const ctx = canvas.getContext('2d');
 
         if (!ctx) {
-            toast({ title: t('toast.error.noCanvasContext'), variant: 'destructive' });
+            toast({ title: 'Failed to create image context.', variant: 'destructive' });
             return;
         }
 
@@ -131,13 +129,13 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } else {
-                 toast({ title: t('toast.error.noImageBlob'), variant: "destructive" });
+                 toast({ title: 'Failed to create image blob.', variant: "destructive" });
             }
         }, 'image/png');
 
     } catch (error) {
         console.error("Download failed:", error);
-        toast({ title: t('toast.error.downloadFailed'), description: t('toast.error.downloadFailedDescription'), variant: "destructive" });
+        toast({ title: 'Download failed', description: 'An error occurred while creating the image file.', variant: "destructive" });
     }
   };
 
@@ -185,8 +183,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       return (
         <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="text-muted-foreground font-semibold">{t('preview.generating')}</p>
-          <p className="text-sm text-muted-foreground">{t('preview.generatingDescription')}</p>
+          <p className="text-muted-foreground font-semibold">Generating schematic...</p>
+          <p className="text-sm text-muted-foreground">Please wait, this may take a moment for large images.</p>
         </div>
       );
     }
@@ -194,7 +192,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     if (!finalSchematicData) {
       return (
         <div className="flex items-center justify-center h-full border-2 border-dashed border-input rounded-lg">
-          <p className="text-muted-foreground">{t('preview.waiting')}</p>
+          <p className="text-muted-foreground">Awaiting generation...</p>
         </div>
       );
     }
@@ -203,9 +201,9 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         return (
             <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-input rounded-lg p-8 text-center">
               <Package className="w-16 h-16 text-primary mb-4" />
-              <h3 className="text-xl font-semibold uppercase tracking-wider">{t('preview.voxGeneratedTitle')}</h3>
+              <h3 className="text-xl font-semibold uppercase tracking-wider">VOX file generated</h3>
               <p className="text-muted-foreground mt-2">
-                {t('preview.voxGeneratedDescription')}
+                A 3D .vox file has been created. Use the button below to save it. 3D preview is not available.
               </p>
             </div>
         );
@@ -229,7 +227,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
           </div>
         ) : (
            <div className="border rounded-lg p-2 bg-black/20 aspect-square overflow-hidden flex items-center justify-center">
-            <p className="text-muted-foreground text-sm text-center">{t('preview.previewNotAvailable')}</p>
+            <p className="text-muted-foreground text-sm text-center">Preview is not available for this schematic type, but you can copy or download the data below.</p>
           </div>
         )}
         <Textarea readOnly value={finalSchematicData} className="h-24 font-mono text-xs bg-black/20 border-input" />
@@ -240,8 +238,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   return (
     <Card className="flex flex-col bg-card/70 border-primary/20 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="font-headline uppercase tracking-wider">{t('preview.title')}</CardTitle>
-        <CardDescription>{t('preview.description')}</CardDescription>
+        <CardTitle className="font-headline uppercase tracking-wider">Schematic Preview</CardTitle>
+        <CardDescription>Your generated schematic will appear here.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-4 min-h-[300px]">
         {renderContent()}
@@ -250,11 +248,11 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         <CardFooter className="flex gap-2 pt-4">
           {!isVox && (
              <Button onClick={handleCopy} variant="outline" className="w-full uppercase font-bold tracking-wider">
-              <Copy className="mr-2 h-4 w-4" /> {t('buttons.copy')}
+              <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
           )}
           <Button onClick={handleDownload} className="w-full uppercase font-bold tracking-wider">
-            <Download className="mr-2 h-4 w-4" /> {t('buttons.download')} {isVox ? '.vox' : '.png'}
+            <Download className="mr-2 h-4 w-4" /> Download {isVox ? '.vox' : '.png'}
           </Button>
         </CardFooter>
       )}
