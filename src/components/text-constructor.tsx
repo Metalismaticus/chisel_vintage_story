@@ -12,6 +12,7 @@ import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
 import { textToSchematic, type SchematicOutput, type FontStyle } from '@/lib/schematic-utils';
 import { Upload } from 'lucide-react';
+import { useI18n } from '@/locales/client';
 
 export function TextConstructor() {
   const [text, setText] = useState('Vintage');
@@ -22,9 +23,9 @@ export function TextConstructor() {
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const t = useI18n();
   
   useEffect(() => {
-    // Cleanup function to revoke the object URL when the component unmounts
     return () => {
       if (fontFileUrlRef.current) {
         URL.revokeObjectURL(fontFileUrlRef.current);
@@ -41,7 +42,7 @@ export function TextConstructor() {
       setFontFile(file);
       const url = URL.createObjectURL(file);
       fontFileUrlRef.current = url;
-      setFont('custom'); // Set to custom to indicate a file is selected
+      setFont('custom'); 
     }
   };
 
@@ -49,8 +50,8 @@ export function TextConstructor() {
   const handleGenerate = () => {
     if (!text) {
       toast({
-        title: "Text is empty",
-        description: "Please enter some text to generate a schematic.",
+        title: t('toast.error.noTextTitle'),
+        description: t('toast.error.noTextDescription'),
         variant: "destructive",
       });
       return;
@@ -64,8 +65,8 @@ export function TextConstructor() {
       } catch (error) {
         console.error(error);
         toast({
-          title: "Generation failed",
-          description: "An error occurred while generating the schematic. Please try again.",
+          title: t('toast.error.generationFailedTitle'),
+          description: t('toast.error.generationFailedDescription'),
           variant: "destructive",
         });
         setSchematicOutput(null);
@@ -88,21 +89,21 @@ export function TextConstructor() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">Text Constructor</CardTitle>
-          <CardDescription>Create pixel art text for your world.</CardDescription>
+          <CardTitle className="font-headline uppercase tracking-wider">{t('text.title')}</CardTitle>
+          <CardDescription>{t('text.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="text-input">Text</Label>
-            <Input id="text-input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Enter your text" />
+            <Label htmlFor="text-input">{t('text.textLabel')}</Label>
+            <Input id="text-input" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('text.textPlaceholder')} />
           </div>
           <div className="space-y-2">
-            <Label>Font Family</Label>
+            <Label>{t('text.fontFamilyLabel')}</Label>
             <Select 
               value={font} 
               onValueChange={(v) => handleFontChange(v as FontStyle)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a font" />
+                <SelectValue placeholder={t('text.fontFamilyPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="monospace">Monospace</SelectItem>
@@ -113,17 +114,17 @@ export function TextConstructor() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="font-upload">Upload Custom Font (.ttf, .otf, .woff)</Label>
+            <Label htmlFor="font-upload">{t('text.uploadFontLabel')}</Label>
             <Button asChild variant="outline" className="w-full">
               <label className="cursor-pointer flex items-center justify-center">
                 <Upload className="mr-2 h-4 w-4" />
-                {fontFile ? fontFile.name : 'Choose Font'}
+                {fontFile ? fontFile.name : t('text.chooseFontButton')}
                 <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
               </label>
             </Button>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="font-size">Font Size: {fontSize[0]}px</Label>
+            <Label htmlFor="font-size">{t('text.fontSizeLabel')}: {fontSize[0]}px</Label>
             <Slider
               id="font-size"
               min={8}
@@ -134,7 +135,7 @@ export function TextConstructor() {
             />
           </div>
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
-            {isPending ? 'Generating...' : 'Generate Schematic'}
+            {isPending ? t('buttons.generating') : t('buttons.generateSchematic')}
           </Button>
         </CardContent>
       </Card>

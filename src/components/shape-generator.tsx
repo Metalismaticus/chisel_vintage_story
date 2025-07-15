@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
 import { shapeToSchematic, type Shape, type SchematicOutput } from '@/lib/schematic-utils';
+import { useI18n } from '@/locales/client';
 
 
 export function ShapeGenerator() {
@@ -17,6 +18,7 @@ export function ShapeGenerator() {
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const t = useI18n();
 
   const handleDimensionChange = (field: keyof typeof dimensions, value: string) => {
     setDimensions(prev => ({...prev, [field]: value}));
@@ -34,35 +36,35 @@ export function ShapeGenerator() {
         switch(shape) {
           case 'circle':
             if (isNaN(parsedRadius) || parsedRadius <= 0) {
-              toast({ title: "Invalid radius", description: "Please enter a positive number for the radius.", variant: "destructive" });
+              toast({ title: t('toast.error.invalidRadiusTitle'), description: t('toast.error.invalidRadiusDescription'), variant: "destructive" });
               return;
             }
             result = shapeToSchematic({ type: 'circle', radius: parsedRadius });
             break;
           case 'square':
             if (isNaN(parsedWidth) || parsedWidth <= 0) {
-              toast({ title: "Invalid width", description: "Please enter a positive number for the width.", variant: "destructive" });
+              toast({ title: t('toast.error.invalidWidthTitle'), description: t('toast.error.invalidWidthDescription'), variant: "destructive" });
               return;
             }
             result = shapeToSchematic({ type: 'square', width: parsedWidth, height: parsedWidth });
             break;
           case 'triangle':
              if (isNaN(parsedSide) || parsedSide <= 0) {
-              toast({ title: "Invalid side length", description: "Please enter a positive number for the side length.", variant: "destructive" });
+              toast({ title: t('toast.error.invalidSideLengthTitle'), description: t('toast.error.invalidSideLengthDescription'), variant: "destructive" });
               return;
             }
             result = shapeToSchematic({ type: 'triangle', side: parsedSide });
             break;
           default:
-             toast({ title: "Unknown shape", description: "Please select a valid shape.", variant: "destructive" });
+             toast({ title: t('toast.error.unknownShapeTitle'), description: t('toast.error.unknownShapeDescription'), variant: "destructive" });
             return;
         }
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);
         toast({
-          title: "Generation failed",
-          description: "An error occurred while generating the shape. Please try again.",
+          title: t('toast.error.generationFailedTitle'),
+          description: t('toast.error.generationFailedDescription'),
           variant: "destructive",
         });
         setSchematicOutput(null);
@@ -75,21 +77,21 @@ export function ShapeGenerator() {
       case 'circle':
         return (
           <div className="space-y-2">
-            <Label htmlFor="radius">Radius (pixels)</Label>
+            <Label htmlFor="radius">{t('shape.radiusLabel')} (pixels)</Label>
             <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
       case 'square':
         return (
           <div className="space-y-2">
-            <Label htmlFor="width">Width (pixels)</Label>
+            <Label htmlFor="width">{t('shape.widthLabel')} (pixels)</Label>
             <Input id="width" type="number" value={dimensions.width} onChange={e => handleDimensionChange('width', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
       case 'triangle':
         return (
           <div className="space-y-2">
-            <Label htmlFor="side">Side Length (pixels)</Label>
+            <Label htmlFor="side">{t('shape.sideLengthLabel')} (pixels)</Label>
             <Input id="side" type="number" value={dimensions.side} onChange={e => handleDimensionChange('side', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
@@ -102,30 +104,30 @@ export function ShapeGenerator() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">Shape Generator</CardTitle>
-          <CardDescription>Create geometric shapes for your builds.</CardDescription>
+          <CardTitle className="font-headline uppercase tracking-wider">{t('shape.title')}</CardTitle>
+          <CardDescription>{t('shape.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label>Shape</Label>
+            <Label>{t('shape.shapeLabel')}</Label>
             <RadioGroup value={shape} onValueChange={(value) => setShape(value as Shape)} className="flex gap-4 pt-2">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="circle" id="r-circle" />
-                <Label htmlFor="r-circle">Circle</Label>
+                <Label htmlFor="r-circle">{t('shape.circle')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="square" id="r-square" />
-                <Label htmlFor="r-square">Square</Label>
+                <Label htmlFor="r-square">{t('shape.square')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="triangle" id="r-triangle" />
-                <Label htmlFor="r-triangle">Triangle</Label>
+                <Label htmlFor="r-triangle">{t('shape.triangle')}</Label>
               </div>
             </RadioGroup>
           </div>
           {renderDimensionInputs()}
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
-            {isPending ? 'Generating...' : 'Generate Schematic'}
+            {isPending ? t('buttons.generating') : t('buttons.generateSchematic')}
           </Button>
         </CardContent>
       </Card>

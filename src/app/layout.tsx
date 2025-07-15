@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
 import { Oswald, Roboto_Condensed } from 'next/font/google';
+import { I18nProvider } from '@/locales/client';
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -16,7 +17,7 @@ const robotoCondensed = Roboto_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: 'Vintage Story Helper',
+  title: 'helper for chiselling',
   description: 'Create pixel art schematics for Vintage Story',
 };
 
@@ -30,7 +31,9 @@ export default function RootLayout({
       <head>
       </head>
       <body className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased`}>
-        {children}
+        <I18nProvider>
+          {children}
+        </I18nProvider>
         <Toaster />
       </body>
     </html>

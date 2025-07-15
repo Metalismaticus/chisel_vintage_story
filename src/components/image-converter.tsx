@@ -12,6 +12,7 @@ import { SchematicPreview } from './schematic-preview';
 import { UploadCloud, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
+import { useI18n } from '@/locales/client';
 
 
 export function ImageConverter() {
@@ -23,17 +24,16 @@ export function ImageConverter() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker>();
   const { toast } = useToast();
+  const t = useI18n();
 
   useEffect(() => {
-    // Инициализируем Worker при монтировании компонента
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
     
-    // Обработчик сообщений от Worker'а
     workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
       if ('error' in event.data) {
         console.error('Worker error:', event.data.error);
         toast({
-          title: "Ошибка конвертации",
+          title: t('toast.error.title'),
           description: event.data.error,
           variant: "destructive",
         });
@@ -41,26 +41,24 @@ export function ImageConverter() {
       } else {
         setSchematic(event.data);
       }
-      setIsPending(false); // Снимаем флаг загрузки
+      setIsPending(false); 
     };
     
-    // Обработчик ошибок самого Worker'а
     workerRef.current.onerror = (error) => {
        console.error('Worker onerror:', error);
        toast({
-         title: "Ошибка конвертации",
-         description: "Произошла непредвиденная ошибка в фоновом процессе. Проверьте консоль для деталей.",
+         title: t('toast.error.title'),
+         description: t('toast.error.worker'),
          variant: "destructive",
        });
        setSchematic(null);
        setIsPending(false);
     }
 
-    // Очистка при размонтировании компонента
     return () => {
       workerRef.current?.terminate();
     };
-  }, [toast]);
+  }, [toast, t]);
 
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,7 +67,6 @@ export function ImageConverter() {
       setFile(selectedFile);
       setSchematic(null);
       
-      // Освобождаем старый URL, если он был
       if (previewUrl) {
           URL.revokeObjectURL(previewUrl);
       }
@@ -82,21 +79,19 @@ export function ImageConverter() {
   const handleConvert = () => {
     if (!file) {
       toast({
-        title: "Изображение не выбрано",
-        description: "Пожалуйста, выберите файл для конвертации.",
+        title: t('toast.error.noImageTitle'),
+        description: t('toast.error.noImageDescription'),
         variant: "destructive",
       });
       return;
     }
     
     setSchematic(null);
-    setIsPending(true); // Устанавливаем флаг загрузки
+    setIsPending(true);
     
-    // Отправляем сообщение в Worker. Вся тяжелая работа будет там.
     workerRef.current?.postMessage({ file, threshold: threshold[0] });
   };
   
-  // Очищаем object URL при размонтировании
   useEffect(() => {
     return () => {
         if (previewUrl) {
@@ -109,12 +104,12 @@ export function ImageConverter() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">Image to Pixel Art</CardTitle>
-          <CardDescription>Convert any image into a Vintage Story schematic.</CardDescription>
+          <CardTitle className="font-headline uppercase tracking-wider">{t('image.title')}</CardTitle>
+          <CardDescription>{t('image.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="image-upload">Загрузить изображение</Label>
+            <Label htmlFor="image-upload">{t('image.uploadLabel')}</Label>
             <div 
               className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
               onClick={() => fileInputRef.current?.click()}
@@ -123,7 +118,7 @@ export function ImageConverter() {
                 {previewUrl ? (
                   <Image
                     src={previewUrl}
-                    alt="Image preview"
+                    alt={t('image.previewAlt')}
                     width={200}
                     height={200}
                     className="mx-auto h-32 w-auto rounded-md object-contain"
@@ -132,9 +127,9 @@ export function ImageConverter() {
                   <>
                     <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
                     <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                      <p className="pl-1">Нажмите для загрузки или перетащите файл</p>
+                      <p className="pl-1">{t('image.uploadPrompt')}</p>
                     </div>
-                    <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF до 10MB</p>
+                    <p className="text-xs leading-5 text-muted-foreground">{t('image.uploadHint')}</p>
                   </>
                 )}
                 <Input
@@ -149,7 +144,7 @@ export function ImageConverter() {
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="threshold">Порог чёрно-белого: {threshold[0]}</Label>
+            <Label htmlFor="threshold">{t('image.thresholdLabel')}: {threshold[0]}</Label>
             <Slider
               id="threshold"
               min={0}
@@ -163,10 +158,10 @@ export function ImageConverter() {
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Конвертация...
+                {t('buttons.converting')}
               </>
             ) : (
-              'Конвертировать в схему'
+              t('buttons.convertToSchematic')
             )}
           </Button>
         </CardContent>
