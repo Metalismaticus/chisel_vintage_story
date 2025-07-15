@@ -56,8 +56,6 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     }
 
     try {
-        // Use a library like html2canvas or manually create canvas from DOM
-        // For simplicity, we'll create a new canvas and redraw, but this should be optimized
         const { pixels, width, height } = schematicOutput;
         if (!width || !height || !pixels) {
             toast({ title: "No pixel data to render for download.", variant: 'destructive' });
@@ -120,14 +118,20 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
             ctx.stroke();
         }
 
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'schematic.png';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'schematic.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                 toast({ title: "Failed to create image blob.", variant: "destructive" });
+            }
+        }, 'image/png');
 
     } catch (error) {
         console.error("Download failed:", error);

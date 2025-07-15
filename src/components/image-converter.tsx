@@ -19,7 +19,7 @@ export function ImageConverter() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [schematic, setSchematic] = useState<SchematicOutput | null>(null);
   const [threshold, setThreshold] = useState([128]);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker>();
   const { toast } = useToast();
@@ -28,31 +28,29 @@ export function ImageConverter() {
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
     
     workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
-      startTransition(() => {
-        if ('error' in event.data) {
-          console.error('Worker error:', event.data.error);
-          toast({
-            title: "Conversion failed",
-            description: event.data.error,
-            variant: "destructive",
-          });
-          setSchematic(null);
-        } else {
-          setSchematic(event.data);
-        }
-      });
+      if ('error' in event.data) {
+        console.error('Worker error:', event.data.error);
+        toast({
+          title: "Conversion failed",
+          description: event.data.error,
+          variant: "destructive",
+        });
+        setSchematic(null);
+      } else {
+        setSchematic(event.data);
+      }
+      setIsPending(false);
     };
     
     workerRef.current.onerror = (error) => {
        console.error('Worker onerror:', error);
-       startTransition(() => {
-          toast({
-            title: "Conversion failed",
-            description: "An unexpected error occurred in the conversion worker. Check the console for details.",
-            variant: "destructive",
-          });
-          setSchematic(null);
+       toast({
+         title: "Conversion failed",
+         description: "An unexpected error occurred in the conversion worker. Check the console for details.",
+         variant: "destructive",
        });
+       setSchematic(null);
+       setIsPending(false);
     }
 
     return () => {
@@ -65,12 +63,14 @@ export function ImageConverter() {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(selectedFile);
       setSchematic(null);
+      
+      if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+      }
+      
+      const newPreviewUrl = URL.createObjectURL(selectedFile);
+      setPreviewUrl(newPreviewUrl);
     }
   };
 
@@ -84,16 +84,25 @@ export function ImageConverter() {
       return;
     }
     
-    startTransition(() => {
-        setSchematic(null);
-    });
+    // 1. Set loading state immediately.
+    setSchematic(null);
+    setIsPending(true);
     
-    // Give React time to update the UI and show the loading state
-    // before we post the message to the worker. This is the key fix.
+    // 2. Use setTimeout to allow React to re-render and show the loader
+    //    BEFORE we post the message to the worker. This is the key fix.
     setTimeout(() => {
         workerRef.current?.postMessage({ file, threshold: threshold[0] });
     }, 0);
   };
+  
+  // Clean up object URL when component unmounts
+  useEffect(() => {
+    return () => {
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+    }
+  }, [previewUrl]);
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
