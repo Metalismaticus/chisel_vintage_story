@@ -151,17 +151,21 @@ export function shapeToSchematic(shape:
             height = shape.height;
             pixels = Array(width * height).fill(false);
             
-            const topWidth = width % 2 === 0 ? 2 : 1;
+            const isEven = width % 2 === 0;
+            const topWidth = isEven ? 2 : 1;
             const apexXStart = Math.floor((width - topWidth) / 2) + shape.apexOffset;
 
             for (let y = 0; y < height; y++) {
-                const progress = height > 1 ? y / (height - 1) : 1;
-                const currentWidth = Math.max(topWidth, Math.round(topWidth + (width - topWidth) * progress));
-                const startX = apexXStart - Math.floor((currentWidth - topWidth) / 2);
+                const ratio = height > 1 ? y / (height - 1) : 1;
+                const totalWidthIncrease = width - topWidth;
+                const currentWidthIncrease = Math.round(totalWidthIncrease * ratio);
+                const currentWidth = topWidth + currentWidthIncrease;
+                
+                const startX = apexXStart - Math.floor(currentWidthIncrease / 2);
 
                 for (let x = startX; x < startX + currentWidth; x++) {
-                    if (x >= 0 && x < width) {
-                       pixels[y * width + x] = true;
+                     if (x >= 0 && x < width) {
+                        pixels[y * width + x] = true;
                     }
                 }
             }
