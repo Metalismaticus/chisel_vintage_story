@@ -36,9 +36,8 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
     const yChunks = Math.ceil(height / 16);
     const zChunks = depth ? Math.ceil(depth / 16) : 1;
     const totalChunks = xChunks * yChunks * zChunks;
-    const blockCount = width * height * (depth || 1);
 
-    return `Schematic: ${name} (${width}x${height}${depthInfo}). Total Chunks: ${totalChunks}. Total Blocks: ${blockCount}`;
+    return `Schematic: ${name} (${width}x${height}${depthInfo}). Total Blocks: ${totalChunks}`;
 }
 
 /**
@@ -152,17 +151,17 @@ export function shapeToSchematic(shape:
             height = shape.height;
             pixels = Array(width * height).fill(false);
             
-            const apexXStart = Math.floor((width - 1) / 2) + shape.apexOffset;
-            const topWidth = (width % 2 === 0) ? 2 : 1;
+            const topWidth = width % 2 === 0 ? 2 : 1;
+            const apexXStart = Math.floor((width - topWidth) / 2) + shape.apexOffset;
 
             for (let y = 0; y < height; y++) {
-                const progress = y / (height - 1);
-                const currentWidth = Math.round(topWidth + (width - topWidth) * progress);
+                const progress = height > 1 ? y / (height - 1) : 1;
+                const currentWidth = Math.max(topWidth, Math.round(topWidth + (width - topWidth) * progress));
                 const startX = apexXStart - Math.floor((currentWidth - topWidth) / 2);
-                for (let x = 0; x < currentWidth; x++) {
-                    const pixelX = startX + x;
-                    if (pixelX >= 0 && pixelX < width) {
-                        pixels[y * width + pixelX] = true;
+
+                for (let x = startX; x < startX + currentWidth; x++) {
+                    if (x >= 0 && x < width) {
+                       pixels[y * width + x] = true;
                     }
                 }
             }
