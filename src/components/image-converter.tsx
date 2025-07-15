@@ -78,21 +78,11 @@ export function ImageConverter() {
       return;
     }
     
-    startTransition(async () => {
+    startTransition(() => {
       setSchematic(null); // Clear previous result
-      try {
-        const imageBitmap = await createImageBitmap(file);
-        // The ImageBitmap is a "transferable" object, meaning it's sent to the worker
-        // with near-zero copy time, avoiding main thread blocking.
-        workerRef.current?.postMessage({ imageBitmap, threshold: threshold[0] }, [imageBitmap]);
-      } catch (error) {
-        console.error("Failed to create ImageBitmap:", error);
-        toast({
-          title: "Conversion failed",
-          description: "Could not process the selected image file.",
-          variant: "destructive",
-        });
-      }
+      // Post the file object directly to the worker.
+      // All heavy processing, including createImageBitmap, will happen off the main thread.
+      workerRef.current?.postMessage({ file, threshold: threshold[0] });
     });
   };
 

@@ -3,14 +3,14 @@
 
 import { imageToSchematic } from './schematic-utils';
 
-self.onmessage = async (event: MessageEvent<{ imageBitmap: ImageBitmap; threshold: number }>) => {
+self.onmessage = async (event: MessageEvent<{ file: File; threshold: number }>) => {
   try {
-    const { imageBitmap, threshold } = event.data;
-    // Pass the ImageBitmap directly to the processing function.
+    const { file, threshold } = event.data;
+    // Heavy operation (createImageBitmap) is now safely inside the worker
+    const imageBitmap = await createImageBitmap(file);
     const result = await imageToSchematic(imageBitmap, threshold);
     self.postMessage(result);
   } catch (error) {
-    // Ensure a proper error message is sent back
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred in the worker.';
     self.postMessage({ error: errorMessage });
   }
