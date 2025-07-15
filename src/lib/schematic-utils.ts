@@ -1,6 +1,5 @@
 import { writeVox } from './vox-writer';
 
-
 export interface SchematicOutput {
   schematicData: string;
   width: number;
@@ -11,7 +10,10 @@ export interface SchematicOutput {
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
-export type Shape = 'circle' | 'square' | 'triangle' | 'rhombus' | 'hexagon';
+export type TextAlign = 'left' | 'center' | 'right';
+export type VerticalAlign = 'top' | 'middle' | 'bottom';
+
+export type Shape = 'circle' | 'rectangle' | 'triangle' | 'rhombus' | 'hexagon';
 export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cylinder' | 'cone';
 
 
@@ -32,7 +34,14 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
  * Converts text to a pixel-based schematic.
  * This function uses the browser's Canvas API to rasterize text.
  */
-export async function textToSchematic(text: string, font: FontStyle, fontSize: number, fontUrl?: string): Promise<SchematicOutput> {
+export async function textToSchematic(
+  text: string, 
+  font: FontStyle, 
+  fontSize: number, 
+  textAlign: TextAlign, 
+  vAlign: VerticalAlign,
+  fontUrl?: string
+): Promise<SchematicOutput> {
     if (typeof document === 'undefined') {
         throw new Error('textToSchematic can only be run in a browser environment.');
     }
@@ -59,15 +68,15 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
 
 
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = ctx.measureText(text);
     
     // Calculate dimensions
     const width = Math.ceil(metrics.width);
-    const ascent = metrics.actualBoundingBoxAscent;
-    const descent = metrics.actualBoundingBoxDescent;
+    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
+    const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
     const height = Math.ceil(ascent + descent);
     
     if (width === 0 || height === 0) {
@@ -85,8 +94,27 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     // Re-apply font settings after resize
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#F0F0F0';
-    ctx.textBaseline = 'top'; 
-    ctx.fillText(text, 0, 0);
+    
+    // Set text alignment
+    ctx.textAlign = textAlign;
+    ctx.textBaseline = vAlign;
+
+    // Calculate drawing coordinates
+    let x = 0;
+    if (textAlign === 'center') {
+      x = width / 2;
+    } else if (textAlign === 'right') {
+      x = width;
+    }
+
+    let y = 0;
+    if (vAlign === 'middle') {
+      y = height / 2;
+    } else if (vAlign === 'bottom') {
+      y = height;
+    }
+
+    ctx.fillText(text, x, y);
     
     const imageData = ctx.getImageData(0, 0, width, height);
     const pixels: boolean[] = [];
@@ -115,8 +143,8 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
  */
 export function shapeToSchematic(shape: 
     { type: 'circle', radius: number } | 
-    { type: 'square', width: number, height: number } |
-    { type: 'triangle', side: number } |
+    { type: 'rectangle', width: number, height: number } |
+    { type: 'triangle', base: number, height: number, apexOffset: number } |
     { type: 'rhombus', width: number, height: number } |
     { type: 'hexagon', radius: number }
 ): SchematicOutput {
@@ -124,7 +152,7 @@ export function shapeToSchematic(shape:
     let width: number, height: number;
 
     switch (shape.type) {
-        case 'square':
+        case 'rectangle':
             width = shape.width;
             height = shape.height;
             pixels = new Array(width * height).fill(true);
@@ -142,19 +170,31 @@ export function shapeToSchematic(shape:
             }
             break;
 
-        case 'triangle':
-            // Equilateral triangle
-            width = shape.side;
-            height = Math.ceil(Math.sqrt(3) / 2 * shape.side);
+        case 'triangle': {
+            width = shape.base;
+            height = shape.height;
+            
+            const apexX = Math.floor(width / 2) + shape.apexOffset;
+
             for (let y = 0; y < height; y++) {
-                // Determine the width of the triangle at this y position
-                const currentWidth = (y / (height - 1)) * width;
-                const startX = (width - currentWidth) / 2;
+                const y_norm = y / (height - 1);
+                
+                // Left side equation (from point (0, 0) to (apexX, height-1))
+                // y = ( (height-1) / apexX ) * x
+                // x = y * apexX / (height-1)
+                const left_x = (apexX > 0) ? (y * apexX) / (height - 1) : 0;
+                
+                // Right side equation (from point (width-1, 0) to (apexX, height-1))
+                // y = ( (height-1) / (apexX - (width-1)) ) * (x - (width-1))
+                // x = y * (apexX - width + 1) / (height - 1) + width - 1
+                const right_x = (apexX < width - 1) ? (y * (apexX - (width - 1))) / (height - 1) + (width - 1) : width - 1;
+
                 for (let x = 0; x < width; x++) {
-                    pixels.push(x >= startX && x <= startX + currentWidth);
+                    pixels.push(x >= left_x && x <= right_x);
                 }
             }
             break;
+        }
             
         case 'rhombus':
             width = shape.width;
