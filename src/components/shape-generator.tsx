@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -23,6 +24,7 @@ export function ShapeGenerator() {
     triApexOffset: '0',
     hexRadius: '16'
   });
+  const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
