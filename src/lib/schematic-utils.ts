@@ -160,7 +160,6 @@ export function shapeToSchematic(shape:
                 };
             }
 
-            const isEven = width % 2 === 0;
             const apexCenter = (width - 1) / 2 + shape.apexOffset;
             const apexX1 = Math.floor(apexCenter);
             const apexX2 = Math.ceil(apexCenter);
