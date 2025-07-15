@@ -41,8 +41,8 @@ export default function Home() {
           </TabsContent>
         </Tabs>
       </main>
-      <footer className="flex flex-col items-center gap-4 mt-8 text-muted-foreground">
-        <Button asChild variant="link" className="text-lg">
+      <footer className="w-full max-w-6xl flex justify-between items-center mt-8 text-muted-foreground px-2">
+        <Button asChild variant="link" className="text-muted-foreground hover:text-primary transition-colors">
           <Link href="https://metalismaticus.github.io/TOPS/" target="_blank" rel="noopener noreferrer">
             русский гайд для игры на TOPS
           </Link>
