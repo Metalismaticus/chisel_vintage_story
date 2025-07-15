@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useI18n } from '@/locales/client';
+import { useI18n, useChangeLocale, useCurrentLocale } from '@/locales/client';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,7 +12,8 @@ import {
 import { Globe } from 'lucide-react';
 
 export function LanguageSwitcher() {
-  const { setLocale, locale } = useI18n();
+  const changeLocale = useChangeLocale();
+  const locale = useCurrentLocale();
 
   return (
     <DropdownMenu>
@@ -22,10 +24,10 @@ export function LanguageSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setLocale('en')} disabled={locale() === 'en'}>
+        <DropdownMenuItem onClick={() => changeLocale('en')} disabled={locale === 'en'}>
           English
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setLocale('ru')} disabled={locale() === 'ru'}>
+        <DropdownMenuItem onClick={() => changeLocale('ru')} disabled={locale === 'ru'}>
           Русский
         </DropdownMenuItem>
       </DropdownMenuContent>
