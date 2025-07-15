@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useTransition, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from "@/hooks/use-toast";
 import { SchematicPreview } from './schematic-preview';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
 
@@ -159,7 +159,14 @@ export function ImageConverter() {
             />
           </div>
           <Button onClick={handleConvert} disabled={isPending || !file} className="w-full uppercase font-bold tracking-wider">
-            {isPending ? 'Converting...' : 'Convert to Schematic'}
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Converting...
+              </>
+            ) : (
+              'Convert to Schematic'
+            )}
           </Button>
         </CardContent>
       </Card>
