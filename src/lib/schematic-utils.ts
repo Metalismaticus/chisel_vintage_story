@@ -166,53 +166,39 @@ export function shapeToSchematic(shape:
         case 'triangle': {
             width = shape.base;
             height = shape.height;
-            const apexX = Math.floor(width / 2) + shape.apexOffset;
-
             pixels = Array(width * height).fill(false);
             
-            // Helper function to draw a line using Bresenham's algorithm
-            const plotLine = (x0: number, y0: number, x1: number, y1: number, edges: number[][]) => {
-                const dx = Math.abs(x1 - x0);
-                const dy = -Math.abs(y1 - y0);
-                const sx = x0 < x1 ? 1 : -1;
-                const sy = y0 < y1 ? 1 : -1;
-                let err = dx + dy;
-                
-                while(true) {
-                    if (!edges[y0]) edges[y0] = [width, -1];
-                    edges[y0][0] = Math.min(edges[y0][0], x0);
-                    edges[y0][1] = Math.max(edges[y0][1], x0);
-
-                    if (x0 === x1 && y0 === y1) break;
-                    const e2 = 2 * err;
-                    if (e2 >= dy) { err += dy; x0 += sx; }
-                    if (e2 <= dx) { err += dx; y0 += sy; }
-                }
-            };
+            const isBaseEven = width % 2 === 0;
             
-            const edges: number[][] = Array.from({length: height}, () => [width, -1]);
-
-            // Define the three points of the triangle
-            const p1 = { x: apexX, y: 0 };
-            const p2 = { x: 0, y: height - 1 };
-            const p3 = { x: width - 1, y: height - 1 };
-
-            // Draw the two sides of the triangle to find the edges
-            plotLine(p1.x, p1.y, p2.x, p2.y, edges);
-            plotLine(p1.x, p1.y, p3.x, p3.y, edges);
-            
-            // Fill the triangle
             for (let y = 0; y < height; y++) {
-                // Also fill the base line
-                const startX = (y === height -1) ? 0 : edges[y][0];
-                const endX = (y === height -1) ? width - 1 : edges[y][1];
+                const stepRatio = (height > 1) ? y / (height - 1) : 0;
+                
+                // Calculate how many pixels to remove from each side
+                const pixelsToRemove = Math.floor(stepRatio * width / 2);
+                
+                let startX = pixelsToRemove;
+                let endX = width - 1 - pixelsToRemove;
+                
+                // Adjust for even base to ensure the top is 2 blocks wide
+                if (isBaseEven && y < height / 2) {
+                   const evenStepRatio = y / (height - 1);
+                   if (Math.round(width * (1 - evenStepRatio)) <=2) {
+                     startX = (width / 2) - 1;
+                     endX = width / 2;
+                   }
+                }
 
-                for(let x = startX; x <= endX; x++) {
+                // Apply apex offset
+                startX += shape.apexOffset;
+                endX += shape.apexOffset;
+
+                for (let x = startX; x <= endX; x++) {
                     if (x >= 0 && x < width) {
-                       pixels[y * width + x] = true;
+                        pixels[y * width + x] = true;
                     }
                 }
             }
+            pixels.reverse(); // Flip it right side up
             break;
         }
             
