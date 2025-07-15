@@ -30,18 +30,23 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
         throw new Error('textToSchematic can only be run in a browser environment.');
     }
 
-    let loadedFont = font as string;
+    let loadedFontFamily = font as string;
+    if (font === 'monospace') loadedFontFamily = '"Roboto Mono", monospace';
+    if (font === 'serif') loadedFontFamily = '"Roboto Slab", serif';
+    if (font === 'sans-serif') loadedFontFamily = '"Roboto Condensed", sans-serif';
+
+
     let fontFace: FontFace | undefined;
     if (fontUrl && font === 'custom') {
       fontFace = new FontFace('custom-font', `url(${fontUrl})`);
       try {
         await fontFace.load();
         document.fonts.add(fontFace);
-        loadedFont = 'custom-font';
+        loadedFontFamily = 'custom-font';
       } catch (e) {
         console.error('Font loading failed:', e);
         // Fallback to a default font if loading fails
-        loadedFont = 'monospace';
+        loadedFontFamily = '"Roboto Condensed", sans-serif';
       }
     }
 
@@ -49,7 +54,7 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d')!;
     
-    ctx.font = `${fontSize}px ${loadedFont}`;
+    ctx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = ctx.measureText(text);
     
     // Calculate dimensions
@@ -71,9 +76,9 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     canvas.height = height;
     
     // Re-apply font settings after resize
-    ctx.font = `${fontSize}px ${loadedFont}`;
-    ctx.fillStyle = 'black';
-    ctx.textBaseline = 'top'; // Use top to align with actualBoundingBoxAscent
+    ctx.font = `${fontSize}px ${loadedFontFamily}`;
+    ctx.fillStyle = '#F0F0F0';
+    ctx.textBaseline = 'top'; 
     ctx.fillText(text, 0, 0);
     
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -262,10 +267,9 @@ export function voxToSchematic(shape:
             break;
     }
     
-    // The color is from our theme's primary variable.
-    // In HSL, var(--primary) is 14 38% 35%. In RGB, this is 121, 79, 61.
+    // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
     const palette = [
-      { r: 121, g: 79, b: 61, a: 255 }
+      { r: 200, g: 164, b: 100, a: 255 }
     ];
     
     const size = {

@@ -131,9 +131,9 @@ export function VoxGenerator() {
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      <Card>
+      <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>VOX Generator</CardTitle>
+          <CardTitle className="font-headline uppercase tracking-wider">VOX Generator</CardTitle>
           <CardDescription>Create 3D shapes for your builds in .vox format.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -155,7 +155,7 @@ export function VoxGenerator() {
             </RadioGroup>
           </div>
           {renderDimensionInputs()}
-          <Button onClick={handleGenerate} disabled={isPending} className="w-full">
+          <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
             {isPending ? 'Generating...' : 'Generate .vox File'}
           </Button>
         </CardContent>

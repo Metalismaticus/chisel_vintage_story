@@ -75,16 +75,16 @@ export function ImageConverter() {
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      <Card>
+      <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Image to Pixel Art</CardTitle>
+          <CardTitle className="font-headline uppercase tracking-wider">Image to Pixel Art</CardTitle>
           <CardDescription>Convert any image into a Vintage Story schematic.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="image-upload">Upload Image</Label>
             <div 
-              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary/50 transition-colors"
+              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               <div className="text-center">
@@ -127,7 +127,7 @@ export function ImageConverter() {
               onValueChange={setThreshold}
             />
           </div>
-          <Button onClick={handleConvert} disabled={isPending || !file} className="w-full">
+          <Button onClick={handleConvert} disabled={isPending || !file} className="w-full uppercase font-bold tracking-wider">
             {isPending ? 'Converting...' : 'Convert to Schematic'}
           </Button>
         </CardContent>

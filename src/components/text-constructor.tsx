@@ -99,9 +99,9 @@ export function TextConstructor() {
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      <Card>
+      <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Text Constructor</CardTitle>
+          <CardTitle className="font-headline uppercase tracking-wider">Text Constructor</CardTitle>
           <CardDescription>Create pixel art text for your world.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -146,7 +146,7 @@ export function TextConstructor() {
               onValueChange={setFontSize}
             />
           </div>
-          <Button onClick={handleGenerate} disabled={isPending} className="w-full">
+          <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
             {isPending ? 'Generating...' : 'Generate Schematic'}
           </Button>
         </CardContent>

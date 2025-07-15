@@ -1,6 +1,19 @@
 import type {Metadata} from 'next';
 import { Toaster } from "@/components/ui/toaster";
 import './globals.css';
+import { Oswald, Roboto_Condensed } from 'next/font/google';
+
+const oswald = Oswald({
+  subsets: ['latin'],
+  variable: '--font-oswald',
+  weight: ['400', '700'],
+});
+
+const robotoCondensed = Roboto_Condensed({
+  subsets: ['latin'],
+  variable: '--font-roboto-condensed',
+  weight: ['400'],
+});
 
 export const metadata: Metadata = {
   title: 'Vintage Visions',
@@ -13,13 +26,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Literata&display=swap" rel="stylesheet" />
       </head>
-      <body className="font-body antialiased">
+      <body className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased`}>
         {children}
         <Toaster />
       </body>

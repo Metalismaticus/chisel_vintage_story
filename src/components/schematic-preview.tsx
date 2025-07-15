@@ -17,8 +17,8 @@ interface SchematicPreviewProps {
 
 const CHUNK_SIZE = 16;
 const PIXEL_SCALE = 20;
-const GRID_COLOR = 'rgba(0, 255, 0, 0.5)';
-const CHUNK_BORDER_COLOR = 'rgba(255, 0, 0, 0.7)';
+const GRID_COLOR = 'rgba(192, 164, 100, 0.2)';
+const CHUNK_BORDER_COLOR = 'rgba(200, 164, 100, 0.5)';
 
 
 export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
@@ -74,11 +74,11 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     }
 
     // Background
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+    ctx.fillStyle = '#2A3A4D'; // Blueprint background
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw pixels
-    ctx.fillStyle = `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()})`;
+    ctx.fillStyle = '#F0F0F0'; // White lines for pixels
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         if (pixels[y * width + x]) {
@@ -155,10 +155,10 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
             key={`${y}-${x}`}
             className="w-full h-full border border-foreground/10"
             style={{
-              backgroundColor: isFilled ? 'hsl(var(--primary))' : 'hsl(var(--background))',
+              backgroundColor: isFilled ? 'hsl(var(--foreground))' : 'transparent',
               boxShadow: `
-                ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--destructive) / 0.7)' : ''}
-                ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--destructive) / 0.7)' : ''}
+                ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--primary) / 0.5)' : ''}
+                ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--primary) / 0.5)' : ''}
               `.trim().replace(/\s+/g, ' ') || 'none'
             }}
           ></div>
@@ -173,15 +173,15 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     if (loading) {
       return (
         <div className="space-y-4">
-          <Skeleton className="aspect-square w-full rounded-lg" />
-          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="aspect-square w-full rounded-lg bg-white/5" />
+          <Skeleton className="h-24 w-full rounded-lg bg-white/5" />
         </div>
       );
     }
 
     if (!finalSchematicData) {
       return (
-        <div className="flex items-center justify-center h-full border-2 border-dashed rounded-lg">
+        <div className="flex items-center justify-center h-full border-2 border-dashed border-input rounded-lg">
           <p className="text-muted-foreground">Awaiting generation...</p>
         </div>
       );
@@ -189,9 +189,9 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     
     if (isVox) {
         return (
-            <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg p-8 text-center">
+            <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-input rounded-lg p-8 text-center">
               <Package className="w-16 h-16 text-primary mb-4" />
-              <h3 className="text-xl font-semibold">VOX File Generated</h3>
+              <h3 className="text-xl font-semibold uppercase tracking-wider">VOX File Generated</h3>
               <p className="text-muted-foreground mt-2">
                 A 3D .vox file has been created. Use the download button below to save it. 
                 3D preview is not available.
@@ -203,33 +203,35 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     return (
       <div className="space-y-4">
         {pixelGrid && schematicOutput && schematicOutput.width > 0 && schematicOutput.height > 0 ? (
-           <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-background/50 aspect-square">
+           <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-black/20 aspect-square">
             <div
               className="w-full h-full"
               style={{ 
                 display: 'grid',
                 gridTemplateColumns: `repeat(${schematicOutput.width}, 1fr)`,
                 gridTemplateRows: `repeat(${schematicOutput.height}, 1fr)`,
-                aspectRatio: `${schematicOutput.width} / ${schematicOutput.height}`
+                aspectRatio: `${schematicOutput.width} / ${schematicOutput.height}`,
+                backgroundImage: 'linear-gradient(rgba(240, 240, 240, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 240, 240, 0.1) 1px, transparent 1px)',
+                backgroundSize: '1rem 1rem',
               }}
             >
               {pixelGrid}
             </div>
           </div>
         ) : (
-           <div className="border rounded-lg p-2 bg-background/50 aspect-square overflow-hidden flex items-center justify-center">
+           <div className="border rounded-lg p-2 bg-black/20 aspect-square overflow-hidden flex items-center justify-center">
             <p className="text-muted-foreground text-sm text-center">Preview not available for this schematic type, but you can copy or download the data below.</p>
           </div>
         )}
-        <Textarea readOnly value={finalSchematicData} className="h-24 font-code text-xs" />
+        <Textarea readOnly value={finalSchematicData} className="h-24 font-mono text-xs bg-black/20 border-input" />
       </div>
     );
   };
 
   return (
-    <Card className="flex flex-col">
+    <Card className="flex flex-col bg-card/70 border-primary/20 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle>Schematic Preview</CardTitle>
+        <CardTitle className="font-headline uppercase tracking-wider">Schematic Preview</CardTitle>
         <CardDescription>Your generated schematic will appear here.</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-4">
@@ -238,11 +240,11 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       {finalSchematicData && !loading && (
         <CardFooter className="flex gap-2 pt-4">
           {!isVox && (
-             <Button onClick={handleCopy} variant="outline" className="w-full">
+             <Button onClick={handleCopy} variant="outline" className="w-full uppercase font-bold tracking-wider">
               <Copy className="mr-2 h-4 w-4" /> Copy
             </Button>
           )}
-          <Button onClick={handleDownload} className="w-full">
+          <Button onClick={handleDownload} className="w-full uppercase font-bold tracking-wider">
             <Download className="mr-2 h-4 w-4" /> Download {isVox ? '.vox' : '.png'}
           </Button>
         </CardFooter>

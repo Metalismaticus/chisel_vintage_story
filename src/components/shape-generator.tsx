@@ -99,9 +99,9 @@ export function ShapeGenerator() {
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
-      <Card>
+      <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Shape Generator</CardTitle>
+          <CardTitle className="font-headline uppercase tracking-wider">Shape Generator</CardTitle>
           <CardDescription>Create geometric shapes for your builds.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -123,7 +123,7 @@ export function ShapeGenerator() {
             </RadioGroup>
           </div>
           {renderDimensionInputs()}
-          <Button onClick={handleGenerate} disabled={isPending} className="w-full">
+          <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
             {isPending ? 'Generating...' : 'Generate Schematic'}
           </Button>
         </CardContent>

@@ -4,20 +4,30 @@ export function VintageVisionsLogo(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      shapeRendering="crispEdges"
+      viewBox="0 0 32 32"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       {...props}
     >
-      <g className="text-foreground/30">
-        <path d="M10 0h1v1h-1z m-1 1h1v1H9z m-1 2h1v1H8z m-1 3h1v1H7z m-1 4h1v1H6z m-1 5h1v1H5z m-1 6h1v1H4z m-1 7h1v1H3z m-1 8h1v1H2z m-1 9h1v1H1z m0 1h1v1H1z m0 1h1v1H1z m0 1h1v1H1z m1 1h1v1H2z m1 1h1v1H3z m1 1h1v1H4z m1 1h1v1H5z m1 0h1v1H6z m1 0h1v1H7z m1-1h1v1H8z m1-1h1v1H9z m1-1h1v1h-1z m1-1h1v1h-1z m1-1h1v1h-1z m1-1h1v1h-1z m0-1h1v1h-1z m0-1h1v1h-1z m0-1h1v1h-1z m0-1h1v1h-1z m-1-1h1v1h-1z" />
-      </g>
-      <g className="text-accent">
-        <path d="M11 0h1v1h-1z m-1 1h1v1h-1z m-1 2h1v1H9z m-1 3h1v1H8z m-1 4h1v1H7z m-1 5h1v1H6z m-1 6h1v1H5z m-1 7h1v1H4z m-1 8h1v1H3z m-1 9h1v1H2z m0 1h1v1H2z m0 1h1v1H2z m1 1h1v1H3z m1 1h1v1H4z m1 0h1v1H5z m1 0h1v1H6z m1-1h1v1H7z m1-1h1v1H8z m1-1h1v1H9z m1-1h1v1h-1z m1-1h1v1h-1z m1-1h1v1h-1z m0-1h1v1h-1z m0-1h1v1h-1z" />
-      </g>
-      <g className="text-primary">
-        <path d="M11 1h3v1h-3z m-1 1h1v1h-1z m1 1h2v1h-2z m-2 1h1v1H9z m1 1h2v1h-2z m-3 1h2v1H8z m-1 1h2v1H7z m-1 1h2v1H6z m-1 1h2v1H5z m-1 1h2v1H4z m-1 1h2v1H3z" />
-      </g>
+      <path d="M21.2,12.3a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,21.2,12.3Z" className="text-foreground" />
+      <path d="M19.9,13.5a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,19.9,13.5Z" className="text-foreground" />
+      <path d="M18.7,14.8a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,18.7,14.8Z" className="text-foreground" />
+      <path d="M17.5,16a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,17.5,16Z" className="text-foreground" />
+      <path d="M16.2,17.2a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,16.2,17.2Z" className="text-foreground" />
+      <path d="M15,18.5a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,15,18.5Z" className="text-foreground" />
+      <path d="M13.8,19.7a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,13.8,19.7Z" className="text-foreground" />
+      <path d="M12.5,21a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,12.5,21Z" className="text-foreground" />
+      <path d="M11.3,22.2a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,11.3,22.2Z" className="text-foreground" />
+      <path d="M10.1,23.5a1.2,1.2,0,1,1,1.2-1.2A1.2,1.2,0,0,1,10.1,23.5Z" className="text-foreground" />
+      <path d="M2,16A14,14,0,1,0,16,2,14,14,0,0,0,2,16ZM16,4.5A11.5,11.5,0,1,1,4.5,16,11.5,11.5,0,0,1,16,4.5Z" className="text-primary" />
+      <path d="M21.2,12.3l-1.2-1.2-1.2,1.2-1.2-1.2-1.2,1.2-1.3-1.2-1.2,1.2-1.2-1.2L11.3,22.2" strokeMiterlimit="10" className="text-foreground" />
+      <line x1="16" y1="2" x2="16" y2="30" className="text-primary/50" />
+      <line x1="2" y1="16" x2="30" y2="16" className="text-primary/50" />
+      <path d="M22.5,9.8,9.8,22.5" className="text-primary/50" />
+      <path d="M9.8,9.8l12.7,12.7" className="text-primary/50" />
     </svg>
   );
 }
