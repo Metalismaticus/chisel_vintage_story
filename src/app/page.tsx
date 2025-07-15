@@ -5,6 +5,8 @@ import { ImageConverter } from "@/components/image-converter";
 import { ShapeGenerator } from "@/components/shape-generator";
 import { VoxGenerator } from "@/components/vox-generator";
 import { Cog } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -37,8 +39,13 @@ export default function Home() {
           </TabsContent>
         </Tabs>
       </main>
-      <footer className="mt-8 text-muted-foreground">
-        by Metalismatic
+      <footer className="flex flex-col items-center gap-4 mt-8 text-muted-foreground">
+        <Button asChild variant="link" className="text-lg">
+          <Link href="https://metalismaticus.github.io/TOPS/" target="_blank" rel="noopener noreferrer">
+            русский гайд для игры на TOPS
+          </Link>
+        </Button>
+        <span>by Metalismatic</span>
       </footer>
     </div>
   );
