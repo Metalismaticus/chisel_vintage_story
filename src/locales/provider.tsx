@@ -11,12 +11,7 @@ export default function I18nProvider({
   children: ReactNode;
 }) {
   return (
-    <I18nProviderClient
-      locale={locale}
-      fallback={
-        <div>loading...</div>
-      }
-    >
+    <I18nProviderClient locale={locale}>
       {children}
     </I18nProviderClient>
   );
