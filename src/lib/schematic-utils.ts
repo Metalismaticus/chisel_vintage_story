@@ -25,7 +25,7 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
     const zChunks = depth ? Math.ceil(depth / 16) : 1;
     const totalChunks = xChunks * yChunks * zChunks;
 
-    return `Schematic: ${name} (${width}x${height}${depthInfo}). Blocks needed: ${totalChunks} (16x16)`;
+    return `Schematic: ${name} (${width}x${height}${depthInfo}). Blocks needed: ${totalChunks}`;
 }
 
 /**
