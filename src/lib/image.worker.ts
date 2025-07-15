@@ -1,7 +1,7 @@
 
 /// <reference lib="webworker" />
 
-import { imageToSchematic, type SchematicOutput, type ConversionMode } from './schematic-utils';
+import { imageToSchematic, type ConversionMode } from './schematic-utils';
 
 self.onmessage = async (event: MessageEvent<{ file: File; threshold: number; outputWidth: number; mode: ConversionMode }>) => {
   try {
@@ -18,7 +18,7 @@ self.onmessage = async (event: MessageEvent<{ file: File; threshold: number; out
     }
 
     const canvas = new OffscreenCanvas(scaledWidth, scaledHeight);
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) {
         throw new Error('Failed to get OffscreenCanvas context for scaling.');
     }

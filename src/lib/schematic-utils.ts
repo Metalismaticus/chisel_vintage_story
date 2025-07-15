@@ -154,49 +154,15 @@ export function shapeToSchematic(shape:
             
             const apexXStart = Math.floor((width - 1) / 2) + shape.apexOffset;
             const topWidth = (width % 2 === 0) ? 2 : 1;
-            const apexXEnd = apexXStart + topWidth - 1;
 
-            const drawLine = (x1: number, y1: number, x2: number, y2: number, target: boolean[]) => {
-                const dx = Math.abs(x2 - x1);
-                const sx = x1 < x2 ? 1 : -1;
-                const dy = -Math.abs(y2 - y1);
-                const sy = y1 < y2 ? 1 : -1;
-                let err = dx + dy;
-            
-                while (true) {
-                    if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height) {
-                        target[y1 * width + x1] = true;
-                    }
-                    if (x1 === x2 && y1 === y2) break;
-                    let e2 = 2 * err;
-                    if (e2 >= dy) {
-                        err += dy;
-                        x1 += sx;
-                    }
-                    if (e2 <= dx) {
-                        err += dx;
-                        y1 += sy;
-                    }
-                }
-            };
-
-            const outline = Array(width * height).fill(false);
-            for(let i = apexXStart; i <= apexXEnd; i++) {
-                drawLine(i, 0, 0, height - 1, outline);
-                drawLine(i, 0, width - 1, height - 1, outline);
-            }
-            
             for (let y = 0; y < height; y++) {
-                let startX = -1, endX = -1;
-                for (let x = 0; x < width; x++) {
-                    if (outline[y * width + x]) {
-                        if (startX === -1) startX = x;
-                        endX = x;
-                    }
-                }
-                if (startX !== -1) {
-                    for (let x = startX; x <= endX; x++) {
-                        pixels[y * width + x] = true;
+                const progress = y / (height - 1);
+                const currentWidth = Math.round(topWidth + (width - topWidth) * progress);
+                const startX = apexXStart - Math.floor((currentWidth - topWidth) / 2);
+                for (let x = 0; x < currentWidth; x++) {
+                    const pixelX = startX + x;
+                    if (pixelX >= 0 && pixelX < width) {
+                        pixels[y * width + pixelX] = true;
                     }
                 }
             }
@@ -253,38 +219,49 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 
     try {
         const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
         const pixels: (boolean | number)[] = [];
-        let palette: PaletteColor[] | undefined;
-
+        
         if (mode === 'bw') {
-            for (let i = 0; i < imageData.data.length; i += 4) {
-                const r = imageData.data[i];
-                const g = imageData.data[i + 1];
-                const b = imageData.data[i + 2];
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
                 const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
                 pixels.push(grayscale < threshold);
             }
+            return { schematicData, width, height, pixels };
+
         } else { // mode === 'color'
-            // For now, we'll just use a placeholder palette and logic.
-            // This can be expanded later to use a full VS color palette and color matching.
-            palette = [{ r: 128, g: 128, b: 128, a: 255 }]; // Placeholder gray color
-            for (let i = 0; i < imageData.data.length; i += 4) {
-                const alpha = imageData.data[i+3];
-                if (alpha > 128) {
-                    pixels.push(1); // Use color index 1 for all non-transparent pixels
+            const palette: PaletteColor[] = [];
+            const colorMap = new Map<string, number>();
+            let colorIndex = 1; // Start with 1, 0 is for transparent
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                const a = data[i + 3];
+
+                if (a < 128) {
+                    pixels.push(0); // Transparent
+                    continue;
+                }
+                
+                const colorKey = `${r},${g},${b},${a}`;
+
+                if (colorMap.has(colorKey)) {
+                    pixels.push(colorMap.get(colorKey)!);
                 } else {
-                    pixels.push(0); // Use 0 for transparent pixels
+                    const newIndex = colorIndex++;
+                    colorMap.set(colorKey, newIndex);
+                    palette.push({ r, g, b, a });
+                    pixels.push(newIndex);
                 }
             }
+             return { schematicData, width, height, pixels, palette };
         }
 
-        return {
-            schematicData,
-            width,
-            height,
-            pixels,
-            palette
-        };
     } catch(err) {
         throw new Error(`Failed to process image data: ${err}`);
     }
