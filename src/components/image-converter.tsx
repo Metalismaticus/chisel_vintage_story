@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type DragEvent } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { SchematicPreview } from './schematic-preview';
 import { UploadCloud, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
+import { cn } from '@/lib/utils';
 
 
 export function ImageConverter() {
@@ -21,6 +22,7 @@ export function ImageConverter() {
   const [threshold, setThreshold] = useState([128]);
   const [outputWidth, setOutputWidth] = useState('64');
   const [isPending, setIsPending] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker>();
   const { toast } = useToast();
@@ -57,10 +59,17 @@ export function ImageConverter() {
     };
   }, [toast]);
 
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
+  const processFile = (selectedFile: File | undefined) => {
     if (selectedFile) {
+      if (!selectedFile.type.startsWith('image/')) {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Please upload an image file (PNG, JPG, GIF).',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       setFile(selectedFile);
       setSchematic(null);
       
@@ -71,6 +80,29 @@ export function ImageConverter() {
       const newPreviewUrl = URL.createObjectURL(selectedFile);
       setPreviewUrl(newPreviewUrl);
     }
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    processFile(event.target.files?.[0]);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+    processFile(event.dataTransfer.files?.[0]);
   };
 
   const handleConvert = () => {
@@ -118,8 +150,14 @@ export function ImageConverter() {
           <div className="space-y-2">
             <Label htmlFor="image-upload">Upload Image</Label>
             <div 
-              className="mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors"
+              className={cn(
+                "mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors",
+                 isDragging && "border-primary bg-primary/10"
+              )}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
               <div className="text-center">
                 {previewUrl ? (
