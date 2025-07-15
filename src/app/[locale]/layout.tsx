@@ -32,7 +32,7 @@ export default async function RootLayout({
 }>) {
   return (
     <I18nProviderClient locale={locale}>
-      <html lang={locale} className="dark">
+      <html className="dark">
         <head>
         </head>
         <body className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased`}>
