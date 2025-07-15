@@ -3,7 +3,6 @@ import { Toaster } from "@/components/ui/toaster";
 import '../globals.css';
 import { Oswald, Roboto_Condensed } from 'next/font/google';
 import I18nProviderClient from '@/locales/provider';
-import { getCurrentLocale } from '@/locales/server';
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -22,7 +21,7 @@ export const metadata: Metadata = {
   description: 'Create pixel art schematics for Vintage Story',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
   params: { locale }
 }: Readonly<{
@@ -30,7 +29,7 @@ export default async function RootLayout({
   params: { locale: string };
 }>) {
   return (
-    <html lang={locale} className="dark">
+    <html className="dark">
       <head>
       </head>
       <body className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased`}>
