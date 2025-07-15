@@ -7,14 +7,9 @@ export interface SchematicOutput {
   pixels: boolean[];
   isVox?: boolean;
   voxData?: Uint8Array;
-  originalWidth?: number;
-  originalHeight?: number;
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
-export type TextAlign = 'left' | 'center' | 'right';
-export type VerticalAlign = 'top' | 'middle' | 'bottom';
-
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
 export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cylinder' | 'cone';
 
@@ -37,14 +32,7 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
  * Converts text to a pixel-based schematic.
  * This function uses the browser's Canvas API to rasterize text.
  */
-export async function textToSchematic(
-  text: string, 
-  font: FontStyle, 
-  fontSize: number, 
-  textAlign: TextAlign, 
-  vAlign: VerticalAlign,
-  fontUrl?: string
-): Promise<SchematicOutput> {
+export async function textToSchematic(text: string, font: FontStyle, fontSize: number, fontUrl?: string): Promise<SchematicOutput> {
     if (typeof document === 'undefined') {
         throw new Error('textToSchematic can only be run in a browser environment.');
     }
@@ -76,7 +64,6 @@ export async function textToSchematic(
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = ctx.measureText(text);
     
-    // Calculate dimensions
     const width = Math.ceil(metrics.width) || 1;
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
@@ -97,27 +84,8 @@ export async function textToSchematic(
     // Re-apply font settings after resize
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#F0F0F0';
-    
-    // Set text alignment
-    ctx.textAlign = textAlign;
-    ctx.textBaseline = 'alphabetic'; // Use a consistent baseline
-
-    // Calculate drawing coordinates
-    let x = 0;
-    if (textAlign === 'center') {
-      x = width / 2;
-    } else if (textAlign === 'right') {
-      x = width;
-    }
-
-    let y = ascent;
-    if (vAlign === 'middle') {
-      y = (height - ascent - descent) / 2 + ascent;
-    } else if (vAlign === 'bottom') {
-      y = height - descent;
-    }
-
-    ctx.fillText(text, x, y);
+    ctx.textBaseline = 'top';
+    ctx.fillText(text, 0, 0);
     
     const imageData = ctx.getImageData(0, 0, width, height);
     const pixels: boolean[] = [];
@@ -166,25 +134,15 @@ export function shapeToSchematic(shape:
             }
             break;
 
-        case 'triangle':
+        case 'triangle': {
             width = shape.base;
             height = shape.height;
             pixels = Array(width * height).fill(false);
-            const apexX = Math.floor(width / 2) + shape.apexOffset;
-
-            // Determine if the top should be 1 or 2 pixels wide
+            
             const isBaseEven = width % 2 === 0;
             const topWidth = isBaseEven ? 2 : 1;
-            const topStartX = apexX - (isBaseEven ? 1 : 0);
-
-            // Draw the top of the triangle
-            for (let i = 0; i < topWidth; i++) {
-                if(topStartX + i >= 0 && topStartX + i < width) {
-                    pixels[topStartX + i] = true;
-                }
-            }
+            const apexX = Math.floor(width / 2) + shape.apexOffset - (isBaseEven ? 1 : 0);
             
-            // Draw the lines from the top to the base corners
             const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
                 let dx = Math.abs(x2 - x1);
                 let dy = -Math.abs(y2 - y1);
@@ -208,13 +166,12 @@ export function shapeToSchematic(shape:
                     }
                 }
             };
-            
-            // Left line
-            drawLine(topStartX, 0, 0, height - 1);
-            // Right line
-            drawLine(topStartX + topWidth - 1, 0, width - 1, height - 1);
 
-            // Fill the triangle scanline by scanline
+            // Draw left and right sides
+            drawLine(apexX, 0, 0, height - 1);
+            drawLine(apexX + topWidth - 1, 0, width - 1, height - 1);
+
+            // Fill the triangle
             for (let y = 0; y < height; y++) {
                 let startX = -1, endX = -1;
                 for (let x = 0; x < width; x++) {
@@ -230,6 +187,7 @@ export function shapeToSchematic(shape:
                 }
             }
             break;
+        }
             
         case 'rhombus':
             width = shape.width;
@@ -271,54 +229,35 @@ export function shapeToSchematic(shape:
 }
 
 /**
- * Converts an image from an ImageBitmap to a pixel-based schematic.
- * This function uses the OffscreenCanvas API and is intended to be run in a Web Worker.
- * Can return either full schematic data or just the pixel array.
+ * Converts an image from a canvas context to a pixel-based schematic.
+ * This is designed to work with OffscreenCanvas in a Web Worker.
  */
-export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number, generatePixels: true): Promise<SchematicOutput>;
-export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number, generatePixels: false): string;
-export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number, generatePixels: boolean): Promise<SchematicOutput> | string {
-    const { width, height } = imageBitmap;
-    const schematicData = createSchematicData('Imported Image', {width: width, height: height});
+export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, threshold: number): Promise<SchematicOutput> {
+    const { canvas } = ctx;
+    const { width, height } = canvas;
+    const schematicData = createSchematicData('Imported Image', {width, height});
 
-    if (!generatePixels) {
-        return schematicData;
+    try {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const pixels: boolean[] = [];
+
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            const r = imageData.data[i];
+            const g = imageData.data[i + 1];
+            const b = imageData.data[i + 2];
+            const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
+            pixels.push(grayscale < threshold);
+        }
+
+        return {
+            schematicData,
+            width,
+            height,
+            pixels,
+        };
+    } catch(err) {
+        throw new Error(`Failed to process image data: ${err}`);
     }
-    
-    return new Promise((resolve, reject) => {
-        if (typeof self === 'undefined' || typeof OffscreenCanvas === 'undefined') {
-             return reject(new Error('imageToSchematic with ImageBitmap can only be run in a worker environment.'));
-        }
-
-        try {
-            const canvas = new OffscreenCanvas(width, height);
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                return reject(new Error('Failed to get OffscreenCanvas context.'));
-            }
-            
-            ctx.drawImage(imageBitmap, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const pixels: boolean[] = [];
-
-            for (let i = 0; i < imageData.data.length; i += 4) {
-                const r = imageData.data[i];
-                const g = imageData.data[i + 1];
-                const b = imageData.data[i + 2];
-                const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
-                pixels.push(grayscale < threshold);
-            }
-
-            resolve({
-                schematicData,
-                width: canvas.width,
-                height: canvas.height,
-                pixels,
-            });
-        } catch(err) {
-             reject(new Error(`Failed to process image in worker: ${err}`));
-        }
-    });
 }
 
 

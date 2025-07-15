@@ -19,20 +19,18 @@ export function ImageConverter() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [schematic, setSchematic] = useState<SchematicOutput | null>(null);
   const [threshold, setThreshold] = useState([128]);
+  const [outputWidth, setOutputWidth] = useState('64');
   const [isPending, setIsPending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker>();
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log('[Main] Initializing worker...');
     workerRef.current = new Worker(new URL('../lib/image.worker.ts', import.meta.url));
     
     workerRef.current.onmessage = (event: MessageEvent<SchematicOutput | { error: string }>) => {
-      console.log('[Main] Received message from worker:', event.data);
       setIsPending(false); 
       if ('error' in event.data) {
-        console.error('[Main] Worker reported an error:', event.data.error);
         toast({
           title: 'Conversion Error',
           description: event.data.error,
@@ -40,13 +38,11 @@ export function ImageConverter() {
         });
         setSchematic(null);
       } else {
-        console.log('[Main] Conversion successful. Setting schematic.');
         setSchematic(event.data);
       }
     };
     
     workerRef.current.onerror = (error) => {
-       console.error('[Main] Unhandled worker error:', error);
        toast({
          title: 'Critical Worker Error',
          description: 'An unexpected error occurred in the background process. Check the console for details.',
@@ -57,7 +53,6 @@ export function ImageConverter() {
     }
 
     return () => {
-      console.log('[Main] Terminating worker.');
       workerRef.current?.terminate();
     };
   }, [toast]);
@@ -66,7 +61,6 @@ export function ImageConverter() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      console.log('[Main] File selected:', selectedFile.name);
       setFile(selectedFile);
       setSchematic(null);
       
@@ -89,12 +83,20 @@ export function ImageConverter() {
       return;
     }
     
-    console.log(`[Main] Starting conversion for ${file.name} with threshold ${threshold[0]}`);
+    const width = parseInt(outputWidth, 10);
+    if (isNaN(width) || width <= 0) {
+       toast({
+        title: 'Invalid Width',
+        description: 'Please enter a valid positive number for the width.',
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSchematic(null);
     setIsPending(true);
     
-    console.log('[Main] Posting message to worker...');
-    workerRef.current?.postMessage({ file, threshold: threshold[0] });
+    workerRef.current?.postMessage({ file, threshold: threshold[0], outputWidth: width });
   };
   
   useEffect(() => {
@@ -148,16 +150,28 @@ export function ImageConverter() {
               </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="threshold">Black and White Threshold: {threshold[0]}</Label>
-            <Slider
-              id="threshold"
-              min={0}
-              max={255}
-              step={1}
-              value={threshold}
-              onValueChange={setThreshold}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="outputWidth">Schematic Width (pixels)</Label>
+                <Input 
+                  id="outputWidth"
+                  type="number"
+                  value={outputWidth}
+                  onChange={(e) => setOutputWidth(e.target.value)}
+                  placeholder="e.g., 64"
+                />
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="threshold">B&W Threshold: {threshold[0]}</Label>
+                <Slider
+                  id="threshold"
+                  min={0}
+                  max={255}
+                  step={1}
+                  value={threshold}
+                  onValueChange={setThreshold}
+                />
+              </div>
           </div>
           <Button onClick={handleConvert} disabled={isPending || !file} className="w-full uppercase font-bold tracking-wider">
             {isPending ? (
