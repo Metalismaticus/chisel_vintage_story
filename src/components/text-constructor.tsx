@@ -35,11 +35,14 @@ export function TextConstructor() {
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type !== 'font/ttf' && file.type !== 'font/otf' && file.type !== 'application/font-woff' && file.type !== 'font/woff' && file.type !== 'font/woff2') {
+      const validExtensions = ['.ttf', '.otf', '.woff', '.woff2'];
+      const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+      if (!validExtensions.includes(fileExtension)) {
         toast({
-            title: "Invalid font file",
-            description: "Please upload a valid .ttf, .otf or .woff file.",
-            variant: "destructive",
+          title: "Invalid font file",
+          description: "Please upload a valid .ttf, .otf, .woff or .woff2 file.",
+          variant: "destructive",
         });
         return;
       }
