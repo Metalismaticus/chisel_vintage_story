@@ -40,6 +40,15 @@ export function ShapeGenerator() {
     }
     return parsed;
   }
+  
+  const validateAndParseOffset = (value: string, name: string, min: number, max: number): number | null => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || parsed < min || parsed > max) {
+      toast({ title: `Invalid ${name}`, description: `Please enter a valid number for the ${name}.`, variant: "destructive" });
+      return null;
+    }
+    return parsed;
+  }
 
   const handleGenerate = () => {
     setSchematicOutput(null);
@@ -64,8 +73,10 @@ export function ShapeGenerator() {
           case 'triangle': {
             const base = validateAndParse(dimensions.triBase, 'base');
             const height = validateAndParse(dimensions.triHeight, 'height');
-            const apexOffset = validateAndParse(dimensions.triApexOffset, 'apex offset', 0, true);
-            if (base === null || height === null || apexOffset === null) return;
+            if (base === null || height === null) return;
+            const maxOffset = Math.floor((base - 1) / 2);
+            const apexOffset = validateAndParseOffset(dimensions.triApexOffset, 'apex offset', -maxOffset, maxOffset);
+            if (apexOffset === null) return;
             result = shapeToSchematic({ type: 'triangle', base, height, apexOffset });
             break;
           }
@@ -122,7 +133,7 @@ export function ShapeGenerator() {
             </div>
         );
       case 'triangle':
-        const maxOffset = Math.max(0, Math.floor((parseInt(dimensions.triBase, 10) || 16) / 2));
+        const maxOffset = Math.max(0, Math.floor(((parseInt(dimensions.triBase, 10) || 16) - 1) / 2));
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -178,7 +189,7 @@ export function ShapeGenerator() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">Shape Generator</CardTitle>
+          <CardTitle className="font-headline uppercase tracking-wider">2D Shape Generator</CardTitle>
           <CardDescription>Create geometric shapes for your builds.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

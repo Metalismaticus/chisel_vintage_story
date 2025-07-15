@@ -74,10 +74,10 @@ export async function textToSchematic(
     const metrics = ctx.measureText(text);
     
     // Calculate dimensions
-    const width = Math.ceil(metrics.width);
-    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent;
-    const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent;
-    const height = Math.ceil(ascent + descent);
+    const width = Math.ceil(metrics.width) || 1;
+    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
+    const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
+    const height = Math.ceil(ascent + descent) || 1;
     
     if (width === 0 || height === 0) {
       return {
@@ -108,13 +108,15 @@ export async function textToSchematic(
     }
 
     let y = 0;
-    if (vAlign === 'middle') {
-      y = height / 2;
-    } else if (vAlign === 'bottom') {
-      y = height;
+    if (vAlign === 'top') {
+        y = ascent;
+    } else if (vAlign === 'middle') {
+        y = height / 2 + ascent / 2 - descent / 2;
+    } else { // bottom
+        y = height;
     }
 
-    ctx.fillText(text, x, y);
+    ctx.fillText(text, x, y - descent);
     
     const imageData = ctx.getImageData(0, 0, width, height);
     const pixels: boolean[] = [];
@@ -174,23 +176,19 @@ export function shapeToSchematic(shape:
             width = shape.base;
             height = shape.height;
             
-            const apexX = Math.floor(width / 2) + shape.apexOffset;
+            const apexX = Math.floor((width - 1) / 2) + shape.apexOffset;
 
             for (let y = 0; y < height; y++) {
-                const y_norm = y / (height - 1);
+                const y_norm = (height > 1) ? (y / (height - 1)) : 0;
                 
-                // Left side equation (from point (0, 0) to (apexX, height-1))
-                // y = ( (height-1) / apexX ) * x
-                // x = y * apexX / (height-1)
-                const left_x = (apexX > 0) ? (y * apexX) / (height - 1) : 0;
-                
-                // Right side equation (from point (width-1, 0) to (apexX, height-1))
-                // y = ( (height-1) / (apexX - (width-1)) ) * (x - (width-1))
-                // x = y * (apexX - width + 1) / (height - 1) + width - 1
-                const right_x = (apexX < width - 1) ? (y * (apexX - (width - 1))) / (height - 1) + (width - 1) : width - 1;
+                const left_x_end = 0;
+                const right_x_end = width - 1;
+
+                const left_x_boundary = apexX - y_norm * (apexX - left_x_end);
+                const right_x_boundary = apexX + y_norm * (right_x_end - apexX);
 
                 for (let x = 0; x < width; x++) {
-                    pixels.push(x >= left_x && x <= right_x);
+                    pixels.push(x >= left_x_boundary && x <= right_x_boundary);
                 }
             }
             break;
@@ -371,7 +369,7 @@ export function voxToSchematic(shape:
             height = shape.height;
             const coneCenter = shape.radius;
             for (let y = 0; y < height; y++) {
-                const ratio = (height - 1 - y) / (height - 1);
+                const ratio = (height > 1) ? (height - 1 - y) / (height - 1) : 0;
                 const currentRadius = shape.radius * ratio;
                 for (let z = 0; z < depth; z++) {
                     for (let x = 0; x < width; x++) {
