@@ -97,7 +97,7 @@ export async function textToSchematic(
     
     // Set text alignment
     ctx.textAlign = textAlign;
-    ctx.textBaseline = vAlign;
+    ctx.textBaseline = 'alphabetic'; // Use a consistent baseline
 
     // Calculate drawing coordinates
     let x = 0;
@@ -107,16 +107,14 @@ export async function textToSchematic(
       x = width;
     }
 
-    let y = 0;
-    if (vAlign === 'top') {
-        y = ascent;
-    } else if (vAlign === 'middle') {
-        y = height / 2 + ascent / 2 - descent / 2;
-    } else { // bottom
-        y = height;
+    let y = ascent;
+    if (vAlign === 'middle') {
+      y = (height - ascent - descent) / 2 + ascent;
+    } else if (vAlign === 'bottom') {
+      y = height - descent;
     }
 
-    ctx.fillText(text, x, y - descent);
+    ctx.fillText(text, x, y);
     
     const imageData = ctx.getImageData(0, 0, width, height);
     const pixels: boolean[] = [];
@@ -168,27 +166,53 @@ export function shapeToSchematic(shape:
         case 'triangle': {
             width = shape.base;
             height = shape.height;
-            const apexX = width / 2 + shape.apexOffset;
+            const apexX = Math.floor(width / 2) + shape.apexOffset;
 
-            for (let y = 0; y < height; y++) {
-              const yRatio = (y + 1) / height;
-              const currentWidth = width * yRatio;
-              const leftEdge = apexX - currentWidth / 2;
-              const rightEdge = apexX + currentWidth / 2;
-
-              for (let x = 0; x < width; x++) {
-                 pixels.push(x >= leftEdge && x < rightEdge);
-              }
-            }
+            pixels = Array(width * height).fill(false);
             
-            // The triangle is drawn from top to bottom, so we need to reverse the rows.
-            const reversedPixels: boolean[] = [];
-            for (let y = height - 1; y >= 0; y--) {
-                for (let x = 0; x < width; x++) {
-                    reversedPixels.push(pixels[y * width + x]);
+            // Helper function to draw a line using Bresenham's algorithm
+            const plotLine = (x0: number, y0: number, x1: number, y1: number, edges: number[][]) => {
+                const dx = Math.abs(x1 - x0);
+                const dy = -Math.abs(y1 - y0);
+                const sx = x0 < x1 ? 1 : -1;
+                const sy = y0 < y1 ? 1 : -1;
+                let err = dx + dy;
+                
+                while(true) {
+                    if (!edges[y0]) edges[y0] = [width, -1];
+                    edges[y0][0] = Math.min(edges[y0][0], x0);
+                    edges[y0][1] = Math.max(edges[y0][1], x0);
+
+                    if (x0 === x1 && y0 === y1) break;
+                    const e2 = 2 * err;
+                    if (e2 >= dy) { err += dy; x0 += sx; }
+                    if (e2 <= dx) { err += dx; y0 += sy; }
+                }
+            };
+            
+            const edges: number[][] = Array.from({length: height}, () => [width, -1]);
+
+            // Define the three points of the triangle
+            const p1 = { x: apexX, y: 0 };
+            const p2 = { x: 0, y: height - 1 };
+            const p3 = { x: width - 1, y: height - 1 };
+
+            // Draw the two sides of the triangle to find the edges
+            plotLine(p1.x, p1.y, p2.x, p2.y, edges);
+            plotLine(p1.x, p1.y, p3.x, p3.y, edges);
+            
+            // Fill the triangle
+            for (let y = 0; y < height; y++) {
+                // Also fill the base line
+                const startX = (y === height -1) ? 0 : edges[y][0];
+                const endX = (y === height -1) ? width - 1 : edges[y][1];
+
+                for(let x = startX; x <= endX; x++) {
+                    if (x >= 0 && x < width) {
+                       pixels[y * width + x] = true;
+                    }
                 }
             }
-            pixels = reversedPixels;
             break;
         }
             
@@ -334,8 +358,8 @@ export function voxToSchematic(shape:
             width = depth = shape.base;
             height = shape.height;
             for (let y = 0; y < height; y++) {
-                const ratio = (height - 1 - y) / (height -1);
-                const levelWidth = Math.max(1, Math.floor(width * ratio));
+                const ratio = (height > 1) ? (height - 1 - y) / (height - 1) : 1;
+                const levelWidth = Math.max(1, Math.round(width * ratio));
                 const offset = Math.floor((width - levelWidth) / 2);
                 for (let z = offset; z < offset + levelWidth; z++) {
                     for (let x = offset; x < offset + levelWidth; x++) {
