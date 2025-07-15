@@ -152,20 +152,20 @@ export function shapeToSchematic(shape:
             height = shape.height;
             pixels = Array(width * height).fill(false);
             
-            const isBaseEven = width % 2 === 0;
-            const topWidth = isBaseEven ? 2 : 1;
-            const apexXStart = Math.floor((width - topWidth) / 2) + shape.apexOffset;
+            const apexXStart = Math.floor((width - 1) / 2) + shape.apexOffset;
+            const topWidth = (width % 2 === 0) ? 2 : 1;
+            const apexXEnd = apexXStart + topWidth - 1;
 
-            const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
-                let dx = Math.abs(x2 - x1);
-                let dy = -Math.abs(y2 - y1);
-                let sx = x1 < x2 ? 1 : -1;
-                let sy = y1 < y2 ? 1 : -1;
+            const drawLine = (x1: number, y1: number, x2: number, y2: number, target: boolean[]) => {
+                const dx = Math.abs(x2 - x1);
+                const sx = x1 < x2 ? 1 : -1;
+                const dy = -Math.abs(y2 - y1);
+                const sy = y1 < y2 ? 1 : -1;
                 let err = dx + dy;
-
+            
                 while (true) {
                     if (x1 >= 0 && x1 < width && y1 >= 0 && y1 < height) {
-                        pixels[y1 * width + x1] = true;
+                        target[y1 * width + x1] = true;
                     }
                     if (x1 === x2 && y1 === y2) break;
                     let e2 = 2 * err;
@@ -179,16 +179,17 @@ export function shapeToSchematic(shape:
                     }
                 }
             };
-            
-            for (let i = 0; i < topWidth; i++) {
-                drawLine(apexXStart + i, 0, 0, height - 1);
-                drawLine(apexXStart + i, 0, width - 1, height - 1);
-            }
 
+            const outline = Array(width * height).fill(false);
+            for(let i = apexXStart; i <= apexXEnd; i++) {
+                drawLine(i, 0, 0, height - 1, outline);
+                drawLine(i, 0, width - 1, height - 1, outline);
+            }
+            
             for (let y = 0; y < height; y++) {
                 let startX = -1, endX = -1;
                 for (let x = 0; x < width; x++) {
-                    if (pixels[y * width + x]) {
+                    if (outline[y * width + x]) {
                         if (startX === -1) startX = x;
                         endX = x;
                     }
