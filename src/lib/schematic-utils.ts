@@ -157,47 +157,48 @@ export function shapeToSchematic(shape:
 }
 
 /**
- * Converts an image from a data URI to a pixel-based schematic.
- * This function uses the browser's Canvas API.
- * This function is intended to be run in a Web Worker.
+ * Converts an image from an ImageBitmap to a pixel-based schematic.
+ * This function uses the OffscreenCanvas API and is intended to be run in a Web Worker.
  */
-export function imageToSchematic(dataUri: string, threshold: number): Promise<SchematicOutput> {
+export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number): Promise<SchematicOutput> {
     return new Promise((resolve, reject) => {
-        if (typeof self === 'undefined' || typeof self.createImageBitmap === 'undefined') {
-             return reject(new Error('imageToSchematic can only be run in a browser or worker environment.'));
+        if (typeof self === 'undefined' || typeof OffscreenCanvas === 'undefined') {
+             return reject(new Error('imageToSchematic with ImageBitmap can only be run in a worker environment.'));
         }
 
-        fetch(dataUri)
-            .then(res => res.blob())
-            .then(blob => self.createImageBitmap(blob))
-            .then(img => {
-                const canvas = new OffscreenCanvas(img.width, img.height);
-                const ctx = canvas.getContext('2d')!;
-                ctx.drawImage(img, 0, 0);
+        try {
+            const canvas = new OffscreenCanvas(imageBitmap.width, imageBitmap.height);
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error('Failed to get OffscreenCanvas context.'));
+            }
+            
+            ctx.drawImage(imageBitmap, 0, 0);
+            imageBitmap.close(); // Free up memory
 
-                const imageData = ctx.getImageData(0, 0, img.width, img.height);
-                const pixels: boolean[] = [];
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels: boolean[] = [];
 
-                for (let i = 0; i < imageData.data.length; i += 4) {
-                    const r = imageData.data[i];
-                    const g = imageData.data[i + 1];
-                    const b = imageData.data[i + 2];
-                    const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
-                    pixels.push(grayscale < threshold);
-                }
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
+                pixels.push(grayscale < threshold);
+            }
 
-                resolve({
-                    schematicData: createSchematicData('Imported Image', {width: img.width, height: img.height}),
-                    width: img.width,
-                    height: img.height,
-                    pixels,
-                });
-            })
-            .catch(err => {
-                 reject(new Error(`Failed to load or process image: ${err}`));
+            resolve({
+                schematicData: createSchematicData('Imported Image', {width: canvas.width, height: canvas.height}),
+                width: canvas.width,
+                height: canvas.height,
+                pixels,
             });
+        } catch(err) {
+             reject(new Error(`Failed to process image in worker: ${err}`));
+        }
     });
 }
+
 
 /**
  * Generates a .vox file for a given 3D shape.

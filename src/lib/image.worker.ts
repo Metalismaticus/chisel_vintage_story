@@ -3,10 +3,11 @@
 
 import { imageToSchematic } from './schematic-utils';
 
-self.onmessage = async (event: MessageEvent<{ dataUri: string; threshold: number }>) => {
+self.onmessage = async (event: MessageEvent<{ imageBitmap: ImageBitmap; threshold: number }>) => {
   try {
-    const { dataUri, threshold } = event.data;
-    const result = await imageToSchematic(dataUri, threshold);
+    const { imageBitmap, threshold } = event.data;
+    // Pass the ImageBitmap directly to the processing function.
+    const result = await imageToSchematic(imageBitmap, threshold);
     self.postMessage(result);
   } catch (error) {
     // Ensure a proper error message is sent back

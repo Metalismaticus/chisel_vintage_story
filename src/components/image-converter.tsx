@@ -69,7 +69,7 @@ export function ImageConverter() {
   };
 
   const handleConvert = async () => {
-    if (!file || !previewUrl) {
+    if (!file) {
       toast({
         title: "No image selected",
         description: "Please select an image file to convert.",
@@ -78,9 +78,21 @@ export function ImageConverter() {
       return;
     }
     
-    startTransition(() => {
+    startTransition(async () => {
       setSchematic(null); // Clear previous result
-      workerRef.current?.postMessage({ dataUri: previewUrl, threshold: threshold[0] });
+      try {
+        const imageBitmap = await createImageBitmap(file);
+        // The ImageBitmap is a "transferable" object, meaning it's sent to the worker
+        // with near-zero copy time, avoiding main thread blocking.
+        workerRef.current?.postMessage({ imageBitmap, threshold: threshold[0] }, [imageBitmap]);
+      } catch (error) {
+        console.error("Failed to create ImageBitmap:", error);
+        toast({
+          title: "Conversion failed",
+          description: "Could not process the selected image file.",
+          variant: "destructive",
+        });
+      }
     });
   };
 
