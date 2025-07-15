@@ -150,22 +150,60 @@ export function shapeToSchematic(shape:
             width = shape.base;
             height = shape.height;
             pixels = Array(width * height).fill(false);
-            
+
+            if (height <= 0 || width <= 0) {
+                 return {
+                    schematicData: createSchematicData(`Shape: ${shape.type}`, {width, height}),
+                    width,
+                    height,
+                    pixels,
+                };
+            }
+
             const isEven = width % 2 === 0;
-            const topWidth = isEven ? 2 : 1;
-            const apexXStart = Math.floor((width - topWidth) / 2) + shape.apexOffset;
+            const apexCenter = (width - 1) / 2 + shape.apexOffset;
+            const apexX1 = Math.floor(apexCenter);
+            const apexX2 = Math.ceil(apexCenter);
 
+            const p1 = { x: apexX1, y: 0 };
+            const p2 = { x: 0, y: height - 1 };
+            const p3 = { x: width - 1, y: height - 1 };
+            const p4 = { x: apexX2, y: 0 };
+
+            const line = (pA: {x: number, y: number}, pB: {x: number, y: number}) => {
+                let x0 = pA.x, y0 = pA.y;
+                let x1 = pB.x, y1 = pB.y;
+                let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+                let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+                let err = dx + dy, e2;
+                const points = [];
+                for (;;) {
+                    points.push({x: x0, y: y0});
+                    if (x0 === x1 && y0 === y1) break;
+                    e2 = 2 * err;
+                    if (e2 >= dy) { err += dy; x0 += sx; }
+                    if (e2 <= dx) { err += dx; y0 += sy; }
+                }
+                return points;
+            }
+            
+            const leftLine = line(p1, p2);
+            const rightLine = line(p4, p3);
+
+            const edges: { [key: number]: { min: number, max: number } } = {};
+
+            for(const point of [...leftLine, ...rightLine]) {
+                if(!edges[point.y]) edges[point.y] = { min: point.x, max: point.x };
+                edges[point.y].min = Math.min(edges[point.y].min, point.x);
+                edges[point.y].max = Math.max(edges[point.y].max, point.x);
+            }
+            
             for (let y = 0; y < height; y++) {
-                const ratio = height > 1 ? y / (height - 1) : 1;
-                const totalWidthIncrease = width - topWidth;
-                const currentWidthIncrease = Math.round(totalWidthIncrease * ratio);
-                const currentWidth = topWidth + currentWidthIncrease;
-                
-                const startX = apexXStart - Math.floor(currentWidthIncrease / 2);
-
-                for (let x = startX; x < startX + currentWidth; x++) {
-                     if (x >= 0 && x < width) {
-                        pixels[y * width + x] = true;
+                if (edges[y]) {
+                    for (let x = edges[y].min; x <= edges[y].max; x++) {
+                        if (x >= 0 && x < width) {
+                            pixels[y * width + x] = true;
+                        }
                     }
                 }
             }
