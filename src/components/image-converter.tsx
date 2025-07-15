@@ -13,12 +13,15 @@ import { UploadCloud, Loader2 } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
+type ConversionMode = 'bw' | 'color';
 
 export function ImageConverter() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [schematic, setSchematic] = useState<SchematicOutput | null>(null);
+  const [mode, setMode] = useState<ConversionMode>('bw');
   const [threshold, setThreshold] = useState([128]);
   const [outputWidth, setOutputWidth] = useState('64');
   const [isPending, setIsPending] = useState(false);
@@ -128,7 +131,7 @@ export function ImageConverter() {
     setSchematic(null);
     setIsPending(true);
     
-    workerRef.current?.postMessage({ file, threshold: threshold[0], outputWidth: width });
+    workerRef.current?.postMessage({ file, threshold: threshold[0], outputWidth: width, mode });
   };
   
   useEffect(() => {
@@ -199,18 +202,35 @@ export function ImageConverter() {
                   placeholder="e.g., 64"
                 />
               </div>
-               <div className="space-y-2">
-                <Label htmlFor="threshold">B&W Threshold: {threshold[0]}</Label>
-                <Slider
-                  id="threshold"
-                  min={0}
-                  max={255}
-                  step={1}
-                  value={threshold}
-                  onValueChange={setThreshold}
-                />
+              <div className="space-y-2">
+                <Label>Conversion Mode</Label>
+                <RadioGroup value={mode} onValueChange={(v) => setMode(v as ConversionMode)} className="flex pt-2 space-x-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="bw" id="mode-bw" />
+                        <Label htmlFor="mode-bw">B&W</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="color" id="mode-color" />
+                        <Label htmlFor="mode-color">Color</Label>
+                    </div>
+                </RadioGroup>
               </div>
           </div>
+          
+          {mode === 'bw' && (
+            <div className="space-y-2">
+              <Label htmlFor="threshold">B&W Threshold: {threshold[0]}</Label>
+              <Slider
+                id="threshold"
+                min={0}
+                max={255}
+                step={1}
+                value={threshold}
+                onValueChange={setThreshold}
+              />
+            </div>
+          )}
+
           <Button onClick={handleConvert} disabled={isPending || !file} className="w-full uppercase font-bold tracking-wider">
             {isPending ? (
               <>

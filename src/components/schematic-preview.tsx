@@ -59,7 +59,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     }
 
     try {
-        const { pixels, width, height } = schematicOutput;
+        const { pixels, width, height, palette } = schematicOutput;
         if (!width || !height || !pixels) {
             toast({ title: 'No pixel data to download.', variant: 'destructive' });
             return;
@@ -82,11 +82,18 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         ctx.fillStyle = '#2A3A4D';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = '#F0F0F0';
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-                if (pixels[y * width + x]) {
-                    ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+                const pixelValue = pixels[y * width + x];
+                if (typeof pixelValue === 'boolean' && pixelValue) { // B&W mode
+                     ctx.fillStyle = '#F0F0F0';
+                     ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+                } else if (typeof pixelValue === 'number' && pixelValue > 0 && palette) { // Color mode
+                    const color = palette[pixelValue -1]; // colorIndex is 1-based
+                    if (color) {
+                        ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+                        ctx.fillRect(x * PIXEL_SCALE, y * PIXEL_SCALE, PIXEL_SCALE, PIXEL_SCALE);
+                    }
                 }
             }
         }
@@ -147,27 +154,36 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       return null;
     }
 
-    const { pixels, width, height } = schematicOutput;
+    const { pixels, width, height, palette } = schematicOutput;
     
     if (!Array.isArray(pixels) || pixels.length === 0 || !width || !height) {
        return null;
     }
     
-    const normalizedPixels = Array.from({ length: width * height }, (_, i) => pixels[i] ?? false);
-
     return Array.from({ length: height }).map((_, y) => (
       Array.from({ length: width }).map((_, x) => {
         const index = y * width + x;
-        const isFilled = normalizedPixels[index];
+        const pixelValue = pixels[index];
         const isTopBoundary = y > 0 && y % CHUNK_SIZE === 0;
         const isLeftBoundary = x > 0 && x % CHUNK_SIZE === 0;
+        
+        let backgroundColor = 'transparent';
+        if (typeof pixelValue === 'boolean' && pixelValue) {
+            backgroundColor = 'hsl(var(--foreground))';
+        } else if (typeof pixelValue === 'number' && pixelValue > 0 && palette) {
+            const color = palette[pixelValue -1]; // colorIndex is 1-based
+            if (color) {
+                backgroundColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a / 255})`;
+            }
+        }
+
 
         return (
           <div
             key={`${y}-${x}`}
             className="w-full h-full border border-foreground/10"
             style={{
-              backgroundColor: isFilled ? 'hsl(var(--foreground))' : 'transparent',
+              backgroundColor: backgroundColor,
               boxShadow: `
                 ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--primary) / 0.5)' : ''}
                 ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--primary) / 0.5)' : ''}

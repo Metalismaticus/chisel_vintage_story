@@ -1,12 +1,25 @@
+
 import { writeVox } from './vox-writer';
+
+export type ConversionMode = 'bw' | 'color';
+
+export interface PaletteColor {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+}
 
 export interface SchematicOutput {
   schematicData: string;
   width: number;
   height: number;
-  pixels: boolean[];
+  pixels: (boolean | number)[];
   isVox?: boolean;
   voxData?: Uint8Array;
+  palette?: PaletteColor[];
+  originalWidth?: number;
+  originalHeight?: number;
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
@@ -141,8 +154,8 @@ export function shapeToSchematic(shape:
             
             const isBaseEven = width % 2 === 0;
             const topWidth = isBaseEven ? 2 : 1;
-            const apexX = Math.floor(width / 2) + shape.apexOffset - (isBaseEven ? 1 : 0);
-            
+            const apexXStart = Math.floor((width - topWidth) / 2) + shape.apexOffset;
+
             const drawLine = (x1: number, y1: number, x2: number, y2: number) => {
                 let dx = Math.abs(x2 - x1);
                 let dy = -Math.abs(y2 - y1);
@@ -166,12 +179,12 @@ export function shapeToSchematic(shape:
                     }
                 }
             };
+            
+            for (let i = 0; i < topWidth; i++) {
+                drawLine(apexXStart + i, 0, 0, height - 1);
+                drawLine(apexXStart + i, 0, width - 1, height - 1);
+            }
 
-            // Draw left and right sides
-            drawLine(apexX, 0, 0, height - 1);
-            drawLine(apexX + topWidth - 1, 0, width - 1, height - 1);
-
-            // Fill the triangle
             for (let y = 0; y < height; y++) {
                 let startX = -1, endX = -1;
                 for (let x = 0; x < width; x++) {
@@ -232,21 +245,36 @@ export function shapeToSchematic(shape:
  * Converts an image from a canvas context to a pixel-based schematic.
  * This is designed to work with OffscreenCanvas in a Web Worker.
  */
-export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, threshold: number): Promise<SchematicOutput> {
+export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, threshold: number, mode: ConversionMode): Promise<SchematicOutput> {
     const { canvas } = ctx;
     const { width, height } = canvas;
     const schematicData = createSchematicData('Imported Image', {width, height});
 
     try {
         const imageData = ctx.getImageData(0, 0, width, height);
-        const pixels: boolean[] = [];
+        const pixels: (boolean | number)[] = [];
+        let palette: PaletteColor[] | undefined;
 
-        for (let i = 0; i < imageData.data.length; i += 4) {
-            const r = imageData.data[i];
-            const g = imageData.data[i + 1];
-            const b = imageData.data[i + 2];
-            const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
-            pixels.push(grayscale < threshold);
+        if (mode === 'bw') {
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const r = imageData.data[i];
+                const g = imageData.data[i + 1];
+                const b = imageData.data[i + 2];
+                const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
+                pixels.push(grayscale < threshold);
+            }
+        } else { // mode === 'color'
+            // For now, we'll just use a placeholder palette and logic.
+            // This can be expanded later to use a full VS color palette and color matching.
+            palette = [{ r: 128, g: 128, b: 128, a: 255 }]; // Placeholder gray color
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                const alpha = imageData.data[i+3];
+                if (alpha > 128) {
+                    pixels.push(1); // Use color index 1 for all non-transparent pixels
+                } else {
+                    pixels.push(0); // Use 0 for transparent pixels
+                }
+            }
         }
 
         return {
@@ -254,6 +282,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
             width,
             height,
             pixels,
+            palette
         };
     } catch(err) {
         throw new Error(`Failed to process image data: ${err}`);

@@ -1,10 +1,11 @@
+
 /// <reference lib="webworker" />
 
-import { imageToSchematic, type SchematicOutput } from './schematic-utils';
+import { imageToSchematic, type SchematicOutput, type ConversionMode } from './schematic-utils';
 
-self.onmessage = async (event: MessageEvent<{ file: File; threshold: number; outputWidth: number }>) => {
+self.onmessage = async (event: MessageEvent<{ file: File; threshold: number; outputWidth: number; mode: ConversionMode }>) => {
   try {
-    const { file, threshold, outputWidth } = event.data;
+    const { file, threshold, outputWidth, mode } = event.data;
     
     const imageBitmap = await createImageBitmap(file);
     
@@ -26,7 +27,7 @@ self.onmessage = async (event: MessageEvent<{ file: File; threshold: number; out
     ctx.drawImage(imageBitmap, 0, 0, scaledWidth, scaledHeight);
     
     // Now generate the schematic and pixel data from the scaled canvas
-    const result = await imageToSchematic(ctx, threshold);
+    const result = await imageToSchematic(ctx, threshold, mode);
 
     imageBitmap.close();
 
