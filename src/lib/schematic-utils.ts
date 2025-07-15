@@ -13,7 +13,7 @@ export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type TextAlign = 'left' | 'center' | 'right';
 export type VerticalAlign = 'top' | 'middle' | 'bottom';
 
-export type Shape = 'circle' | 'rectangle' | 'triangle' | 'rhombus' | 'hexagon';
+export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
 export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cylinder' | 'cone';
 
 
@@ -145,7 +145,6 @@ export async function textToSchematic(
  */
 export function shapeToSchematic(shape: 
     { type: 'circle', radius: number } | 
-    { type: 'rectangle', width: number, height: number } |
     { type: 'triangle', base: number, height: number, apexOffset: number } |
     { type: 'rhombus', width: number, height: number } |
     { type: 'hexagon', radius: number }
@@ -154,12 +153,6 @@ export function shapeToSchematic(shape:
     let width: number, height: number;
 
     switch (shape.type) {
-        case 'rectangle':
-            width = shape.width;
-            height = shape.height;
-            pixels = new Array(width * height).fill(true);
-            break;
-
         case 'circle':
             width = height = shape.radius * 2;
             const center = shape.radius;
@@ -175,22 +168,28 @@ export function shapeToSchematic(shape:
         case 'triangle': {
             width = shape.base;
             height = shape.height;
-            
             const apexX = Math.floor((width - 1) / 2) + shape.apexOffset;
 
             for (let y = 0; y < height; y++) {
-                const y_norm = (height > 1) ? (y / (height - 1)) : 0;
+                // Determine the start and end x-coordinates for this row
+                // using integer arithmetic to avoid floating point inaccuracies.
+                // This is a simplified version of Bresenham's line algorithm.
+                const startX = Math.round(y * apexX / (height - 1));
+                const endX = apexX + Math.round(y * (width - 1 - apexX) / (height - 1));
                 
-                const left_x_end = 0;
-                const right_x_end = width - 1;
-
-                const left_x_boundary = apexX - y_norm * (apexX - left_x_end);
-                const right_x_boundary = apexX + y_norm * (right_x_end - apexX);
-
                 for (let x = 0; x < width; x++) {
-                    pixels.push(x >= left_x_boundary && x <= right_x_boundary);
+                    pixels.push(x >= startX && x <= endX);
                 }
             }
+            
+            // The triangle is drawn from top to bottom, so we need to reverse the rows.
+            const reversedPixels: boolean[] = [];
+            for (let y = height - 1; y >= 0; y--) {
+                for (let x = 0; x < width; x++) {
+                    reversedPixels.push(pixels[y * width + x]);
+                }
+            }
+            pixels = reversedPixels;
             break;
         }
             

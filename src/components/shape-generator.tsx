@@ -44,7 +44,7 @@ export function ShapeGenerator() {
   const validateAndParseOffset = (value: string, name: string, min: number, max: number): number | null => {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed) || parsed < min || parsed > max) {
-      toast({ title: `Invalid ${name}`, description: `Please enter a valid number for the ${name}.`, variant: "destructive" });
+      toast({ title: `Invalid ${name}`, description: `The ${name} must be between ${min} and ${max}.`, variant: "destructive" });
       return null;
     }
     return parsed;
@@ -61,13 +61,6 @@ export function ShapeGenerator() {
             const radius = validateAndParse(dimensions.radius, 'radius');
             if (radius === null) return;
             result = shapeToSchematic({ type: 'circle', radius });
-            break;
-          }
-          case 'rectangle': {
-            const width = validateAndParse(dimensions.width, 'width');
-            const height = validateAndParse(dimensions.height, 'height');
-            if (width === null || height === null) return;
-            result = shapeToSchematic({ type: 'rectangle', width, height });
             break;
           }
           case 'triangle': {
@@ -119,21 +112,9 @@ export function ShapeGenerator() {
             <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
-      case 'rectangle':
-        return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="width">Width (pixels)</Label>
-                    <Input id="width" type="number" value={dimensions.width} onChange={e => handleDimensionChange('width', e.target.value)} placeholder="e.g. 32" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="height">Height (pixels)</Label>
-                    <Input id="height" type="number" value={dimensions.height} onChange={e => handleDimensionChange('height', e.target.value)} placeholder="e.g. 16" />
-                </div>
-            </div>
-        );
       case 'triangle':
-        const maxOffset = Math.max(0, Math.floor(((parseInt(dimensions.triBase, 10) || 16) - 1) / 2));
+        const base = parseInt(dimensions.triBase, 10) || 1;
+        const maxOffset = Math.floor((base - 1) / 2);
         return (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -199,10 +180,6 @@ export function ShapeGenerator() {
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="circle" id="r-circle" />
                 <Label htmlFor="r-circle">Circle</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="rectangle" id="r-rectangle" />
-                <Label htmlFor="r-rectangle">Rectangle</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="triangle" id="r-triangle" />
