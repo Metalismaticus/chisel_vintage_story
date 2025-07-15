@@ -163,44 +163,27 @@ export function shapeToSchematic(shape:
             }
             break;
 
-        case 'triangle': {
+        case 'triangle':
             width = shape.base;
             height = shape.height;
             pixels = Array(width * height).fill(false);
-            
             const isBaseEven = width % 2 === 0;
-            
+            const apexX = Math.floor(width / 2) + shape.apexOffset;
+
             for (let y = 0; y < height; y++) {
-                const stepRatio = (height > 1) ? y / (height - 1) : 0;
+                const stepRatio = y / (height > 1 ? height - 1 : 1);
+                const currentWidth = Math.round((1 - stepRatio) * (width - (isBaseEven ? 2 : 1))) + (isBaseEven ? 2 : 1);
                 
-                // Calculate how many pixels to remove from each side
-                const pixelsToRemove = Math.floor(stepRatio * width / 2);
+                const startX = apexX - Math.floor(currentWidth / 2);
                 
-                let startX = pixelsToRemove;
-                let endX = width - 1 - pixelsToRemove;
-                
-                // Adjust for even base to ensure the top is 2 blocks wide
-                if (isBaseEven && y < height / 2) {
-                   const evenStepRatio = y / (height - 1);
-                   if (Math.round(width * (1 - evenStepRatio)) <=2) {
-                     startX = (width / 2) - 1;
-                     endX = width / 2;
-                   }
-                }
-
-                // Apply apex offset
-                startX += shape.apexOffset;
-                endX += shape.apexOffset;
-
-                for (let x = startX; x <= endX; x++) {
-                    if (x >= 0 && x < width) {
-                        pixels[y * width + x] = true;
+                for (let x = 0; x < currentWidth; x++) {
+                    const pixelX = startX + x;
+                    if (pixelX >= 0 && pixelX < width) {
+                        pixels[(height - 1 - y) * width + pixelX] = true;
                     }
                 }
             }
-            pixels.reverse(); // Flip it right side up
             break;
-        }
             
         case 'rhombus':
             width = shape.width;
