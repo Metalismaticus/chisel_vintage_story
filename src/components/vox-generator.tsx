@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -20,7 +19,11 @@ export function VoxGenerator() {
     depth: '16', 
     radius: '16', 
     base: '16',
-    pyramidHeight: '16' 
+    pyramidHeight: '16',
+    coneRadius: '16',
+    coneHeight: '16',
+    cylRadius: '16',
+    cylHeight: '16',
   });
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -65,6 +68,20 @@ export function VoxGenerator() {
              const height = validateAndParse(dimensions.pyramidHeight, 'height');
              if (base === null || height === null) return;
              result = voxToSchematic({ type: 'pyramid', base, height });
+            break;
+          }
+          case 'cylinder': {
+             const radius = validateAndParse(dimensions.cylRadius, 'radius');
+             const height = validateAndParse(dimensions.cylHeight, 'height');
+             if (radius === null || height === null) return;
+             result = voxToSchematic({ type: 'cylinder', radius, height });
+            break;
+          }
+          case 'cone': {
+             const radius = validateAndParse(dimensions.coneRadius, 'base radius');
+             const height = validateAndParse(dimensions.coneHeight, 'height');
+             if (radius === null || height === null) return;
+             result = voxToSchematic({ type: 'cone', radius, height });
             break;
           }
           default:
@@ -125,6 +142,32 @@ export function VoxGenerator() {
             </div>
           </div>
         );
+      case 'cylinder':
+        return (
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cylRadius">Radius (voxels)</Label>
+              <Input id="cylRadius" type="number" value={dimensions.cylRadius} onChange={e => handleDimensionChange('cylRadius', e.target.value)} placeholder="e.g. 8" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cylHeight">Height (voxels)</Label>
+              <Input id="cylHeight" type="number" value={dimensions.cylHeight} onChange={e => handleDimensionChange('cylHeight', e.target.value)} placeholder="e.g. 16" />
+            </div>
+          </div>
+        );
+      case 'cone':
+        return (
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="coneRadius">Base Radius (voxels)</Label>
+              <Input id="coneRadius" type="number" value={dimensions.coneRadius} onChange={e => handleDimensionChange('coneRadius', e.target.value)} placeholder="e.g. 8" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="coneHeight">Height (voxels)</Label>
+              <Input id="coneHeight" type="number" value={dimensions.coneHeight} onChange={e => handleDimensionChange('coneHeight', e.target.value)} placeholder="e.g. 16" />
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -140,7 +183,7 @@ export function VoxGenerator() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>3D Shape</Label>
-            <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape)} className="flex gap-4 pt-2">
+            <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape)} className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-2">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="cuboid" id="r-cuboid" />
                 <Label htmlFor="r-cuboid">Cuboid</Label>
@@ -152,6 +195,14 @@ export function VoxGenerator() {
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="pyramid" id="r-pyramid" />
                 <Label htmlFor="r-pyramid">Pyramid</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="cylinder" id="r-cylinder" />
+                <Label htmlFor="r-cylinder">Cylinder</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="cone" id="r-cone" />
+                <Label htmlFor="r-cone">Cone</Label>
               </div>
             </RadioGroup>
           </div>

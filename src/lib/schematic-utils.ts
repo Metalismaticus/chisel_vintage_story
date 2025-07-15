@@ -11,8 +11,8 @@ export interface SchematicOutput {
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
-export type Shape = 'circle' | 'square' | 'triangle';
-export type VoxShape = 'cuboid' | 'sphere' | 'pyramid';
+export type Shape = 'circle' | 'square' | 'triangle' | 'rhombus' | 'hexagon';
+export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cylinder' | 'cone';
 
 
 // A simple helper to generate schematic data string
@@ -116,7 +116,9 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
 export function shapeToSchematic(shape: 
     { type: 'circle', radius: number } | 
     { type: 'square', width: number, height: number } |
-    { type: 'triangle', side: number }
+    { type: 'triangle', side: number } |
+    { type: 'rhombus', width: number, height: number } |
+    { type: 'hexagon', radius: number }
 ): SchematicOutput {
     let pixels: boolean[] = [];
     let width: number, height: number;
@@ -141,14 +143,45 @@ export function shapeToSchematic(shape:
             break;
 
         case 'triangle':
+            // Equilateral triangle
             width = shape.side;
             height = Math.ceil(Math.sqrt(3) / 2 * shape.side);
             for (let y = 0; y < height; y++) {
-                const yPos = y / (height - 1); // Normalize y to 0-1
-                const rowWidth = yPos * width;
-                const rowOffset = (width - rowWidth) / 2;
+                // Determine the width of the triangle at this y position
+                const currentWidth = (y / (height - 1)) * width;
+                const startX = (width - currentWidth) / 2;
                 for (let x = 0; x < width; x++) {
-                    pixels.push(x >= rowOffset && x < (rowOffset + rowWidth));
+                    pixels.push(x >= startX && x <= startX + currentWidth);
+                }
+            }
+            break;
+            
+        case 'rhombus':
+            width = shape.width;
+            height = shape.height;
+            const centerX = (width - 1) / 2;
+            const centerY = (height - 1) / 2;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = Math.abs(x - centerX);
+                    const dy = Math.abs(y - centerY);
+                    pixels.push((dx / (width / 2)) + (dy / (height / 2)) <= 1);
+                }
+            }
+            break;
+
+        case 'hexagon':
+            const r = shape.radius;
+            width = r * 2;
+            height = Math.ceil(Math.sqrt(3) * r);
+            const hexCenterX = r;
+            const hexCenterY = height / 2;
+            const sideLength = r;
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = Math.abs(x - hexCenterX);
+                    const dy = Math.abs(y - hexCenterY);
+                    pixels.push(dy <= (Math.sqrt(3) / 2) * sideLength && dx <= sideLength - (1 / Math.sqrt(3)) * dy);
                 }
             }
             break;
@@ -212,7 +245,9 @@ export function imageToSchematic(imageBitmap: ImageBitmap, threshold: number): P
 export function voxToSchematic(shape: 
     { type: 'cuboid', width: number, height: number, depth: number } | 
     { type: 'sphere', radius: number } |
-    { type: 'pyramid', base: number, height: number }
+    { type: 'pyramid', base: number, height: number } |
+    { type: 'cylinder', radius: number, height: number } |
+    { type: 'cone', radius: number, height: number }
 ): SchematicOutput {
     const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
     let width: number, height: number, depth: number;
@@ -269,6 +304,42 @@ export function voxToSchematic(shape:
                 for (let z = offset; z < offset + levelWidth; z++) {
                     for (let x = offset; x < offset + levelWidth; x++) {
                         addVoxel(x, y, z);
+                    }
+                }
+            }
+            break;
+        
+        case 'cylinder':
+            width = depth = shape.radius * 2;
+            height = shape.height;
+            const cylCenter = shape.radius;
+            for (let y = 0; y < height; y++) {
+                for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                        const dx = x - cylCenter + 0.5;
+                        const dz = z - cylCenter + 0.5;
+                        if (dx * dx + dz * dz <= shape.radius * shape.radius) {
+                            addVoxel(x, y, z);
+                        }
+                    }
+                }
+            }
+            break;
+        
+        case 'cone':
+            width = depth = shape.radius * 2;
+            height = shape.height;
+            const coneCenter = shape.radius;
+            for (let y = 0; y < height; y++) {
+                const ratio = (height - 1 - y) / (height - 1);
+                const currentRadius = shape.radius * ratio;
+                for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                        const dx = x - coneCenter + 0.5;
+                        const dz = z - coneCenter + 0.5;
+                        if (dx * dx + dz * dz <= currentRadius * currentRadius) {
+                            addVoxel(x, y, z);
+                        }
                     }
                 }
             }

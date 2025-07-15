@@ -13,7 +13,7 @@ import { shapeToSchematic, type Shape, type SchematicOutput } from '@/lib/schema
 
 export function ShapeGenerator() {
   const [shape, setShape] = useState<Shape>('circle');
-  const [dimensions, setDimensions] = useState({ radius: '16', width: '16', side: '16' });
+  const [dimensions, setDimensions] = useState({ radius: '16', width: '16', height: '16', side: '16', hexRadius: '16' });
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -21,38 +21,54 @@ export function ShapeGenerator() {
   const handleDimensionChange = (field: keyof typeof dimensions, value: string) => {
     setDimensions(prev => ({...prev, [field]: value}));
   };
+  
+  const validateAndParse = (value: string, name: string, min = 1): number | null => {
+    const parsed = parseInt(value, 10);
+    if (isNaN(parsed) || parsed < min) {
+      toast({ title: `Invalid ${name}`, description: `Please enter a positive number for the ${name}.`, variant: "destructive" });
+      return null;
+    }
+    return parsed;
+  }
 
   const handleGenerate = () => {
     setSchematicOutput(null);
     startTransition(() => {
       try {
         let result: SchematicOutput;
-        const parsedRadius = parseInt(dimensions.radius, 10);
-        const parsedWidth = parseInt(dimensions.width, 10);
-        const parsedSide = parseInt(dimensions.side, 10);
-
+        
         switch(shape) {
-          case 'circle':
-            if (isNaN(parsedRadius) || parsedRadius <= 0) {
-              toast({ title: 'Invalid radius', description: 'Please enter a positive number for the radius.', variant: "destructive" });
-              return;
-            }
-            result = shapeToSchematic({ type: 'circle', radius: parsedRadius });
+          case 'circle': {
+            const radius = validateAndParse(dimensions.radius, 'radius');
+            if (radius === null) return;
+            result = shapeToSchematic({ type: 'circle', radius });
             break;
-          case 'square':
-            if (isNaN(parsedWidth) || parsedWidth <= 0) {
-              toast({ title: 'Invalid width', description: 'Please enter a positive number for the width.', variant: "destructive" });
-              return;
-            }
-            result = shapeToSchematic({ type: 'square', width: parsedWidth, height: parsedWidth });
+          }
+          case 'square': {
+            const width = validateAndParse(dimensions.width, 'width');
+            if (width === null) return;
+            result = shapeToSchematic({ type: 'square', width, height: width });
             break;
-          case 'triangle':
-             if (isNaN(parsedSide) || parsedSide <= 0) {
-              toast({ title: 'Invalid side length', description: 'Please enter a positive number for the side length.', variant: "destructive" });
-              return;
-            }
-            result = shapeToSchematic({ type: 'triangle', side: parsedSide });
+          }
+          case 'triangle': {
+             const side = validateAndParse(dimensions.side, 'side length');
+             if (side === null) return;
+            result = shapeToSchematic({ type: 'triangle', side });
             break;
+          }
+          case 'rhombus': {
+            const width = validateAndParse(dimensions.width, 'width');
+            const height = validateAndParse(dimensions.height, 'height');
+            if (width === null || height === null) return;
+            result = shapeToSchematic({ type: 'rhombus', width, height });
+            break;
+          }
+          case 'hexagon': {
+            const radius = validateAndParse(dimensions.hexRadius, 'radius');
+            if (radius === null) return;
+            result = shapeToSchematic({ type: 'hexagon', radius });
+            break;
+          }
           default:
              toast({ title: 'Unknown shape', description: 'Please select a valid shape.', variant: "destructive" });
             return;
@@ -93,6 +109,26 @@ export function ShapeGenerator() {
             <Input id="side" type="number" value={dimensions.side} onChange={e => handleDimensionChange('side', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
+      case 'rhombus':
+        return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="width">Width (pixels)</Label>
+                    <Input id="width" type="number" value={dimensions.width} onChange={e => handleDimensionChange('width', e.target.value)} placeholder="e.g. 32" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="height">Height (pixels)</Label>
+                    <Input id="height" type="number" value={dimensions.height} onChange={e => handleDimensionChange('height', e.target.value)} placeholder="e.g. 16" />
+                </div>
+            </div>
+        );
+      case 'hexagon':
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="hexRadius">Radius (pixels)</Label>
+            <Input id="hexRadius" type="number" value={dimensions.hexRadius} onChange={e => handleDimensionChange('hexRadius', e.target.value)} placeholder="e.g. 16" />
+          </div>
+        );
       default:
         return null;
     }
@@ -108,7 +144,7 @@ export function ShapeGenerator() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>Shape</Label>
-            <RadioGroup value={shape} onValueChange={(value) => setShape(value as Shape)} className="flex gap-4 pt-2">
+            <RadioGroup value={shape} onValueChange={(value) => setShape(value as Shape)} className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-2">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="circle" id="r-circle" />
                 <Label htmlFor="r-circle">Circle</Label>
@@ -120,6 +156,14 @@ export function ShapeGenerator() {
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="triangle" id="r-triangle" />
                 <Label htmlFor="r-triangle">Triangle</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="rhombus" id="r-rhombus" />
+                <Label htmlFor="r-rhombus">Rhombus</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="hexagon" id="r-hexagon" />
+                <Label htmlFor="r-hexagon">Hexagon</Label>
               </div>
             </RadioGroup>
           </div>
