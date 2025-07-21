@@ -4,17 +4,17 @@ import { TextConstructor } from "@/components/text-constructor";
 import { ImageConverter } from "@/components/image-converter";
 import { ShapeGenerator } from "@/components/shape-generator";
 import { VoxGenerator } from "@/components/vox-generator";
-import { Cog } from "lucide-react";
 import { useI18n } from "@/locales/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { VintageVisionsLogo } from "@/components/vintage-visions-logo";
 
 export default function Home() {
   const t = useI18n();
   return (
     <div className="flex flex-col items-center min-h-screen p-4 sm:p-6 md:p-8">
       <header className="flex items-center gap-4 my-4 border-b-2 border-primary/50 pb-4 px-8 text-center">
-        <Cog className="w-16 h-16 text-primary animate-spin" style={{ animationDuration: '10s' }} />
+        <VintageVisionsLogo className="w-16 h-16 text-primary" />
         <h1 className="text-4xl md:text-5xl font-headline text-foreground font-bold tracking-wider uppercase">
           {t('title')}
         </h1>

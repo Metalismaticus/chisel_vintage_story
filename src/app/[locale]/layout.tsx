@@ -14,11 +14,11 @@ export default function LocaleLayout({
 }) {
   return (
     <I18nProviderClient locale={locale}>
-      <div className="absolute top-4 right-4 z-10">
-        <LanguageSwitcher />
-      </div>
-      {children}
-      <Toaster />
+        <div className="absolute top-4 right-4 z-10">
+            <LanguageSwitcher />
+        </div>
+        {children}
+        <Toaster />
     </I18nProviderClient>
   );
 }
