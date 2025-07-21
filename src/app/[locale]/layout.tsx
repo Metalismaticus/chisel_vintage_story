@@ -1,9 +1,6 @@
-'use client';
 import type { ReactNode } from 'react';
-import { Toaster } from "@/components/ui/toaster";
 import '../globals.css';
-import { I18nProviderClient } from '@/locales/client';
-import LanguageSwitcher from '@/components/language-switcher';
+import { LocaleProvider } from '@/components/locale-provider';
 
 export default function LocaleLayout({
   children,
@@ -13,12 +10,8 @@ export default function LocaleLayout({
   params: { locale: string };
 }) {
   return (
-    <I18nProviderClient locale={locale}>
-        <div className="absolute top-4 right-4 z-10">
-            <LanguageSwitcher />
-        </div>
-        {children}
-        <Toaster />
-    </I18nProviderClient>
+    <LocaleProvider locale={locale}>
+      {children}
+    </LocaleProvider>
   );
 }
