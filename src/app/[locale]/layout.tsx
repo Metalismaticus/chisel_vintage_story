@@ -1,24 +1,24 @@
 'use client';
-import type {Metadata} from 'next';
+import type { ReactNode } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import '../globals.css';
 import { I18nProviderClient } from '@/locales/client';
 import LanguageSwitcher from '@/components/language-switcher';
 
-export default function RootLayout({
+export default function LocaleLayout({
   children,
   params: { locale }
-}: Readonly<{
-  children: React.ReactNode;
+}: {
+  children: ReactNode;
   params: { locale: string };
-}>) {
+}) {
   return (
     <I18nProviderClient locale={locale}>
-        <div className="absolute top-4 right-4 z-10">
-          <LanguageSwitcher />
-        </div>
-        {children}
-        <Toaster />
+      <div className="absolute top-4 right-4 z-10">
+        <LanguageSwitcher />
+      </div>
+      {children}
+      <Toaster />
     </I18nProviderClient>
   );
 }

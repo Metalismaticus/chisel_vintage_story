@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A Genkit flow for generating .vox models of 3D shapes.
@@ -7,14 +6,9 @@
  * - VoxOutput - The return type for the generateVoxFlow function.
  */
 
-import { genkit } from '@genkit-ai/core';
-import { googleAI } from '@genkit-ai/googleai';
+import { ai } from '@/ai/genkit';
 import { voxToSchematic, type VoxShape } from '@/lib/schematic-utils';
-
-// Initialize Genkit AI instance locally within the flow file
-const ai = genkit({
-  plugins: [googleAI()],
-});
+import { z } from 'zod';
 
 // We define the output type here for client-side usage.
 export interface VoxOutput {
@@ -25,13 +19,24 @@ export interface VoxOutput {
   voxData: string; // Base64 encoded string
 }
 
+const VoxOutputSchema = z.object({
+    schematicData: z.string(),
+    width: z.number(),
+    height: z.number(),
+    isVox: z.boolean(),
+    voxData: z.string(),
+});
+
 
 // This is the main exported function that the client will call.
 export async function generateVoxFlow(input: VoxShape): Promise<VoxOutput> {
-  // Since the flow now returns `any`, we cast the result to the expected type.
-  const result: any = await voxGenerationFlow(input);
+  const result = await voxGenerationFlow(input);
 
-  // The flow returns voxData as raw Uint8Array buffer. We need to convert it to a Base64 string for JSON serialization.
+  if (!result.isVox || !result.voxData) {
+      throw new Error('Flow did not return valid vox data.');
+  }
+
+  // The flow returns voxData as a raw Uint8Array buffer. We need to convert it to a Base64 string for JSON serialization.
   const voxDataB64 = Buffer.from(result.voxData).toString('base64');
   
   return {
@@ -48,6 +53,8 @@ export async function generateVoxFlow(input: VoxShape): Promise<VoxOutput> {
 const voxGenerationFlow = ai.defineFlow(
   {
     name: 'voxGenerationFlow',
+    inputSchema: z.any(),
+    outputSchema: z.any(),
   },
   async (shapeParams: VoxShape) => {
     // Generate the schematic and raw .vox data (Uint8Array)
@@ -57,13 +64,7 @@ const voxGenerationFlow = ai.defineFlow(
       throw new Error('Failed to generate .vox data.');
     }
     
-    // Return the final output object. The Uint8Array will be handled by the wrapper.
-    return {
-      schematicData: result.schematicData,
-      width: result.width,
-      height: result.height,
-      isVox: true,
-      voxData: result.voxData,
-    };
+    // Return the final output object. The wrapper will handle the buffer-to-base64 conversion.
+    return result;
   }
 );

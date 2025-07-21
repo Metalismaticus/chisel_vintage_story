@@ -1,7 +1,6 @@
-import type {Metadata} from 'next';
-import { Toaster } from "@/components/ui/toaster";
-import './globals.css';
+import type { Metadata } from 'next';
 import { Oswald, Roboto_Condensed } from 'next/font/google';
+import './globals.css';
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -21,17 +20,15 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html className="dark" lang="en">
-      <head>
-      </head>
-      <body className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased`}>
-        {children}
-        <Toaster />
+    <html lang="en" className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased dark`}>
+      <head></head>
+      <body>
+          {children}
       </body>
     </html>
   );
