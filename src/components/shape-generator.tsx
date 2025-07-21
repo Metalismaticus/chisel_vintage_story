@@ -10,9 +10,11 @@ import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
 import { shapeToSchematic, type Shape, type SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
+import { useI18n } from '@/locales/client';
 
 
 export function ShapeGenerator() {
+  const t = useI18n();
   const [shape, setShape] = useState<Shape>('circle');
   const [dimensions, setDimensions] = useState({
     radius: '16',
@@ -34,7 +36,7 @@ export function ShapeGenerator() {
   const validateAndParse = (value: string, name: string, min = 1, canBeZero = false): number | null => {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed) || parsed < (canBeZero ? 0 : min)) {
-      toast({ title: `Invalid ${name}`, description: `Please enter a valid number for the ${name}.`, variant: "destructive" });
+      toast({ title: t('shapeGenerator.errors.invalid', { name }), description: t('shapeGenerator.errors.enterValidNumber'), variant: "destructive" });
       return null;
     }
     return parsed;
@@ -43,7 +45,7 @@ export function ShapeGenerator() {
   const validateAndParseOffset = (value: string, name: string, min: number, max: number): number | null => {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed) || parsed < min || parsed > max) {
-      toast({ title: `Invalid ${name}`, description: `The ${name} must be between ${min} and ${max}.`, variant: "destructive" });
+      toast({ title: t('shapeGenerator.errors.invalid', { name }), description: t('shapeGenerator.errors.offsetRange', { min, max }), variant: "destructive" });
       return null;
     }
     return parsed;
@@ -57,44 +59,44 @@ export function ShapeGenerator() {
         
         switch(shape) {
           case 'circle': {
-            const radius = validateAndParse(dimensions.radius, 'radius');
+            const radius = validateAndParse(dimensions.radius, t('shapeGenerator.dims.radius'));
             if (radius === null) return;
             result = shapeToSchematic({ type: 'circle', radius });
             break;
           }
           case 'triangle': {
-            const base = validateAndParse(dimensions.triBase, 'base');
-            const height = validateAndParse(dimensions.triHeight, 'height');
+            const base = validateAndParse(dimensions.triBase, t('shapeGenerator.dims.base'));
+            const height = validateAndParse(dimensions.triHeight, t('shapeGenerator.dims.height'));
             if (base === null || height === null) return;
             const maxOffset = Math.floor((base - 1) / 2);
-            const apexOffset = validateAndParseOffset(dimensions.triApexOffset, 'apex offset', -maxOffset, maxOffset);
+            const apexOffset = validateAndParseOffset(dimensions.triApexOffset, t('shapeGenerator.dims.apexOffset'), -maxOffset, maxOffset);
             if (apexOffset === null) return;
             result = shapeToSchematic({ type: 'triangle', base, height, apexOffset });
             break;
           }
           case 'rhombus': {
-            const width = validateAndParse(dimensions.width, 'width');
-            const height = validateAndParse(dimensions.height, 'height');
+            const width = validateAndParse(dimensions.width, t('shapeGenerator.dims.width'));
+            const height = validateAndParse(dimensions.height, t('shapeGenerator.dims.height'));
             if (width === null || height === null) return;
             result = shapeToSchematic({ type: 'rhombus', width, height });
             break;
           }
           case 'hexagon': {
-            const radius = validateAndParse(dimensions.hexRadius, 'radius');
+            const radius = validateAndParse(dimensions.hexRadius, t('shapeGenerator.dims.radius'));
             if (radius === null) return;
             result = shapeToSchematic({ type: 'hexagon', radius });
             break;
           }
           default:
-             toast({ title: 'Unknown shape', description: 'Please select a valid shape.', variant: "destructive" });
+             toast({ title: t('shapeGenerator.errors.unknownShape'), description: t('shapeGenerator.errors.selectValidShape'), variant: "destructive" });
             return;
         }
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);
         toast({
-          title: 'Generation failed',
-          description: 'An error occurred while generating the shape. Please try again.',
+          title: t('common.errors.generationFailed'),
+          description: t('common.errors.genericError'),
           variant: "destructive",
         });
         setSchematicOutput(null);
@@ -107,7 +109,7 @@ export function ShapeGenerator() {
       case 'circle':
         return (
           <div className="space-y-2">
-            <Label htmlFor="radius">Radius (pixels)</Label>
+            <Label htmlFor="radius">{t('shapeGenerator.dims.radius')} (pixels)</Label>
             <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
@@ -118,25 +120,25 @@ export function ShapeGenerator() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="triBase">Base (pixels)</Label>
+                <Label htmlFor="triBase">{t('shapeGenerator.dims.base')} (pixels)</Label>
                 <Input id="triBase" type="number" value={dimensions.triBase} onChange={e => handleDimensionChange('triBase', e.target.value)} placeholder="e.g. 16" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="triHeight">Height (pixels)</Label>
+                <Label htmlFor="triHeight">{t('shapeGenerator.dims.height')} (pixels)</Label>
                 <Input id="triHeight" type="number" value={dimensions.triHeight} onChange={e => handleDimensionChange('triHeight', e.target.value)} placeholder="e.g. 16" />
               </div>
             </div>
              <div className="space-y-2">
-              <Label htmlFor="apexOffset">Apex Offset: {dimensions.triApexOffset}px</Label>
+              <Label htmlFor="apexOffset">{t('shapeGenerator.dims.apexOffset')}: {dimensions.triApexOffset}px</Label>
               <Slider
                 id="apexOffset"
                 min={-maxOffset}
                 max={maxOffset}
                 step={1}
-                value={[parseInt(dimensions.triApexOffset, 10)]}
+                value={[parseInt(dimensions.triApexOffset, 10) || 0]}
                 onValueChange={(val) => handleDimensionChange('triApexOffset', val[0].toString())}
               />
-              <p className="text-xs text-muted-foreground">Controls the horizontal position of the top point. 0 is center.</p>
+              <p className="text-xs text-muted-foreground">{t('shapeGenerator.dims.apexOffsetHint')}</p>
             </div>
           </div>
         );
@@ -144,11 +146,11 @@ export function ShapeGenerator() {
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="width">Width (pixels)</Label>
+                    <Label htmlFor="width">{t('shapeGenerator.dims.width')} (pixels)</Label>
                     <Input id="width" type="number" value={dimensions.width} onChange={e => handleDimensionChange('width', e.target.value)} placeholder="e.g. 32" />
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="height">Height (pixels)</Label>
+                    <Label htmlFor="height">{t('shapeGenerator.dims.height')} (pixels)</Label>
                     <Input id="height" type="number" value={dimensions.height} onChange={e => handleDimensionChange('height', e.target.value)} placeholder="e.g. 16" />
                 </div>
             </div>
@@ -156,7 +158,7 @@ export function ShapeGenerator() {
       case 'hexagon':
         return (
           <div className="space-y-2">
-            <Label htmlFor="hexRadius">Radius (pixels)</Label>
+            <Label htmlFor="hexRadius">{t('shapeGenerator.dims.radius')} (pixels)</Label>
             <Input id="hexRadius" type="number" value={dimensions.hexRadius} onChange={e => handleDimensionChange('hexRadius', e.target.value)} placeholder="e.g. 16" />
           </div>
         );
@@ -169,34 +171,34 @@ export function ShapeGenerator() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">2D Shape Generator</CardTitle>
-          <CardDescription>Create geometric shapes for your builds.</CardDescription>
+          <CardTitle>{t('shapeGenerator.title')}</CardTitle>
+          <CardDescription>{t('shapeGenerator.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label>Shape</Label>
+            <Label>{t('shapeGenerator.shapeLabel')}</Label>
             <RadioGroup value={shape} onValueChange={(value) => setShape(value as Shape)} className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-2">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="circle" id="r-circle" />
-                <Label htmlFor="r-circle">Circle</Label>
+                <Label htmlFor="r-circle">{t('shapeGenerator.shapes.circle')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="triangle" id="r-triangle" />
-                <Label htmlFor="r-triangle">Triangle</Label>
+                <Label htmlFor="r-triangle">{t('shapeGenerator.shapes.triangle')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="rhombus" id="r-rhombus" />
-                <Label htmlFor="r-rhombus">Rhombus</Label>
+                <Label htmlFor="r-rhombus">{t('shapeGenerator.shapes.rhombus')}</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="hexagon" id="r-hexagon" />
-                <Label htmlFor="r-hexagon">Hexagon</Label>
+                <Label htmlFor="r-hexagon">{t('shapeGenerator.shapes.hexagon')}</Label>
               </div>
             </RadioGroup>
           </div>
           {renderDimensionInputs()}
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
-            {isPending ? 'Generating...' : 'Generate Schematic'}
+            {isPending ? t('common.generating') : t('shapeGenerator.button')}
           </Button>
         </CardContent>
       </Card>

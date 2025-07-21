@@ -13,10 +13,12 @@ import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useI18n } from '@/locales/client';
 
 type ConversionMode = 'bw' | 'color';
 
 export function ImageConverter() {
+  const t = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [schematic, setSchematic] = useState<SchematicOutput | null>(null);
@@ -36,7 +38,7 @@ export function ImageConverter() {
       setIsPending(false); 
       if ('error' in event.data) {
         toast({
-          title: 'Conversion Error',
+          title: t('imageConverter.errors.conversionFailed'),
           description: event.data.error,
           variant: "destructive",
         });
@@ -48,8 +50,8 @@ export function ImageConverter() {
     
     workerRef.current.onerror = (error) => {
        toast({
-         title: 'Critical Worker Error',
-         description: 'An unexpected error occurred in the background process. Check the console for details.',
+         title: t('imageConverter.errors.workerError'),
+         description: t('imageConverter.errors.workerErrorDesc'),
          variant: "destructive",
        });
        setSchematic(null);
@@ -59,14 +61,14 @@ export function ImageConverter() {
     return () => {
       workerRef.current?.terminate();
     };
-  }, [toast]);
+  }, [toast, t]);
 
   const processFile = (selectedFile: File | undefined) => {
     if (selectedFile) {
       if (!selectedFile.type.startsWith('image/')) {
         toast({
-          title: 'Invalid File Type',
-          description: 'Please upload an image file (PNG, JPG, GIF).',
+          title: t('imageConverter.errors.invalidFileType'),
+          description: t('imageConverter.errors.invalidFileTypeDesc'),
           variant: 'destructive',
         });
         return;
@@ -110,8 +112,8 @@ export function ImageConverter() {
   const handleConvert = () => {
     if (!file) {
       toast({
-        title: 'Image not selected',
-        description: 'Please select a file to convert.',
+        title: t('imageConverter.errors.noImage'),
+        description: t('imageConverter.errors.noImageDesc'),
         variant: "destructive",
       });
       return;
@@ -120,8 +122,8 @@ export function ImageConverter() {
     const width = parseInt(outputWidth, 10);
     if (isNaN(width) || width <= 0) {
        toast({
-        title: 'Invalid Width',
-        description: 'Please enter a valid positive number for the width.',
+        title: t('imageConverter.errors.invalidWidth'),
+        description: t('imageConverter.errors.invalidWidthDesc'),
         variant: "destructive",
       });
       return;
@@ -145,12 +147,12 @@ export function ImageConverter() {
     <div className="grid md:grid-cols-2 gap-6">
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="font-headline uppercase tracking-wider">Image to Pixel Art</CardTitle>
-          <CardDescription>Convert any image into a Vintage Story schematic.</CardDescription>
+          <CardTitle>{t('imageConverter.title')}</CardTitle>
+          <CardDescription>{t('imageConverter.description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="image-upload">Upload Image</Label>
+            <Label htmlFor="image-upload">{t('imageConverter.uploadLabel')}</Label>
             <div 
               className={cn(
                 "mt-2 flex justify-center rounded-lg border border-dashed border-input px-6 py-10 cursor-pointer hover:border-primary transition-colors",
@@ -165,7 +167,7 @@ export function ImageConverter() {
                 {previewUrl ? (
                   <Image
                     src={previewUrl}
-                    alt={'Image preview'}
+                    alt={t('imageConverter.previewAlt')}
                     width={200}
                     height={200}
                     className="mx-auto h-32 w-auto rounded-md object-contain"
@@ -174,9 +176,9 @@ export function ImageConverter() {
                   <>
                     <UploadCloud className="mx-auto h-12 w-12 text-muted-foreground" />
                     <div className="mt-4 flex text-sm leading-6 text-muted-foreground">
-                      <p className="pl-1">Click to upload or drag and drop</p>
+                      <p className="pl-1">{t('imageConverter.dropzone')}</p>
                     </div>
-                    <p className="text-xs leading-5 text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+                    <p className="text-xs leading-5 text-muted-foreground">{t('imageConverter.dropzoneHint')}</p>
                   </>
                 )}
                 <Input
@@ -192,7 +194,7 @@ export function ImageConverter() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="outputWidth">Schematic Width (pixels)</Label>
+                <Label htmlFor="outputWidth">{t('imageConverter.widthLabel')}</Label>
                 <Input 
                   id="outputWidth"
                   type="number"
@@ -202,15 +204,15 @@ export function ImageConverter() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Conversion Mode</Label>
+                <Label>{t('imageConverter.modeLabel')}</Label>
                 <RadioGroup value={mode} onValueChange={(v) => setMode(v as ConversionMode)} className="flex pt-2 space-x-4">
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="bw" id="mode-bw" />
-                        <Label htmlFor="mode-bw">B&W</Label>
+                        <Label htmlFor="mode-bw">{t('imageConverter.modes.bw')}</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="color" id="mode-color" />
-                        <Label htmlFor="mode-color">Color</Label>
+                        <Label htmlFor="mode-color">{t('imageConverter.modes.color')}</Label>
                     </div>
                 </RadioGroup>
               </div>
@@ -218,7 +220,7 @@ export function ImageConverter() {
           
           {mode === 'bw' && (
             <div className="space-y-2">
-              <Label htmlFor="threshold">B&W Threshold: {threshold[0]}</Label>
+              <Label htmlFor="threshold">{t('imageConverter.thresholdLabel')}: {threshold[0]}</Label>
               <Slider
                 id="threshold"
                 min={0}
@@ -234,10 +236,10 @@ export function ImageConverter() {
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Converting...
+                {t('common.converting')}
               </>
             ) : (
-              'Convert to Schematic'
+              t('imageConverter.button')
             )}
           </Button>
         </CardContent>

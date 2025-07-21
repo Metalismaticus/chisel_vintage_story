@@ -8,9 +8,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Copy, Download, Package, Loader2, Info } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { useI18n } from '@/locales/client';
 
 interface SchematicPreviewProps {
-  schematicOutput?: SchematicOutput | null;
+  schematicOutput?: (SchematicOutput & { voxDataB64?: string }) | null;
   loading: boolean;
 }
 
@@ -18,6 +19,7 @@ const CHUNK_SIZE = 16;
 
 
 export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
+  const t = useI18n();
   const { toast } = useToast();
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -29,38 +31,50 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const handleCopy = () => {
     if (finalSchematicData) {
       navigator.clipboard.writeText(finalSchematicData);
-      toast({ title: 'Copied to clipboard!' });
+      toast({ title: t('schematicPreview.copied') });
     }
   };
 
   const handleDownload = async () => {
     if (!schematicOutput) {
-      toast({ title: 'No data to download.', variant: 'destructive' });
+      toast({ title: t('schematicPreview.errors.noData'), variant: 'destructive' });
       return;
     }
     
-    if (isVox && schematicOutput.voxData) {
-      const blob = new Blob([schematicOutput.voxData], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'schematic.vox';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      return;
+    if (isVox && schematicOutput.voxDataB64) {
+      try {
+        const decodedData = atob(schematicOutput.voxDataB64);
+        const byteNumbers = new Array(decodedData.length);
+        for (let i = 0; i < decodedData.length; i++) {
+          byteNumbers[i] = decodedData.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'schematic.vox';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      } catch (e) {
+         toast({ title: t('schematicPreview.errors.downloadFailed'), description: t('schematicPreview.errors.voxDecodeFailed'), variant: 'destructive' });
+         return;
+      }
     }
 
     if (!gridRef.current) {
-       toast({ title: 'Preview element not found.', variant: 'destructive' });
+       toast({ title: t('schematicPreview.errors.previewNotFound'), variant: 'destructive' });
        return;
     }
 
     try {
         const { pixels, width, height, palette } = schematicOutput;
         if (!width || !height || !pixels) {
-            toast({ title: 'No pixel data to download.', variant: 'destructive' });
+            toast({ title: t('schematicPreview.errors.noPixelData'), variant: 'destructive' });
             return;
         };
 
@@ -74,7 +88,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         const ctx = canvas.getContext('2d');
 
         if (!ctx) {
-            toast({ title: 'Failed to create image context.', variant: 'destructive' });
+            toast({ title: t('schematicPreview.errors.canvasContextFailed'), variant: 'destructive' });
             return;
         }
 
@@ -138,13 +152,13 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             } else {
-                 toast({ title: 'Failed to create image blob.', variant: "destructive" });
+                 toast({ title: t('schematicPreview.errors.blobFailed'), variant: "destructive" });
             }
         }, 'image/png');
 
     } catch (error) {
         console.error("Download failed:", error);
-        toast({ title: 'Download failed', description: 'An error occurred while creating the image file.', variant: "destructive" });
+        toast({ title: t('schematicPreview.errors.downloadFailed'), description: t('schematicPreview.errors.genericDownloadError'), variant: "destructive" });
     }
   };
 
@@ -159,6 +173,10 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
        return null;
     }
     
+    const containerWidth = 400; // max width for the preview area in px
+    const pixelSize = Math.max(1, Math.floor(containerWidth / width));
+
+
     return Array.from({ length: height }).map((_, y) => (
       Array.from({ length: width }).map((_, x) => {
         const index = y * width + x;
@@ -176,16 +194,15 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
             }
         }
 
-
         return (
           <div
             key={`${y}-${x}`}
-            className="w-full h-full border border-foreground/10"
+            className="w-full h-full"
             style={{
               backgroundColor: backgroundColor,
               boxShadow: `
-                ${isLeftBoundary ? 'inset 1px 0 0 hsl(var(--primary) / 0.5)' : ''}
-                ${isTopBoundary ? 'inset 0 1px 0 hsl(var(--primary) / 0.5)' : ''}
+                ${isLeftBoundary ? `inset ${pixelSize > 4 ? '1px' : '0.5px'} 0 0 hsl(var(--primary) / 0.5)` : ''}
+                ${isTopBoundary ? `inset 0 ${pixelSize > 4 ? '1px' : '0.5px'} 0 hsl(var(--primary) / 0.5)` : ''}
               `.trim().replace(/\s+/g, ' ') || 'none'
             }}
           ></div>
@@ -201,8 +218,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       return (
         <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-4">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
-          <p className="text-muted-foreground font-semibold">Generating schematic...</p>
-          <p className="text-sm text-muted-foreground">Please wait, this may take a moment for large images.</p>
+          <p className="text-muted-foreground font-semibold">{t('schematicPreview.loadingTitle')}</p>
+          <p className="text-sm text-muted-foreground">{t('schematicPreview.loadingDescription')}</p>
         </div>
       );
     }
@@ -210,7 +227,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     if (!finalSchematicData) {
       return (
         <div className="flex items-center justify-center h-full border-2 border-dashed border-input rounded-lg">
-          <p className="text-muted-foreground">Awaiting generation...</p>
+          <p className="text-muted-foreground">{t('schematicPreview.awaiting')}</p>
         </div>
       );
     }
@@ -219,10 +236,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         return (
             <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-input rounded-lg p-8 text-center">
               <Package className="w-16 h-16 text-primary mb-4" />
-              <h3 className="text-xl font-semibold uppercase tracking-wider">VOX file generated</h3>
-              <p className="text-muted-foreground mt-2">
-                A 3D .vox file has been created. Use the button below to save it. 3D preview is not available.
-              </p>
+              <h3 className="text-xl font-semibold uppercase tracking-wider">{t('schematicPreview.voxGenerated')}</h3>
+              <p className="text-muted-foreground mt-2">{t('schematicPreview.voxDescription')}</p>
             </div>
         );
     }
@@ -232,23 +247,26 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         {isScaled && (
             <Alert variant="default" className="border-primary/30 bg-primary/10">
                 <Info className="h-4 w-4 text-primary" />
-                <AlertTitle>Preview Scaled</AlertTitle>
+                <AlertTitle>{t('schematicPreview.scaledTitle')}</AlertTitle>
                 <AlertDescription>
-                    Original image ({schematicOutput.originalWidth}x{schematicOutput.originalHeight}) was scaled down for preview. The exported schematic will use the full resolution.
+                   {t('schematicPreview.scaledDescription', {
+                       originalWidth: schematicOutput.originalWidth,
+                       originalHeight: schematicOutput.originalHeight,
+                   })}
                 </AlertDescription>
             </Alert>
         )}
         {pixelGrid && schematicOutput && schematicOutput.width > 0 && schematicOutput.height > 0 ? (
            <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-black/20 flex justify-center items-center" style={{maxHeight: '400px'}}>
             <div
-              className="grid"
+              className="grid border-r border-b border-foreground/10"
               style={{ 
-                width: `${schematicOutput.width * 1}rem`,
+                width: '100%',
                 margin: 'auto',
-                maxWidth: '100%',
+                maxWidth: `${schematicOutput.width * 1}rem`,
                 gridTemplateColumns: `repeat(${schematicOutput.width}, minmax(0, 1fr))`,
                 aspectRatio: `${schematicOutput.width} / ${schematicOutput.height}`,
-                backgroundImage: 'linear-gradient(rgba(240, 240, 240, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 240, 240, 0.1) 1px, transparent 1px)',
+                backgroundImage: 'linear-gradient(rgba(240, 240, 240, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 240, 240, 0.05) 1px, transparent 1px)',
                 backgroundSize: '1rem 1rem',
               }}
             >
@@ -257,7 +275,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
           </div>
         ) : (
            <div className="border rounded-lg p-2 bg-black/20 aspect-square overflow-hidden flex items-center justify-center">
-            <p className="text-muted-foreground text-sm text-center">Preview is not available for this schematic type, but you can copy or download the data below.</p>
+            <p className="text-muted-foreground text-sm text-center">{t('schematicPreview.noPreview')}</p>
           </div>
         )}
         <Textarea readOnly value={finalSchematicData} className="h-24 font-mono text-xs bg-black/20 border-input" />
@@ -268,8 +286,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   return (
     <Card className="flex flex-col bg-card/70 border-primary/20 backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="font-headline uppercase tracking-wider">Schematic Preview</CardTitle>
-        <CardDescription>Your generated schematic will appear here.</CardDescription>
+        <CardTitle>{t('schematicPreview.title')}</CardTitle>
+        <CardDescription>{t('schematicPreview.description')}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow space-y-4 min-h-[300px]">
         {renderContent()}
@@ -278,11 +296,11 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         <CardFooter className="flex gap-2 pt-4">
           {!isVox && (
              <Button onClick={handleCopy} variant="outline" className="w-full uppercase font-bold tracking-wider">
-              <Copy className="mr-2 h-4 w-4" /> Copy
+              <Copy className="mr-2 h-4 w-4" /> {t('common.copy')}
             </Button>
           )}
           <Button onClick={handleDownload} className="w-full uppercase font-bold tracking-wider">
-            <Download className="mr-2 h-4 w-4" /> Download {isVox ? '.vox' : '.png'}
+            <Download className="mr-2 h-4 w-4" /> {t('common.download')} {isVox ? '.vox' : '.png'}
           </Button>
         </CardFooter>
       )}

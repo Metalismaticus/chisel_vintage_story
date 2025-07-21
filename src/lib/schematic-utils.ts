@@ -1,4 +1,5 @@
 
+
 import { writeVox } from './vox-writer';
 
 export type ConversionMode = 'bw' | 'color';
@@ -17,6 +18,9 @@ export interface SchematicOutput {
   pixels: (boolean | number)[];
   isVox?: boolean;
   voxData?: Uint8Array;
+  // This is a custom field for transporting vox data from the server
+  // as a base64 string, which is easier to serialize than a Uint8Array.
+  voxDataB64?: string; 
   palette?: PaletteColor[];
   originalWidth?: number;
   originalHeight?: number;
@@ -308,15 +312,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 /**
  * Generates a .vox file for a given 3D shape.
  */
-export function voxToSchematic(shape: 
-    { type: 'cuboid', width: number, height: number, depth: number } | 
-    { type: 'sphere', radius: number } |
-    { type: 'pyramid', base: number, height: number } |
-    { type: 'column', radius: number, height: number } |
-    { type: 'cone', radius: number, height: number } |
-    { type: 'arch', width: number, height: number, depth: number } |
-    { type: 'disk', radius: number, height: number }
-): SchematicOutput {
+export function voxToSchematic(shape: VoxShape): SchematicOutput {
     const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
