@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Oswald, Roboto_Condensed } from 'next/font/google';
 import './globals.css';
+import { ReactNode } from 'react';
 
 const oswald = Oswald({
   subsets: ['latin'],
@@ -22,14 +23,11 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html lang="en" className={`${oswald.variable} ${robotoCondensed.variable} font-body antialiased dark`}>
-      <head></head>
-      <body>
-          {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
