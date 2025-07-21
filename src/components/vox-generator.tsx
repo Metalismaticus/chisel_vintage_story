@@ -19,16 +19,17 @@ export function VoxGenerator() {
     height: '16', 
     depth: '16', 
     radius: '16', 
-    base: '16',
+    pyramidBase: '16',
     pyramidHeight: '16',
     coneRadius: '16',
     coneHeight: '16',
-    cylRadius: '16',
-    cylHeight: '16',
+    columnRadius: '8',
+    columnHeight: '16',
     archWidth: '16',
     archHeight: '16',
     archDepth: '8',
     diskRadius: '16',
+    diskHeight: '1',
   });
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -69,18 +70,17 @@ export function VoxGenerator() {
             break;
           }
           case 'pyramid': {
-             const base = validateAndParse(dimensions.base, 'base size');
+             const base = validateAndParse(dimensions.pyramidBase, 'base size');
              const height = validateAndParse(dimensions.pyramidHeight, 'height');
              if (base === null || height === null) return;
              result = voxToSchematic({ type: 'pyramid', base, height });
             break;
           }
-          case 'column':
-          case 'cylinder': {
-             const radius = validateAndParse(dimensions.cylRadius, 'radius');
-             const height = validateAndParse(dimensions.cylHeight, 'height');
+          case 'column': {
+             const radius = validateAndParse(dimensions.columnRadius, 'radius');
+             const height = validateAndParse(dimensions.columnHeight, 'height');
              if (radius === null || height === null) return;
-             result = voxToSchematic({ type: 'cylinder', radius, height });
+             result = voxToSchematic({ type: 'column', radius, height });
             break;
           }
           case 'cone': {
@@ -100,8 +100,9 @@ export function VoxGenerator() {
           }
            case 'disk': {
             const radius = validateAndParse(dimensions.diskRadius, 'radius');
-            if (radius === null) return;
-            result = voxToSchematic({ type: 'disk', radius });
+            const height = validateAndParse(dimensions.diskHeight, 'height');
+            if (radius === null || height === null) return;
+            result = voxToSchematic({ type: 'disk', radius, height });
             break;
           }
           default:
@@ -153,8 +154,8 @@ export function VoxGenerator() {
         return (
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="base">Base Size (voxels)</Label>
-              <Input id="base" type="number" value={dimensions.base} onChange={e => handleDimensionChange('base', e.target.value)} placeholder="e.g. 16" />
+              <Label htmlFor="pyramidBase">Base Size (voxels)</Label>
+              <Input id="pyramidBase" type="number" value={dimensions.pyramidBase} onChange={e => handleDimensionChange('pyramidBase', e.target.value)} placeholder="e.g. 16" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="pyramidHeight">Height (voxels)</Label>
@@ -163,16 +164,15 @@ export function VoxGenerator() {
           </div>
         );
       case 'column':
-      case 'cylinder':
         return (
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="cylRadius">Radius (voxels)</Label>
-              <Input id="cylRadius" type="number" value={dimensions.cylRadius} onChange={e => handleDimensionChange('cylRadius', e.target.value)} placeholder="e.g. 8" />
+              <Label htmlFor="columnRadius">Radius (voxels)</Label>
+              <Input id="columnRadius" type="number" value={dimensions.columnRadius} onChange={e => handleDimensionChange('columnRadius', e.target.value)} placeholder="e.g. 8" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cylHeight">Height (voxels)</Label>
-              <Input id="cylHeight" type="number" value={dimensions.cylHeight} onChange={e => handleDimensionChange('cylHeight', e.target.value)} placeholder="e.g. 16" />
+              <Label htmlFor="columnHeight">Height (voxels)</Label>
+              <Input id="columnHeight" type="number" value={dimensions.columnHeight} onChange={e => handleDimensionChange('columnHeight', e.target.value)} placeholder="e.g. 16" />
             </div>
           </div>
         );
@@ -201,17 +201,21 @@ export function VoxGenerator() {
               <Input id="archHeight" type="number" value={dimensions.archHeight} onChange={e => handleDimensionChange('archHeight', e.target.value)} placeholder="e.g. 16" />
             </div>
              <div className="space-y-2">
-              <Label htmlFor="archDepth">Thickness (voxels)</Label>
+              <Label htmlFor="archDepth">Depth (voxels)</Label>
               <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
             </div>
           </div>
         );
        case 'disk':
         return (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="diskRadius">Radius (voxels)</Label>
               <Input id="diskRadius" type="number" value={dimensions.diskRadius} onChange={e => handleDimensionChange('diskRadius', e.target.value)} placeholder="e.g. 16" />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="diskHeight">Height (voxels)</Label>
+              <Input id="diskHeight" type="number" value={dimensions.diskHeight} onChange={e => handleDimensionChange('diskHeight', e.target.value)} placeholder="e.g. 1" />
             </div>
           </div>
         );
@@ -244,16 +248,12 @@ export function VoxGenerator() {
                 <Label htmlFor="r-pyramid">Pyramid</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="cylinder" id="r-cylinder" />
-                <Label htmlFor="r-cylinder">Cylinder</Label>
+                <RadioGroupItem value="column" id="r-column" />
+                <Label htmlFor="r-column">Column</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="cone" id="r-cone" />
                 <Label htmlFor="r-cone">Cone</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="column" id="r-column" />
-                <Label htmlFor="r-column">Column</Label>
               </div>
                <div className="flex items-center space-x-2">
                 <RadioGroupItem value="arch" id="r-arch" />

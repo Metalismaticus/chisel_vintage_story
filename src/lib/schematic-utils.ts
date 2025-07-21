@@ -24,7 +24,7 @@ export interface SchematicOutput {
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
-export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cylinder' | 'cone' | 'column' | 'arch' | 'disk';
+export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cone' | 'column' | 'arch' | 'disk';
 
 
 // A simple helper to generate schematic data string
@@ -312,10 +312,10 @@ export function voxToSchematic(shape:
     { type: 'cuboid', width: number, height: number, depth: number } | 
     { type: 'sphere', radius: number } |
     { type: 'pyramid', base: number, height: number } |
-    { type: 'cylinder' | 'column', radius: number, height: number } |
+    { type: 'column', radius: number, height: number } |
     { type: 'cone', radius: number, height: number } |
     { type: 'arch', width: number, height: number, depth: number } |
-    { type: 'disk', radius: number }
+    { type: 'disk', radius: number, height: number }
 ): SchematicOutput {
     const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
     let width: number, height: number, depth: number;
@@ -325,7 +325,7 @@ export function voxToSchematic(shape:
     // right before adding the voxel to the list.
     const addVoxel = (x: number, y: number, z: number) => {
         // The color index is 1, which will map to the first color in our palette.
-        voxels.push({ x, y: z, z: y, colorIndex: 1 });
+        voxels.push({ x: Math.round(x), y: Math.round(z), z: Math.round(y), colorIndex: 1 });
     };
 
 
@@ -378,15 +378,14 @@ export function voxToSchematic(shape:
             break;
         
         case 'column':
-        case 'cylinder':
             width = depth = shape.radius * 2;
             height = shape.height;
-            const cylCenter = shape.radius;
+            const colCenter = shape.radius;
             for (let y = 0; y < height; y++) {
                 for (let z = 0; z < depth; z++) {
                     for (let x = 0; x < width; x++) {
-                        const dx = x - cylCenter + 0.5;
-                        const dz = z - cylCenter + 0.5;
+                        const dx = x - colCenter + 0.5;
+                        const dz = z - colCenter + 0.5;
                         if (dx * dx + dz * dz <= shape.radius * shape.radius) {
                             addVoxel(x, y, z);
                         }
@@ -419,17 +418,17 @@ export function voxToSchematic(shape:
             height = shape.height;
             depth = shape.depth;
             const archRadius = width / 2;
-            const archCenter = archRadius;
+            const archCenterX = archRadius;
 
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                  const dx = x - archCenter + 0.5;
-                  const isHole = y < height && Math.abs(dx) < archRadius && (dx * dx + (y - height)*(y-height) > archRadius * archRadius);
-                  
-                  if (!isHole || y >= height - archRadius) {
-                     addVoxel(x, y, z);
-                  }
+                    const dx = x - archCenterX;
+                    const dy = y - (height - archRadius);
+                    const isInCircle = dx * dx + dy * dy < archRadius * archRadius;
+                    if (y < (height - archRadius) || !isInCircle) {
+                        addVoxel(x, y, z);
+                    }
                 }
               }
             }
@@ -437,16 +436,18 @@ export function voxToSchematic(shape:
 
         case 'disk':
             width = depth = shape.radius * 2;
-            height = 1;
+            height = shape.height;
             const diskCenter = shape.radius;
-            for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = x - diskCenter + 0.5;
-                    const dz = z - diskCenter + 0.5;
-                    if (dx * dx + dz * dz <= shape.radius * shape.radius) {
-                        addVoxel(x, 0, z);
-                    }
-                }
+            for (let y = 0; y < height; y++) {
+              for (let z = 0; z < depth; z++) {
+                  for (let x = 0; x < width; x++) {
+                      const dx = x - diskCenter + 0.5;
+                      const dz = z - diskCenter + 0.5;
+                      if (dx * dx + dz * dz <= shape.radius * shape.radius) {
+                          addVoxel(x, y, z);
+                      }
+                  }
+              }
             }
             break;
     }

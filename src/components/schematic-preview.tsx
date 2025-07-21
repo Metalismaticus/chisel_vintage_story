@@ -245,6 +245,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
               className="grid"
               style={{ 
                 width: `${schematicOutput.width * 1}rem`,
+                margin: 'auto',
                 maxWidth: '100%',
                 gridTemplateColumns: `repeat(${schematicOutput.width}, minmax(0, 1fr))`,
                 aspectRatio: `${schematicOutput.width} / ${schematicOutput.height}`,
