@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useTransition } from 'react';
@@ -24,6 +25,10 @@ export function VoxGenerator() {
     coneHeight: '16',
     cylRadius: '16',
     cylHeight: '16',
+    archWidth: '16',
+    archHeight: '16',
+    archDepth: '8',
+    diskRadius: '16',
   });
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -70,6 +75,7 @@ export function VoxGenerator() {
              result = voxToSchematic({ type: 'pyramid', base, height });
             break;
           }
+          case 'column':
           case 'cylinder': {
              const radius = validateAndParse(dimensions.cylRadius, 'radius');
              const height = validateAndParse(dimensions.cylHeight, 'height');
@@ -82,6 +88,20 @@ export function VoxGenerator() {
              const height = validateAndParse(dimensions.coneHeight, 'height');
              if (radius === null || height === null) return;
              result = voxToSchematic({ type: 'cone', radius, height });
+            break;
+          }
+          case 'arch': {
+             const width = validateAndParse(dimensions.archWidth, 'width');
+             const height = validateAndParse(dimensions.archHeight, 'height');
+             const depth = validateAndParse(dimensions.archDepth, 'depth');
+             if (width === null || height === null || depth === null) return;
+             result = voxToSchematic({ type: 'arch', width, height, depth });
+             break;
+          }
+           case 'disk': {
+            const radius = validateAndParse(dimensions.diskRadius, 'radius');
+            if (radius === null) return;
+            result = voxToSchematic({ type: 'disk', radius });
             break;
           }
           default:
@@ -142,6 +162,7 @@ export function VoxGenerator() {
             </div>
           </div>
         );
+      case 'column':
       case 'cylinder':
         return (
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -168,6 +189,32 @@ export function VoxGenerator() {
             </div>
           </div>
         );
+      case 'arch':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="archWidth">Width (voxels)</Label>
+              <Input id="archWidth" type="number" value={dimensions.archWidth} onChange={e => handleDimensionChange('archWidth', e.target.value)} placeholder="e.g. 16" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="archHeight">Height (voxels)</Label>
+              <Input id="archHeight" type="number" value={dimensions.archHeight} onChange={e => handleDimensionChange('archHeight', e.target.value)} placeholder="e.g. 16" />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="archDepth">Thickness (voxels)</Label>
+              <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
+            </div>
+          </div>
+        );
+       case 'disk':
+        return (
+          <div className="grid grid-cols-1 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="diskRadius">Radius (voxels)</Label>
+              <Input id="diskRadius" type="number" value={dimensions.diskRadius} onChange={e => handleDimensionChange('diskRadius', e.target.value)} placeholder="e.g. 16" />
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -183,7 +230,7 @@ export function VoxGenerator() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>3D Shape</Label>
-            <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape)} className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-2">
+            <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape)} className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="cuboid" id="r-cuboid" />
                 <Label htmlFor="r-cuboid">Cuboid</Label>
@@ -203,6 +250,18 @@ export function VoxGenerator() {
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="cone" id="r-cone" />
                 <Label htmlFor="r-cone">Cone</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="column" id="r-column" />
+                <Label htmlFor="r-column">Column</Label>
+              </div>
+               <div className="flex items-center space-x-2">
+                <RadioGroupItem value="arch" id="r-arch" />
+                <Label htmlFor="r-arch">Arch</Label>
+              </div>
+               <div className="flex items-center space-x-2">
+                <RadioGroupItem value="disk" id="r-disk" />
+                <Label htmlFor="r-disk">Disk</Label>
               </div>
             </RadioGroup>
           </div>

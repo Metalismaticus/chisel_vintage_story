@@ -240,10 +240,12 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
             </Alert>
         )}
         {pixelGrid && schematicOutput && schematicOutput.width > 0 && schematicOutput.height > 0 ? (
-           <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-black/20" style={{maxHeight: '400px'}}>
+           <div ref={gridRef} className="w-full overflow-auto border rounded-lg p-1 bg-black/20 flex justify-center items-center" style={{maxHeight: '400px'}}>
             <div
               className="grid"
               style={{ 
+                width: `${schematicOutput.width * 1}rem`,
+                maxWidth: '100%',
                 gridTemplateColumns: `repeat(${schematicOutput.width}, minmax(0, 1fr))`,
                 aspectRatio: `${schematicOutput.width} / ${schematicOutput.height}`,
                 backgroundImage: 'linear-gradient(rgba(240, 240, 240, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(240, 240, 240, 0.1) 1px, transparent 1px)',
