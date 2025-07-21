@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,14 +9,15 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
-import type { VoxShape, SchematicOutput } from '@/lib/schematic-utils';
-import { generateVoxModel, type GenerateVoxModelInput } from '@/ai/flows/vox-flow';
+import type { VoxShape } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
+import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
+import { Loader2 } from 'lucide-react';
 
 
 export function VoxGenerator() {
   const t = useI18n();
-  const [shape, setShape] = useState<VoxShape>('cuboid');
+  const [shape, setShape] = useState<VoxShape['type']>('cuboid');
   const [dimensions, setDimensions] = useState({ 
     width: '16', 
     height: '16', 
@@ -33,8 +35,8 @@ export function VoxGenerator() {
     diskRadius: '16',
     diskHeight: '1',
   });
-  const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
 
   const handleDimensionChange = (field: keyof typeof dimensions, value: string) => {
@@ -50,9 +52,9 @@ export function VoxGenerator() {
     return parsed;
   }
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setSchematicOutput(null);
-    let input: GenerateVoxModelInput | null = null;
+    let shapeParams: VoxShape | null = null;
 
     try {
       switch(shape) {
@@ -61,34 +63,34 @@ export function VoxGenerator() {
           const height = validateAndParse(dimensions.height, t('voxGenerator.dims.height'));
           const depth = validateAndParse(dimensions.depth, t('voxGenerator.dims.depth'));
           if (width === null || height === null || depth === null) return;
-          input = { shape: { type: 'cuboid', width, height, depth } };
+          shapeParams = { type: 'cuboid', width, height, depth };
           break;
         }
         case 'sphere': {
           const radius = validateAndParse(dimensions.radius, t('voxGenerator.dims.radius'));
           if (radius === null) return;
-          input = { shape: { type: 'sphere', radius }};
+          shapeParams = { type: 'sphere', radius };
           break;
         }
         case 'pyramid': {
            const base = validateAndParse(dimensions.pyramidBase, t('voxGenerator.dims.baseSize'));
            const height = validateAndParse(dimensions.pyramidHeight, t('voxGenerator.dims.height'));
            if (base === null || height === null) return;
-           input = { shape: { type: 'pyramid', base, height }};
+           shapeParams = { type: 'pyramid', base, height };
           break;
         }
         case 'column': {
            const radius = validateAndParse(dimensions.columnRadius, t('voxGenerator.dims.radius'));
            const height = validateAndParse(dimensions.columnHeight, t('voxGenerator.dims.height'));
            if (radius === null || height === null) return;
-           input = { shape: { type: 'column', radius, height }};
+           shapeParams = { type: 'column', radius, height };
           break;
         }
         case 'cone': {
            const radius = validateAndParse(dimensions.coneRadius, t('voxGenerator.dims.baseRadius'));
            const height = validateAndParse(dimensions.coneHeight, t('voxGenerator.dims.height'));
            if (radius === null || height === null) return;
-           input = { shape: { type: 'cone', radius, height }};
+           shapeParams = { type: 'cone', radius, height };
           break;
         }
         case 'arch': {
@@ -96,14 +98,14 @@ export function VoxGenerator() {
            const height = validateAndParse(dimensions.archHeight, t('voxGenerator.dims.height'));
            const depth = validateAndParse(dimensions.archDepth, t('voxGenerator.dims.depth'));
            if (width === null || height === null || depth === null) return;
-           input = { shape: { type: 'arch', width, height, depth }};
+           shapeParams = { type: 'arch', width, height, depth };
            break;
         }
          case 'disk': {
           const radius = validateAndParse(dimensions.diskRadius, t('voxGenerator.dims.radius'));
           const height = validateAndParse(dimensions.diskHeight, t('voxGenerator.dims.height'));
           if (radius === null || height === null) return;
-          input = { shape: { type: 'disk', radius, height }};
+          shapeParams = { type: 'disk', radius, height };
           break;
         }
         default:
@@ -116,29 +118,28 @@ export function VoxGenerator() {
       return;
     }
 
-    if (!input) {
+    if (!shapeParams) {
       return;
     }
 
-    const finalInput = input;
-    startTransition(async () => {
-      try {
-        const result = await generateVoxModel(finalInput);
-        if (result && result.schematicData) {
-          setSchematicOutput(result);
-        } else {
-           throw new Error(t('voxGenerator.errors.noDataFromServer'));
-        }
-      } catch (error) {
-        console.error(error);
+    setIsPending(true);
+    try {
+      const result: VoxOutput = await generateVoxFlow(shapeParams);
+      // The flow returns voxData as a Base64 string. We need to convert it back to a Uint8Array for download.
+      const voxDataBytes = Buffer.from(result.voxData, 'base64');
+      setSchematicOutput({ ...result, voxData: voxDataBytes });
+
+    } catch (error) {
+       console.error(error);
         toast({
           title: t('common.errors.generationFailed'),
           description: (error instanceof Error) ? error.message : t('common.errors.serverError'),
           variant: "destructive",
         });
         setSchematicOutput(null);
-      }
-    });
+    } finally {
+      setIsPending(false);
+    }
   };
   
   const renderDimensionInputs = () => {
@@ -253,7 +254,7 @@ export function VoxGenerator() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label>{t('voxGenerator.shapeLabel')}</Label>
-            <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape)} className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2">
+            <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape['type'])} className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2">
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="cuboid" id="r-cuboid" />
                 <Label htmlFor="r-cuboid">{t('voxGenerator.shapes.cuboid')}</Label>
@@ -286,7 +287,12 @@ export function VoxGenerator() {
           </div>
           {renderDimensionInputs()}
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
-            {isPending ? t('common.generating') : t('voxGenerator.button')}
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t('common.generating')}
+              </>
+            ) : t('voxGenerator.button')}
           </Button>
         </CardContent>
       </Card>

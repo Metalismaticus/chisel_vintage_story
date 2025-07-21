@@ -1,4 +1,4 @@
-import {genkit} from 'genkit';
+import {genkit} from '@genkit-ai/core';
 import {googleAI} from '@genkit-ai/googleai';
 
 // This file is not used by the core schematic generation logic,

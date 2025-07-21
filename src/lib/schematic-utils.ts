@@ -18,9 +18,6 @@ export interface SchematicOutput {
   pixels: (boolean | number)[];
   isVox?: boolean;
   voxData?: Uint8Array;
-  // This is a custom field for transporting vox data from the server
-  // as a base64 string, which is easier to serialize than a Uint8Array.
-  voxDataB64?: string; 
   palette?: PaletteColor[];
   originalWidth?: number;
   originalHeight?: number;
@@ -28,7 +25,14 @@ export interface SchematicOutput {
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
-export type VoxShape = 'cuboid' | 'sphere' | 'pyramid' | 'cone' | 'column' | 'arch' | 'disk';
+export type VoxShape = 
+    | { type: 'cuboid', width: number, height: number, depth: number }
+    | { type: 'sphere', radius: number }
+    | { type: 'pyramid', base: number, height: number }
+    | { type: 'cone', radius: number, height: number }
+    | { type: 'column', radius: number, height: number }
+    | { type: 'arch', width: number, height: number, depth: number }
+    | { type: 'disk', radius: number, height: number };
 
 
 // A simple helper to generate schematic data string

@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useI18n } from '@/locales/client';
 
 interface SchematicPreviewProps {
-  schematicOutput?: (SchematicOutput & { voxDataB64?: string }) | null;
+  schematicOutput?: SchematicOutput | null;
   loading: boolean;
 }
 
@@ -41,15 +41,9 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       return;
     }
     
-    if (isVox && schematicOutput.voxDataB64) {
+    if (isVox && schematicOutput.voxData) {
       try {
-        const decodedData = atob(schematicOutput.voxDataB64);
-        const byteNumbers = new Array(decodedData.length);
-        for (let i = 0; i < decodedData.length; i++) {
-          byteNumbers[i] = decodedData.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/octet-stream' });
+        const blob = new Blob([schematicOutput.voxData], { type: 'application/octet-stream' });
         
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -61,7 +55,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         URL.revokeObjectURL(url);
         return;
       } catch (e) {
-         toast({ title: t('schematicPreview.errors.downloadFailed'), description: t('schematicPreview.errors.voxDecodeFailed'), variant: 'destructive' });
+         toast({ title: t('schematicPreview.errors.downloadFailed'), description: String(e), variant: 'destructive' });
          return;
       }
     }
