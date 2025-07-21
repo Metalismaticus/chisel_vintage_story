@@ -7,7 +7,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'genkit/zod';
 import { voxToSchematic, type VoxShape, type SchematicOutput } from '@/lib/schematic-utils';
 
 const VoxShapeSchema = z.union([
