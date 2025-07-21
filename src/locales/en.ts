@@ -55,7 +55,7 @@ export default {
     fonts: {
       monospace: 'Monospace',
       serif: 'Serif',
-      sans-serif: 'Sans-Serif',
+      'sans-serif': 'Sans-Serif',
     },
     uploadLabel: 'Upload Custom Font (.ttf, .otf, .woff)',
     uploadButton: 'Choose Font',

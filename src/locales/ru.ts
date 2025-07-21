@@ -55,7 +55,7 @@ export default {
     fonts: {
       monospace: 'Моноширинный',
       serif: 'С засечками',
-      sans-serif: 'Без засечек',
+      'sans-serif': 'Без засечек',
     },
     uploadLabel: 'Загрузить свой шрифт (.ttf, .otf, .woff)',
     uploadButton: 'Выбрать шрифт',
