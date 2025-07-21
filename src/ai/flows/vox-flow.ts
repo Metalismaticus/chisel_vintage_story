@@ -7,11 +7,16 @@
  * - VoxOutput - The return type for the generateVoxFlow function.
  */
 
-import { ai } from '@/ai/genkit';
+import { genkit } from '@genkit-ai/core';
+import { googleAI } from '@genkit-ai/googleai';
 import { voxToSchematic, type VoxShape } from '@/lib/schematic-utils';
 
-// We define the output type here for client-side usage, but we won't use it in the flow schema
-// to avoid the zod dependency issue in the server action environment.
+// Initialize Genkit AI instance locally within the flow file
+const ai = genkit({
+  plugins: [googleAI()],
+});
+
+// We define the output type here for client-side usage.
 export interface VoxOutput {
   schematicData: string;
   width: number;
@@ -40,7 +45,6 @@ export async function generateVoxFlow(input: VoxShape): Promise<VoxOutput> {
 
 // Define the Genkit flow. It takes the shape parameters, generates the .vox file,
 // and returns the output including the raw .vox data.
-// We remove inputSchema and outputSchema to avoid using `zod` in this file.
 const voxGenerationFlow = ai.defineFlow(
   {
     name: 'voxGenerationFlow',
