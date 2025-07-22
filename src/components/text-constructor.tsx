@@ -65,7 +65,7 @@ export function TextConstructor() {
         console.error(error);
         toast({
           title: t('common.errors.generationFailed'),
-          description: t('common.errors.genericError'),
+          description: error instanceof Error ? error.message : t('common.errors.genericError'),
           variant: "destructive",
         });
         setSchematicOutput(null);

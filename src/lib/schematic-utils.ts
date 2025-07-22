@@ -1,6 +1,5 @@
 
 
-
 import { save } from './vox-saver';
 
 
@@ -274,8 +273,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
                 const r = data[i];
                 const g = data[i + 1];
                 const b = data[i + 2];
-                const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
-                pixels.push(grayscale < threshold);
+                pixels.push(grayscale(r, g, b) < threshold);
             }
             return { schematicData, width, height, pixels };
 
@@ -324,9 +322,10 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     let name = `VOX Shape: ${shape.type}`;
     
     // In our app, Y is up. In MagicaVoxel, Z is up. vox-saver expects Z-up.
+    // The library handles the coordinate system swap internally.
     const addVoxel = (x: number, y: number, z: number) => {
         // The color index is 1, which maps to the first color in our palette.
-        voxels.push({ x: Math.round(x), y: Math.round(z), z: Math.round(y), c: 1 });
+        voxels.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), c: 1 });
     };
 
     switch (shape.type) {
@@ -453,12 +452,16 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     }
     
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
+    // The palette in vox-saver is 1-indexed, so we provide an object.
     const palette = {
       1: { r: 200, g: 164, b: 100, a: 255 }
     };
+
+    // The vox-saver expects Y-up coordinates, so we swap y and z.
+    const voxelsForSaver = voxels.map(v => ({ x: v.x, y: v.z, z: v.y, c: v.c }));
     
     const buffer = save({
-        voxels,
+        voxels: voxelsForSaver,
         palette,
     });
 
@@ -470,4 +473,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         isVox: true,
         voxData: buffer,
     };
+}
+
+function grayscale(r: number, g: number, b: number): number {
+    return 0.299 * r + 0.587 * g + 0.114 * b;
 }
