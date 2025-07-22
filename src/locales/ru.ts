@@ -112,6 +112,7 @@ export default {
       cone: 'Конус',
       arch: 'Арка',
       disk: 'Диск',
+      ring: 'Кольцо',
     },
     dims: {
       width: 'Ширина',
@@ -194,6 +195,7 @@ export default {
       noDataFromServer: 'Сервер не вернул данные.',
       radiusTooLarge: 'Радиус не может быть больше половины ширины.',
       thicknessTooLarge: 'Толщина должна быть меньше внешнего радиуса.',
+      thicknessTooLargeRing: 'Толщина должна быть меньше радиуса.',
       baseRadiusTooSmall: 'Радиус основания должен быть больше радиуса колонны.',
     },
   },

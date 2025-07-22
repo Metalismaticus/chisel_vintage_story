@@ -51,11 +51,16 @@ export function VoxGenerator() {
     circularArchThickness: '4',
     diskRadius: '16',
     diskHeight: '1',
+    ringRadius: '16',
+    ringThickness: '4',
+    ringHeight: '4',
   });
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
   const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
   const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
+    const [ringPart, setRingPart] = useState<'full' | 'half'>('full');
+  const [ringOrientation, setRingOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
   const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
   const [withBase, setWithBase] = useState(false);
@@ -276,6 +281,22 @@ export function VoxGenerator() {
             part = `half`;
           }
           shapeParams = { type: 'disk', radius, height, part, orientation: diskOrientation };
+          break;
+        }
+        case 'ring': {
+          const radius = validateAndParse(dimensions.ringRadius, t('voxGenerator.dims.radius'));
+          const thickness = validateAndParse(dimensions.ringThickness, t('voxGenerator.arch.thickness'));
+          const height = validateAndParse(dimensions.ringHeight, t('voxGenerator.dims.height'));
+          if (radius === null || thickness === null || height === null) return;
+          if (thickness >= radius) {
+            toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.arch.thickness')}), description: t('voxGenerator.errors.thicknessTooLargeRing'), variant: "destructive" });
+            return;
+          }
+          let part: VoxShape['part'] = 'full';
+          if (ringPart === 'half') {
+            part = `half`;
+          }
+          shapeParams = { type: 'ring', radius, thickness, height, part, orientation: ringOrientation };
           break;
         }
         default:
@@ -588,6 +609,52 @@ export function VoxGenerator() {
             </div>
           </div>
         );
+      case 'ring':
+        return (
+           <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                <Label htmlFor="ringRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
+                <Input id="ringRadius" type="number" value={dimensions.ringRadius} onChange={e => handleDimensionChange('ringRadius', e.target.value)} placeholder="e.g. 16" />
+                </div>
+                <div className="space-y-2">
+                <Label htmlFor="ringThickness">{t('voxGenerator.arch.thickness')} (voxels)</Label>
+                <Input id="ringThickness" type="number" value={dimensions.ringThickness} onChange={e => handleDimensionChange('ringThickness', e.target.value)} placeholder="e.g. 4" />
+                </div>
+                <div className="space-y-2">
+                <Label htmlFor="ringHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
+                <Input id="ringHeight" type="number" value={dimensions.ringHeight} onChange={e => handleDimensionChange('ringHeight', e.target.value)} placeholder="e.g. 4" />
+                </div>
+            </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('voxGenerator.disk.type')}</Label>
+                 <RadioGroup value={ringPart} onValueChange={(v) => setRingPart(v as any)} className="flex pt-2 space-x-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="full" id="ring-full" />
+                        <Label htmlFor="ring-full">{t('voxGenerator.disk.types.full')}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="half" id="ring-half" />
+                        <Label htmlFor="ring-half">{t('voxGenerator.disk.types.half')}</Label>
+                    </div>
+                </RadioGroup>
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="ring-direction">{t('voxGenerator.disk.orientation')}</Label>
+                  <Select value={ringOrientation} onValueChange={(v) => setRingOrientation(v as any)}>
+                      <SelectTrigger id="ring-direction">
+                          <SelectValue placeholder={t('voxGenerator.disk.selectDirection')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="horizontal">{t('voxGenerator.disk.orientations.horizontal')}</SelectItem>
+                          <SelectItem value="vertical">{t('voxGenerator.disk.orientations.vertical')}</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -641,13 +708,13 @@ export function VoxGenerator() {
           </div>
            <div className="space-y-2">
             <Label>{t('voxGenerator.text.orientation.label')}</Label>
-            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="grid grid-cols-2 gap-2">
+            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
                 <RadioGroupItem value="horizontal" id="text-horizontal" className="sr-only" />
                 <Label 
                     htmlFor="text-horizontal"
                     className={cn(
-                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer border",
-                        textOrientation === 'horizontal' ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent/50'
+                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
+                        textOrientation === 'horizontal' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
                      )}
                  >
                     {t('voxGenerator.text.orientation.horizontal')}
@@ -656,8 +723,8 @@ export function VoxGenerator() {
                 <Label 
                     htmlFor="text-vertical"
                     className={cn(
-                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer border",
-                        textOrientation === 'vertical-lr' ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent/50'
+                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
+                        textOrientation === 'vertical-lr' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
                      )}
                 >
                     {t('voxGenerator.text.orientation.vertical')}
@@ -768,6 +835,10 @@ export function VoxGenerator() {
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="disk" id="r-disk" />
                             <Label htmlFor="r-disk">{t('voxGenerator.shapes.disk')}</Label>
+                        </div>
+                         <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="ring" id="r-ring" />
+                            <Label htmlFor="r-ring">{t('voxGenerator.shapes.ring')}</Label>
                         </div>
                         </RadioGroup>
                     </div>

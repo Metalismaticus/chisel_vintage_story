@@ -54,7 +54,8 @@ export type VoxShape =
         breakAngle?: number,
       }
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
-    | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
+    | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
+    | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
 
 
 // A simple helper to generate schematic data string
@@ -768,7 +769,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         }
 
-        case 'disk':
+        case 'disk': {
             const { part: diskPart = 'full', orientation: diskOrientation = 'horizontal' } = shape;
             
             if (diskOrientation === 'vertical') {
@@ -818,6 +819,56 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
               }
             }
             break;
+        }
+        case 'ring': {
+            const { radius: outerR, thickness, height: ringHeight, part: ringPart = 'full', orientation: ringOrientation = 'horizontal' } = shape;
+            const innerR = outerR - thickness;
+
+            if (ringOrientation === 'vertical') {
+                width = ringHeight;
+                height = outerR * 2;
+                depth = outerR * 2;
+            } else { // horizontal
+                width = outerR * 2;
+                height = ringHeight;
+                depth = outerR * 2;
+            }
+
+            const ringCenterY = ringOrientation === 'vertical' ? outerR : ringHeight / 2;
+            const ringCenterZ = outerR;
+            const ringCenterX = ringOrientation === 'vertical' ? ringHeight/2 : outerR;
+            
+            for (let y = 0; y < height; y++) {
+              for (let z = 0; z < depth; z++) {
+                  for (let x = 0; x < width; x++) {
+                      let distSq: number;
+                      
+                      if (ringOrientation === 'vertical') {
+                          const dy = y - ringCenterY + 0.5;
+                          const dz = z - ringCenterZ + 0.5;
+                          distSq = dy * dy + dz * dz;
+                      } else {
+                          const dx = x - ringCenterX + 0.5;
+                          const dz = z - ringCenterZ + 0.5;
+                          distSq = dx * dx + dz * dz;
+                      }
+
+                      if (distSq <= outerR * outerR && distSq > innerR * innerR) {
+                           if (ringPart === 'full') {
+                              addVoxel(x, y, z);
+                          } else if (ringPart === 'half') {
+                              if (ringOrientation === 'horizontal' && z < ringCenterZ) {
+                                  addVoxel(x, y, z);
+                              } else if (ringOrientation === 'vertical' && y < ringCenterY) {
+                                  addVoxel(x, y, z);
+                              }
+                          }
+                      }
+                  }
+              }
+            }
+            break;
+        }
     }
     
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
@@ -853,3 +904,4 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+

@@ -112,6 +112,7 @@ export default {
       cone: 'Cone',
       arch: 'Arch',
       disk: 'Disk',
+      ring: 'Ring',
     },
     dims: {
       width: 'Width',
@@ -194,6 +195,7 @@ export default {
       noDataFromServer: 'No data returned from server.',
       radiusTooLarge: 'Radius cannot be larger than half the width.',
       thicknessTooLarge: 'Thickness must be less than the outer radius.',
+      thicknessTooLargeRing: 'Thickness must be less than the radius.',
       baseRadiusTooSmall: 'Base radius must be larger than the column radius.',
     },
   },
