@@ -17,6 +17,7 @@ interface SchematicPreviewProps {
 }
 
 const CHUNK_SIZE = 16;
+const BLOCK_SIZE = 16;
 
 
 export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewProps) {
@@ -27,7 +28,10 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const finalSchematicData = schematicOutput?.schematicData;
   const isVox = schematicOutput?.isVox;
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
-  const modelDimensions = isVox && schematicOutput ? `${schematicOutput.width} x ${schematicOutput.height} x ${schematicOutput.depth}` : null;
+  
+  const modelDimensions = isVox && schematicOutput
+    ? `${Math.ceil(schematicOutput.width / BLOCK_SIZE)} x ${Math.ceil(schematicOutput.height / BLOCK_SIZE)} x ${Math.ceil((schematicOutput.depth || 0) / BLOCK_SIZE)}`
+    : null;
 
 
   const handleCopy = () => {
