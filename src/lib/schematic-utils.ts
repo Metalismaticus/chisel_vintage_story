@@ -316,15 +316,15 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
  * Generates a .vox file for a given 3D shape using the vox-saver library.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
-    const voxels: {x: number, y: number, z: number, i: number}[] = [];
+    const xyziValues: {x: number, y: number, z: number, i: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
     // In our app, Y is up. MagicaVoxel and vox-saver expect Z to be up.
-    // We will generate with our coordinate system and then swap y/z for the library.
+    // We will generate with our coordinate system (Y-up) and then create the final voxObject with swapped axes.
     const addVoxel = (x: number, y: number, z: number) => {
         // The color index is 1, which maps to the first color in our palette.
-        voxels.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
+        xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
     };
 
     switch (shape.type) {
@@ -459,9 +459,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     const voxObject = {
         size: { x: width, y: depth, z: height }, // Z is up in .vox format, so we map our depth to Y and height to Z
         xyzi: {
-            numVoxels: voxels.length,
+            numVoxels: xyziValues.length,
             // .vox format is Z-up, so we swap our y and z
-            values: voxels.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
+            values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
         },
         rgba: {
             values: palette
