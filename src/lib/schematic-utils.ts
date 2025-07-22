@@ -1,6 +1,5 @@
 
 
-
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -144,6 +143,9 @@ export async function rasterizeText({
     }
     
     if (totalWidth <= 0 || totalHeight <= 0) {
+        if (fontFace && document.fonts.has(fontFace)) {
+            document.fonts.delete(fontFace);
+        }
         return { width: 0, height: 0, pixels: [] };
     }
     
@@ -772,7 +774,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                           if (x < outerCornerRadius) {
                               const outerDx = x - outerCornerRadius + 0.5;
                               const outerDy = y - (height - outerCornerRadius) + 0.5;
-                              if (outerDx * outerDx + outerDy * outerDy > outerCornerRadius * outerCornerRadius) {
+                              if (outerDx * outerDx + outerDy * outerCornerRadius > outerCornerRadius * outerCornerRadius) {
                                   shouldPlace = false;
                               }
                           }
@@ -880,5 +882,3 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
-
-    

@@ -181,9 +181,9 @@ export default {
         engraveDepth: 'Engraving Depth',
         orientation: {
             label: 'Text Orientation',
-            horizontal: 'Horizontal (on wall)',
-            vertical: 'Vertical (on floor)',
-            column: 'Column (on wall)',
+            horizontal: 'Horizontal',
+            vertical: 'Vertical',
+            column: 'Column',
         },
     },
     button: 'Generate .vox File',
@@ -222,5 +222,3 @@ export default {
     },
   },
 } as const;
-
-    

@@ -181,9 +181,9 @@ export default {
         engraveDepth: 'Глубина гравировки',
         orientation: {
             label: 'Ориентация текста',
-            horizontal: 'Горизонтально (на стене)',
-            vertical: 'Вертикально (на полу)',
-            column: 'Столбец (на стене)',
+            horizontal: 'Горизонтально',
+            vertical: 'Вертикально',
+            column: 'Столбец',
         },
     },
     button: 'Сгенерировать .vox файл',
@@ -222,5 +222,3 @@ export default {
     },
   },
 } as const;
-
-    
