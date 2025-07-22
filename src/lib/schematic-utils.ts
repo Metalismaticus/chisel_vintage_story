@@ -1,6 +1,7 @@
 
 
-import { write } from './vox-writer';
+
+import { save } from './vox-saver';
 
 
 export type ConversionMode = 'bw' | 'color';
@@ -18,7 +19,7 @@ export interface SchematicOutput {
   height: number;
   pixels: (boolean | number)[];
   isVox?: boolean;
-  voxData?: Uint8Array; // This will now be the full file buffer from vox-saver
+  voxData?: Uint8Array;
   palette?: PaletteColor[];
   originalWidth?: number;
   originalHeight?: number;
@@ -318,14 +319,14 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
  * Generates a .vox file for a given 3D shape using a local writer.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
-    const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
+    const voxels: {x: number, y: number, z: number, c: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
-    // In our app, Y is up. In MagicaVoxel, Z is up. vox-writer expects Z-up.
+    // In our app, Y is up. In MagicaVoxel, Z is up. vox-saver expects Z-up.
     const addVoxel = (x: number, y: number, z: number) => {
         // The color index is 1, which maps to the first color in our palette.
-        voxels.push({ x: Math.round(x), y: Math.round(z), z: Math.round(y), colorIndex: 1 });
+        voxels.push({ x: Math.round(x), y: Math.round(z), z: Math.round(y), c: 1 });
     };
 
     switch (shape.type) {
@@ -452,21 +453,13 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     }
     
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
-    const palette = [
-      { r: 200, g: 164, b: 100, a: 255 }
-    ];
-    
-    const size = {
-        x: width,
-        y: depth, // y and z are swapped for MagicaVoxel's coordinate system
-        z: height,
+    const palette = {
+      1: { r: 200, g: 164, b: 100, a: 255 }
     };
-
-    // Use local vox-writer to generate the file buffer
-    const buffer = write({
+    
+    const buffer = save({
         voxels,
         palette,
-        size
     });
 
     return {
