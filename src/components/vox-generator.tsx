@@ -13,14 +13,16 @@ import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, typ
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput } from '@/ai/flows/text-to-vox-flow';
-import { Loader2, Upload } from 'lucide-react';
+import { generateQrToVoxFlow, type QrToVoxInput } from '@/ai/flows/qr-to-vox-flow';
+import { Loader2, Upload, QrCode } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from './ui/switch';
 import { cn } from '@/lib/utils';
+import QRCode from 'qrcode';
 
 
-type GeneratorMode = 'shape' | 'text';
+type GeneratorMode = 'shape' | 'text' | 'qr';
 type TextVoxMode = 'extrude' | 'engrave';
 
 export function VoxGenerator() {
@@ -78,6 +80,10 @@ export function VoxGenerator() {
   const [engraveDepth, setEngraveDepth] = useState([3]);
   const [textOrientation, setTextOrientation] = useState<TextOrientation>('horizontal');
   
+  // QR Code State
+  const [qrUrl, setQrUrl] = useState('https://www.vintagestory.at/');
+  const [qrDepth, setQrDepth] = useState([16]);
+  const [qrPreview, setQrPreview] = useState<string | null>(null);
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -99,6 +105,19 @@ export function VoxGenerator() {
       }
     };
   }, []);
+  
+    // Generate QR preview when URL changes
+  useEffect(() => {
+    if (mode === 'qr' && qrUrl) {
+      QRCode.toDataURL(qrUrl, { errorCorrectionLevel: 'H', margin: 2 }, (err, url) => {
+        if (err) {
+          setQrPreview(null);
+          return;
+        };
+        setQrPreview(url);
+      });
+    }
+  }, [qrUrl, mode]);
 
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -174,6 +193,57 @@ export function VoxGenerator() {
 
     } catch (error) {
         console.error(error);
+        toast({
+          title: t('common.errors.generationFailed'),
+          description: (error instanceof Error) ? error.message : t('common.errors.serverError'),
+          variant: "destructive",
+        });
+        setSchematicOutput(null);
+    } finally {
+        setIsPending(false);
+    }
+  }
+  
+  const handleGenerateQr = async () => {
+    if (!qrUrl.trim()) {
+        toast({ title: t('voxGenerator.errors.noQrUrl'), description: t('voxGenerator.errors.noQrUrlDesc'), variant: "destructive" });
+        return;
+    }
+    
+    setIsPending(true);
+    setSchematicOutput(null);
+    
+    try {
+      // We generate the QR data on the client. `qrcode` library gives us a representation of the QR code data.
+      const qrData = QRCode.create(qrUrl, { errorCorrectionLevel: 'H' });
+      const pixels: boolean[] = [];
+      // The module data is a Uint8Array where 1 is dark and 0 is light.
+      // We also add a 1-module white border around for better readability.
+      const size = qrData.modules.size;
+      const borderSize = size + 2;
+      for (let y = 0; y < borderSize; y++) {
+          for (let x = 0; x < borderSize; x++) {
+              if (x === 0 || y === 0 || x === borderSize - 1 || y === borderSize - 1) {
+                  pixels.push(false); // white border
+              } else {
+                  const module = qrData.modules.get(y - 1, x - 1);
+                  pixels.push(module === 1); // black pixel
+              }
+          }
+      }
+
+      const input: QrToVoxInput = {
+          pixels,
+          size: borderSize,
+          depth: qrDepth[0],
+      };
+
+      const result = await generateQrToVoxFlow(input);
+      const voxDataBytes = Buffer.from(result.voxData, 'base64');
+      setSchematicOutput({ ...result, voxData: voxDataBytes });
+
+    } catch (error) {
+       console.error(error);
         toast({
           title: t('common.errors.generationFailed'),
           description: (error instanceof Error) ? error.message : t('common.errors.serverError'),
@@ -335,8 +405,10 @@ export function VoxGenerator() {
   const handleGenerate = () => {
     if (mode === 'shape') {
         handleGenerateShape();
-    } else {
+    } else if (mode === 'text') {
         handleGenerateText();
+    } else {
+        handleGenerateQr();
     }
   }
 
@@ -783,6 +855,31 @@ export function VoxGenerator() {
         </div>
     );
   }
+  
+  const renderQrInputs = () => {
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <Label htmlFor="qr-url">{t('voxGenerator.qr.urlLabel')}</Label>
+                <Input id="qr-url" value={qrUrl} onChange={(e) => setQrUrl(e.target.value)} placeholder={t('voxGenerator.qr.urlPlaceholder')} />
+            </div>
+            {qrPreview && (
+                <div className="flex justify-center items-center bg-white p-4 rounded-lg">
+                    <img src={qrPreview} alt="QR Code Preview" className="w-48 h-48" />
+                </div>
+            )}
+            <div className="space-y-2">
+                <Label htmlFor="qr-depth">{t('voxGenerator.dims.depth')}: {qrDepth[0]}px</Label>
+                <Slider
+                    id="qr-depth"
+                    min={1} max={50} step={1}
+                    value={qrDepth}
+                    onValueChange={setQrDepth}
+                />
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -800,6 +897,10 @@ export function VoxGenerator() {
                 <RadioGroupItem value="text" id="mode-text" className="sr-only" />
                 <Label htmlFor="mode-text" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'text' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
                     {t('voxGenerator.modes.text')}
+                </Label>
+                 <RadioGroupItem value="qr" id="mode-qr" className="sr-only" />
+                <Label htmlFor="mode-qr" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'qr' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
+                    {t('voxGenerator.modes.qr')}
                 </Label>
             </RadioGroup>
 
@@ -844,8 +945,10 @@ export function VoxGenerator() {
                     </div>
                     {renderShapeInputs()}
                 </div>
-            ) : (
+            ) : mode === 'text' ? (
                 renderTextInputs()
+            ) : (
+                renderQrInputs()
             )}
          
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">

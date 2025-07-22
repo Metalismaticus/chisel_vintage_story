@@ -102,6 +102,7 @@ export default {
     modes: {
       shape: 'Фигура',
       text: 'Текст',
+      qr: 'QR-код',
     },
     shapeLabel: '3D Фигура',
     shapes: {
@@ -186,6 +187,10 @@ export default {
             vertical: 'Вертикально',
         },
     },
+    qr: {
+        urlLabel: 'URL или текст для QR-кода',
+        urlPlaceholder: 'например, https://www.vintagestory.at/',
+    },
     button: 'Сгенерировать .vox файл',
     errors: {
       invalid: 'Неверный {name}',
@@ -197,6 +202,8 @@ export default {
       thicknessTooLarge: 'Толщина должна быть меньше внешнего радиуса.',
       thicknessTooLargeRing: 'Толщина должна быть меньше радиуса.',
       baseRadiusTooSmall: 'Радиус основания должен быть больше радиуса колонны.',
+      noQrUrl: 'URL пуст',
+      noQrUrlDesc: 'Пожалуйста, введите URL или текст для генерации QR-кода.',
     },
   },
   schematicPreview: {

@@ -102,6 +102,7 @@ export default {
     modes: {
       shape: 'Shape',
       text: 'Text',
+      qr: 'QR Code',
     },
     shapeLabel: '3D Shape',
     shapes: {
@@ -186,6 +187,10 @@ export default {
             vertical: 'Vertical',
         },
     },
+    qr: {
+        urlLabel: 'URL or Text for QR Code',
+        urlPlaceholder: 'e.g., https://www.vintagestory.at/',
+    },
     button: 'Generate .vox File',
     errors: {
       invalid: 'Invalid {name}',
@@ -197,6 +202,8 @@ export default {
       thicknessTooLarge: 'Thickness must be less than the outer radius.',
       thicknessTooLargeRing: 'Thickness must be less than the radius.',
       baseRadiusTooSmall: 'Base radius must be larger than the column radius.',
+      noQrUrl: 'URL is empty',
+      noQrUrlDesc: 'Please enter a URL or text to generate a QR code.',
     },
   },
   schematicPreview: {
