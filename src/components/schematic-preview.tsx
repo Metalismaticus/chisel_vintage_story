@@ -29,7 +29,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const isVox = schematicOutput?.isVox;
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
   
-  const getModelDimensionsText = () => {
+  const getTotalBlocksText = () => {
     if (!isVox || !schematicOutput) {
       return null;
     }
@@ -37,13 +37,10 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     const blocksY = Math.ceil(schematicOutput.height / BLOCK_SIZE);
     const blocksZ = Math.ceil((schematicOutput.depth || 0) / BLOCK_SIZE);
 
-    if (blocksX === 1 && blocksY === 1 && blocksZ === 1) {
-      return '1';
-    }
-    return `${blocksX} x ${blocksY} x ${blocksZ}`;
+    return (blocksX * blocksY * blocksZ).toLocaleString();
   };
 
-  const modelDimensions = getModelDimensionsText();
+  const totalBlocks = getTotalBlocksText();
 
 
   const handleCopy = () => {
@@ -248,12 +245,12 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
         return (
           <div className="space-y-4">
             <VoxPreview voxData={schematicOutput.voxData} />
-            {modelDimensions && (
+            {totalBlocks && (
               <Alert variant="default" className="border-primary/30 bg-primary/10">
-                  <Scaling className="h-4 w-4 text-primary" />
-                  <AlertTitle>{t('schematicPreview.modelDimensions')}</AlertTitle>
+                  <Package className="h-4 w-4 text-primary" />
+                  <AlertTitle>{t('schematicPreview.totalBlocksTitle')}</AlertTitle>
                   <AlertDescription>
-                     {modelDimensions} {t('schematicPreview.blocks')}
+                     {totalBlocks}
                   </AlertDescription>
               </Alert>
             )}
