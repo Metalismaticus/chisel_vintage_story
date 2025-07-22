@@ -4,6 +4,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -122,79 +123,62 @@ export async function textToSchematic({
       };
     }
     
-    const PADDING = outline ? outlineGap + 1 : 0; 
-    const width = textWidth + PADDING * 2;
-    const height = textHeight + PADDING * 2;
-
-    canvas.width = width;
-    canvas.height = height;
+    const PADDING = outline ? (outlineGap + 1) : 0;
+    const contentWidth = textWidth + PADDING * 2;
+    const contentHeight = textHeight + PADDING * 2;
     
-    // Re-apply font settings after resize
+    const finalWidth = Math.ceil(contentWidth / 16) * 16;
+    const finalHeight = Math.ceil(contentHeight / 16) * 16;
+    
+    canvas.width = finalWidth;
+    canvas.height = finalHeight;
+    
+    const xOffset = Math.floor((finalWidth - contentWidth) / 2);
+    const yOffset = Math.floor((finalHeight - contentHeight) / 2);
+
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#F0F0F0';
     ctx.textBaseline = 'top';
-    ctx.fillText(text, PADDING, PADDING);
+    ctx.fillText(text, xOffset + PADDING, yOffset + PADDING);
     
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const pixels: boolean[] = Array(width * height).fill(false);
+    const imageData = ctx.getImageData(0, 0, finalWidth, finalHeight);
+    const pixels: boolean[] = Array(finalWidth * finalHeight).fill(false);
+    const originalTextPixels: boolean[] = Array(finalWidth * finalHeight).fill(false);
 
     for (let i = 0; i < imageData.data.length; i += 4) {
         if (imageData.data[i + 3] > 128) {
             pixels[i / 4] = true;
+            originalTextPixels[i / 4] = true;
         }
     }
     
     if (outline) {
-        const outlinePixels = Array(width * height).fill(false);
+        const outlinePixels = Array(finalWidth * finalHeight).fill(false);
         const gap = outlineGap;
         
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                if (pixels[y * width + x]) {
-                    continue; // Skip original text pixels
-                }
-
-                let isOutline = false;
-                // Check in a square around the pixel to see if it's an outline pixel
-                for (let dy = -gap - 1; dy <= gap + 1; dy++) {
-                    for (let dx = -gap - 1; dx <= gap + 1; dx++) {
-                        // Check if it's on the exact outline border
-                        const isBorder = Math.abs(dx) === gap + 1 || Math.abs(dy) === gap + 1;
-                        if (!isBorder) continue;
-
-                        const nx = x + dx;
-                        const ny = y + dy;
-
-                        if (nx >= 0 && nx < width && ny >= 0 && ny < height && pixels[ny * width + nx]) {
-                            isOutline = true;
-                            break;
+        for (let y = 0; y < finalHeight; y++) {
+            for (let x = 0; x < finalWidth; x++) {
+                if (!originalTextPixels[y * finalWidth + x]) {
+                    let isOutline = false;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx >= 0 && nx < finalWidth && ny >= 0 && ny < finalHeight && originalTextPixels[ny * finalWidth + nx]) {
+                                isOutline = true;
+                                break;
+                            }
                         }
+                        if (isOutline) break;
                     }
-                    if (isOutline) break;
-                }
-                 
-                 if (isOutline) {
-                    // Make sure we're not filling a gap pixel
-                    let isGapPixel = false;
-                     for (let dy = -gap; dy <= gap; dy++) {
-                        for (let dx = -gap; dx <= gap; dx++) {
-                             const nx = x + dx;
-                             const ny = y + dy;
-                             if (nx >= 0 && nx < width && ny >= 0 && ny < height && pixels[ny * width + nx]) {
-                                 isGapPixel = true;
-                                 break;
-                             }
-                        }
-                        if(isGapPixel) break;
-                     }
-                     if(!isGapPixel) {
-                        outlinePixels[y * width + x] = true;
-                     }
+                    if (isOutline) {
+                        outlinePixels[y * finalWidth + x] = true;
+                    }
                 }
             }
         }
         
-        // Combine original text and outline
         for (let i = 0; i < pixels.length; i++) {
             if (outlinePixels[i]) {
                 pixels[i] = true;
@@ -208,10 +192,12 @@ export async function textToSchematic({
     }
 
     return {
-        schematicData: createSchematicData(`Text: "${text}"`, {width, height}),
-        width,
-        height,
+        schematicData: createSchematicData(`Text: "${text}"`, {width: finalWidth, height: finalHeight}),
+        width: finalWidth,
+        height: finalHeight,
         pixels,
+        originalWidth: contentWidth,
+        originalHeight: contentHeight
     };
 }
 
@@ -225,52 +211,52 @@ export function shapeToSchematic(shape:
     { type: 'rhombus', width: number, height: number } |
     { type: 'hexagon', radius: number }
 ): SchematicOutput {
-    let pixels: boolean[] = [];
-    let width: number, height: number;
+    let rawPixels: boolean[] = [];
+    let contentWidth: number, contentHeight: number;
 
     switch (shape.type) {
         case 'circle': {
-            width = height = shape.radius * 2;
+            contentWidth = contentHeight = shape.radius * 2;
             if (shape.radius <= 0) {
-                pixels = [];
+                rawPixels = [];
                 break;
             };
 
-            const centerX = width / 2.0;
-            const centerY = height / 2.0;
+            const centerX = contentWidth / 2.0;
+            const centerY = contentHeight / 2.0;
             const r = shape.radius;
 
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
+            for (let y = 0; y < contentHeight; y++) {
+                for (let x = 0; x < contentWidth; x++) {
                     const px = x + 0.5;
                     const py = y + 0.5;
                     const dx = px - centerX;
                     const dy = py - centerY;
-                    pixels.push(dx * dx + dy * dy < r * r);
+                    rawPixels.push(dx * dx + dy * dy < r * r);
                 }
             }
             break;
         }
 
         case 'triangle': {
-            width = shape.base;
-            height = shape.height;
-            pixels = Array(width * height).fill(false);
+            contentWidth = shape.base;
+            contentHeight = shape.height;
+            rawPixels = Array(contentWidth * contentHeight).fill(false);
             
-            if (height > 0 && width > 0) {
-                const geometricCenterX = (width / 2.0) + shape.apexOffset;
+            if (contentHeight > 0 && contentWidth > 0) {
+                const geometricCenterX = (contentWidth / 2.0) + shape.apexOffset;
 
-                for (let y = 0; y < height; y++) {
-                    const progress = height > 1 ? y / (height - 1) : 1;
-                    const currentWidth = progress * width;
+                for (let y = 0; y < contentHeight; y++) {
+                    const progress = contentHeight > 1 ? y / (contentHeight - 1) : 1;
+                    const currentWidth = progress * contentWidth;
                     
                     const startX = geometricCenterX - currentWidth / 2.0;
                     const endX = geometricCenterX + currentWidth / 2.0;
 
-                    for (let x = 0; x < width; x++) {
+                    for (let x = 0; x < contentWidth; x++) {
                         const px = x + 0.5;
                         if (px >= startX && px <= endX) {
-                            pixels[y * width + x] = true;
+                            rawPixels[y * contentWidth + x] = true;
                         }
                     }
                 }
@@ -279,23 +265,23 @@ export function shapeToSchematic(shape:
         }
             
         case 'rhombus': {
-            width = shape.width;
-            height = shape.height;
-            if (width <= 0 || height <= 0) {
-                pixels = [];
+            contentWidth = shape.width;
+            contentHeight = shape.height;
+            if (contentWidth <= 0 || contentHeight <= 0) {
+                rawPixels = [];
                 break;
             };
 
-            const centerX = width / 2.0;
-            const centerY = height / 2.0;
+            const centerX = contentWidth / 2.0;
+            const centerY = contentHeight / 2.0;
 
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
+            for (let y = 0; y < contentHeight; y++) {
+                for (let x = 0; x < contentWidth; x++) {
                     const px = x + 0.5;
                     const py = y + 0.5;
                     const dx = Math.abs(px - centerX);
                     const dy = Math.abs(py - centerY);
-                    pixels.push((dx / (width / 2.0)) + (dy / (height / 2.0)) <= 1);
+                    rawPixels.push((dx / (contentWidth / 2.0)) + (dy / (contentHeight / 2.0)) <= 1);
                 }
             }
             break;
@@ -304,55 +290,68 @@ export function shapeToSchematic(shape:
         case 'hexagon': {
             const r = shape.radius;
             if (r <= 0) {
-                width = 0;
-                height = 0;
-                pixels = [];
+                contentWidth = 0;
+                contentHeight = 0;
+                rawPixels = [];
                 break;
             }
             // Flat-topped hexagon
-            width = r * 2;
-            height = Math.round(Math.sqrt(3) * r);
-            pixels = Array(width * height).fill(false);
-            const centerX = width / 2.0;
-            const centerY = height / 2.0;
+            contentWidth = r * 2;
+            contentHeight = Math.round(Math.sqrt(3) * r);
+            rawPixels = Array(contentWidth * contentHeight).fill(false);
+            const centerX = contentWidth / 2.0;
+            const centerY = contentHeight / 2.0;
             
-            for (let y_scan = 0; y_scan < height; y_scan++) {
-                const y_rel = y_scan + 0.5 - centerY;
-                
-                // For a flat-topped hexagon, the width at a given y is related to its distance from the center.
-                // The max width is 2*r at the center (y_rel = 0). It decreases linearly to r at the top/bottom.
-                // This formula calculates the horizontal distance from the center to the edge at a given y.
-                const x_dist_abs = r * (1 - Math.abs(y_rel) / (Math.sqrt(3) * r / 2)) * 0.5;
-                const x_dist = r * (Math.sqrt(3)/2 - Math.abs(y_rel) / r) * (1/Math.sin(Math.PI/3));
-                const h_dist = (Math.sqrt(3) * r / 2 - Math.abs(y_rel)) / Math.sqrt(3);
+             for (let y = 0; y < contentHeight; y++) {
+                for (let x = 0; x < contentWidth; x++) {
+                    const px = x + 0.5 - centerX; // Coords relative to center
+                    const py = y + 0.5 - centerY;
 
-                const q2x = Math.abs(y_rel) / Math.tan(Math.PI/3);
-
-
-                const w_y = width * (1 - (Math.abs(y_rel) / (height / 2.0)));
-                 const startX_y = centerX - w_y / 2.0;
-                 const endX_y = centerX + w_y / 2.0;
-                 
-                
-                const startX = centerX - x_dist_abs;
-                const endX = centerX + x_dist_abs;
-
-                 for (let x = 0; x < width; x++) {
-                    const px = x + 0.5;
-                    const dx_abs = Math.abs(px - centerX);
-                    if (dx_abs / (r) +  Math.abs(y_rel) / (height/2) <= 1)
-                     pixels[y_scan * width + x] = true;
+                    // Hexagon formula for flat-topped
+                    const q2x = Math.abs(px);
+                    const q2y = Math.abs(py);
+                    if (q2x <= r * 0.5 && q2y <= Math.sqrt(3) * r * 0.5) {
+                         if ((Math.sqrt(3) / 2 * r) * q2x + (0.5 * r) * q2y <= (Math.sqrt(3) / 2 * r) * r) {
+                            rawPixels[y * contentWidth + x] = true;
+                         }
+                    }
                 }
             }
             break;
         }
     }
+    
+    if (contentWidth === 0 || contentHeight === 0) {
+         return {
+            schematicData: createSchematicData(`Shape: ${shape.type}`, {width: 0, height: 0}),
+            width: 0,
+            height: 0,
+            pixels: [],
+        };
+    }
+
+    const finalWidth = Math.ceil(contentWidth / 16) * 16;
+    const finalHeight = Math.ceil(contentHeight / 16) * 16;
+    const finalPixels = Array(finalWidth * finalHeight).fill(false);
+    
+    const xOffset = Math.floor((finalWidth - contentWidth) / 2);
+    const yOffset = Math.floor((finalHeight - contentHeight) / 2);
+    
+    for(let y = 0; y < contentHeight; y++) {
+        for (let x = 0; x < contentWidth; x++) {
+            if (rawPixels[y * contentWidth + x]) {
+                finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
+            }
+        }
+    }
 
     return {
-        schematicData: createSchematicData(`Shape: ${shape.type}`, {width, height}),
-        width,
-        height,
-        pixels,
+        schematicData: createSchematicData(`Shape: ${shape.type}`, {width: finalWidth, height: finalHeight}),
+        width: finalWidth,
+        height: finalHeight,
+        pixels: finalPixels,
+        originalWidth: contentWidth,
+        originalHeight: contentHeight
     };
 }
 
@@ -363,11 +362,29 @@ export function shapeToSchematic(shape:
  */
 export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, threshold: number, mode: ConversionMode): Promise<SchematicOutput> {
     const { canvas } = ctx;
-    const { width, height } = canvas;
-    const schematicData = createSchematicData('Imported Image', {width, height});
+    const { width: contentWidth, height: contentHeight } = canvas;
+    
+    const finalWidth = Math.ceil(contentWidth / 16) * 16;
+    const finalHeight = Math.ceil(contentHeight / 16) * 16;
+
+    const xOffset = Math.floor((finalWidth - contentWidth) / 2);
+    const yOffset = Math.floor((finalHeight - contentHeight) / 2);
+    
+    // Create a new canvas with chunk-aligned dimensions
+    const finalCanvas = new OffscreenCanvas(finalWidth, finalHeight);
+    const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true });
+    
+    if (!finalCtx) {
+        throw new Error('Failed to get final OffscreenCanvas context.');
+    }
+    
+    // Draw the original scaled image onto the center of the new canvas
+    finalCtx.drawImage(canvas, xOffset, yOffset);
+
+    const schematicData = createSchematicData('Imported Image', {width: finalWidth, height: finalHeight});
 
     try {
-        const imageData = ctx.getImageData(0, 0, width, height);
+        const imageData = finalCtx.getImageData(0, 0, finalWidth, finalHeight);
         const data = imageData.data;
         const pixels: (boolean | number)[] = [];
         
@@ -378,7 +395,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
                 const b = data[i + 2];
                 pixels.push(grayscale(r, g, b) < threshold);
             }
-            return { schematicData, width, height, pixels };
+            return { schematicData, width: finalWidth, height: finalHeight, pixels, originalWidth: contentWidth, originalHeight: contentHeight };
 
         } else { // mode === 'color'
             const palette: PaletteColor[] = [];
@@ -407,7 +424,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
                     pixels.push(newIndex);
                 }
             }
-             return { schematicData, width, height, pixels, palette };
+             return { schematicData, width: finalWidth, height: finalHeight, pixels, palette, originalWidth: contentWidth, originalHeight: contentHeight };
         }
 
     } catch(err) {

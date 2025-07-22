@@ -25,7 +25,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
 
   const finalSchematicData = schematicOutput?.schematicData;
   const isVox = schematicOutput?.isVox;
-  const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight);
+  const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
 
 
   const handleCopy = () => {
@@ -246,6 +246,8 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
                    {t('schematicPreview.scaledDescription', {
                        originalWidth: schematicOutput.originalWidth,
                        originalHeight: schematicOutput.originalHeight,
+                       finalWidth: schematicOutput.width,
+                       finalHeight: schematicOutput.height,
                    })}
                 </AlertDescription>
             </Alert>
