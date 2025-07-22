@@ -57,7 +57,8 @@ export type VoxShape =
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
     | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
-    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, backgroundDepth: number };
+    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, backgroundDepth: number }
+    | { type: 'checkerboard', width: number, length: number, height: number };
 
 
 // A simple helper to generate schematic data string
@@ -738,48 +739,50 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             } else { // Rectangular or Rounded
                 width = shape.width;
                 height = shape.height;
-                const archRadius = shape.width / 2.0;
+                const innerOpeningRadius = shape.width / 2.0;
                 const centerX = (shape.width - 1) / 2.0;
 
                 for (let y = 0; y < height; y++) {
-                  for (let z = 0; z < depth; z++) {
-                    for (let x = 0; x < width; x++) {
-                      let shouldPlace = false;
-                      const innerDx = x - centerX;
-                      const innerDy = y - (height - archRadius);
-                      const isOutsideInnerCutout = innerDx * innerDx + innerDy * innerDy >= archRadius * archRadius;
-                      
-                      if (y < height - archRadius) {
-                          shouldPlace = true;
-                      } else {
-                         if (isOutsideInnerCutout) {
-                            shouldPlace = true;
-                         }
-                      }
-                      
-                      const outerCornerRadius = shape.outerCornerRadius ?? 0;
-                      if (shouldPlace && shape.archType === 'rounded' && outerCornerRadius > 0 && y >= height - outerCornerRadius) {
-                          if (x < outerCornerRadius) {
-                              const outerDx = x - outerCornerRadius + 0.5;
-                              const outerDy = y - (height - outerCornerRadius) + 0.5;
-                              if (outerDx * outerDx + outerDy * outerCornerRadius > outerCornerRadius * outerCornerRadius) {
-                                  shouldPlace = false;
-                              }
-                          }
-                          if (x > width - 1 - outerCornerRadius) {
-                              const outerDx = x - (width - 1 - outerCornerRadius) - 0.5;
-                              const outerDy = y - (height - outerCornerRadius) + 0.5;
-                               if (outerDx * outerDx + outerDy * outerDy > outerCornerRadius * outerCornerRadius) {
-                                  shouldPlace = false;
-                              }
-                          }
-                      }
+                    for (let z = 0; z < depth; z++) {
+                        for (let x = 0; x < width; x++) {
+                            let shouldPlace = true;
 
-                      if (shouldPlace) {
-                          addVoxel(x, y, z);
-                      }
+                            // Carve out the inner arch
+                            if (y >= height - innerOpeningRadius) {
+                                // This part is above the start of the arch curve
+                                const innerDx = x - centerX;
+                                const innerDy = y - (height - innerOpeningRadius);
+                                if (innerDx * innerDx + innerDy * innerDy < innerOpeningRadius * innerOpeningRadius) {
+                                    shouldPlace = false;
+                                }
+                            }
+
+                            // Carve out the outer corners if rounded
+                            const outerCornerRadius = shape.outerCornerRadius ?? 0;
+                            if (shouldPlace && shape.archType === 'rounded' && outerCornerRadius > 0) {
+                                // Top-left corner
+                                if (x < outerCornerRadius && y >= height - outerCornerRadius) {
+                                    const cornerDx = x - (outerCornerRadius - 0.5);
+                                    const cornerDy = y - (height - outerCornerRadius - 0.5);
+                                    if (cornerDx * cornerDx + cornerDy * cornerDy > outerCornerRadius * outerCornerRadius) {
+                                        shouldPlace = false;
+                                    }
+                                }
+                                // Top-right corner
+                                if (x > width - 1 - outerCornerRadius && y >= height - outerCornerRadius) {
+                                    const cornerDx = x - (width - outerCornerRadius - 0.5);
+                                    const cornerDy = y - (height - outerCornerRadius - 0.5);
+                                    if (cornerDx * cornerDx + cornerDy * cornerDy > outerCornerRadius * outerCornerRadius) {
+                                        shouldPlace = false;
+                                    }
+                                }
+                            }
+
+                            if (shouldPlace) {
+                                addVoxel(x, y, z);
+                            }
+                        }
                     }
-                  }
                 }
             }
             break;
@@ -915,6 +918,33 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         }
 
+        case 'checkerboard': {
+            const { width: blockWidth, length: blockLength, height: blockHeight } = shape;
+            const VOXEL_SIZE = 16;
+            width = blockWidth * VOXEL_SIZE;
+            height = blockHeight * VOXEL_SIZE;
+            depth = blockLength * VOXEL_SIZE;
+
+            for (let by = 0; by < blockHeight; by++) {
+                for (let bz = 0; bz < blockLength; bz++) {
+                    for (let bx = 0; bx < blockWidth; bx++) {
+                        if ((bx + by + bz) % 2 === 0) {
+                            const startX = bx * VOXEL_SIZE;
+                            const startY = by * VOXEL_SIZE;
+                            const startZ = bz * VOXEL_SIZE;
+                            for (let y = startY; y < startY + VOXEL_SIZE; y++) {
+                                for (let z = startZ; z < startZ + VOXEL_SIZE; z++) {
+                                    for (let x = startX; x < startX + VOXEL_SIZE; x++) {
+                                        addVoxel(x, y, z);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+        }
     }
     
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
@@ -952,4 +982,5 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
