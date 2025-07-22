@@ -21,6 +21,7 @@ export function TextConstructor() {
   const [font, setFont] = useState<FontStyle>('monospace');
   const [fontFile, setFontFile] = useState<File | null>(null);
   const [outline, setOutline] = useState(false);
+  const [outlineGap, setOutlineGap] = useState([1]);
   const fontFileUrlRef = useRef<string | null>(null);
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -67,6 +68,7 @@ export function TextConstructor() {
             fontSize: fontSize[0], 
             fontUrl: fontFileUrlRef.current ?? undefined, 
             outline,
+            outlineGap: outlineGap[0],
         });
         setSchematicOutput(result);
       } catch (error) {
@@ -147,6 +149,19 @@ export function TextConstructor() {
             <Switch id="outline-switch" checked={outline} onCheckedChange={setOutline} />
             <Label htmlFor="outline-switch">{t('textConstructor.outlineLabel')}</Label>
           </div>
+          {outline && (
+             <div className="space-y-2">
+                <Label htmlFor="outline-gap">{t('textConstructor.outlineGapLabel')}: {outlineGap[0]}px</Label>
+                <Slider
+                id="outline-gap"
+                min={1}
+                max={5}
+                step={1}
+                value={outlineGap}
+                onValueChange={setOutlineGap}
+                />
+            </div>
+          )}
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
             {isPending ? t('common.generating') : t('textConstructor.button')}
           </Button>

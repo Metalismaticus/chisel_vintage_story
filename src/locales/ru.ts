@@ -60,7 +60,8 @@ export default {
     uploadLabel: 'Загрузить свой шрифт (.ttf, .otf, .woff)',
     uploadButton: 'Выбрать шрифт',
     sizeLabel: 'Размер шрифта',
-    outlineLabel: 'Добавить контур с отступом 1пкс',
+    outlineLabel: 'Добавить контур',
+    outlineGapLabel: 'Зазор контура',
     button: 'Сгенерировать схему',
     errors: {
       noText: 'Текст пуст',

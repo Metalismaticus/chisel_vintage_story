@@ -3,6 +3,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -62,6 +63,7 @@ interface TextToSchematicParams {
   fontSize: number;
   fontUrl?: string;
   outline?: boolean;
+  outlineGap?: number;
 }
 
 /**
@@ -74,6 +76,7 @@ export async function textToSchematic({
   fontSize,
   fontUrl,
   outline = false,
+  outlineGap = 1,
 }: TextToSchematicParams): Promise<SchematicOutput> {
     if (typeof document === 'undefined') {
         throw new Error('textToSchematic can only be run in a browser environment.');
@@ -119,7 +122,7 @@ export async function textToSchematic({
       };
     }
     
-    const PADDING = outline ? 2 : 0; // 1px gap + 1px outline
+    const PADDING = outline ? outlineGap + 1 : 0; 
     const width = textWidth + PADDING * 2;
     const height = textHeight + PADDING * 2;
 
@@ -143,50 +146,48 @@ export async function textToSchematic({
     
     if (outline) {
         const outlinePixels = Array(width * height).fill(false);
+        const gap = outlineGap;
+        
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 if (pixels[y * width + x]) {
                     continue; // Skip original text pixels
                 }
 
-                // Check neighbors for a text pixel to determine if this is an outline pixel
                 let isOutline = false;
-                for (let dy = -2; dy <= 2; dy++) {
-                    for (let dx = -2; dx <= 2; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        
-                        // Check if it's in the 1-pixel-away gap
-                        const isGap = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
-                        if (isGap) continue;
+                // Check in a square around the pixel to see if it's an outline pixel
+                for (let dy = -gap - 1; dy <= gap + 1; dy++) {
+                    for (let dx = -gap - 1; dx <= gap + 1; dx++) {
+                        // Check if it's on the exact outline border
+                        const isBorder = Math.abs(dx) === gap + 1 || Math.abs(dy) === gap + 1;
+                        if (!isBorder) continue;
 
                         const nx = x + dx;
                         const ny = y + dy;
 
-                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                            if (pixels[ny * width + nx]) {
-                                isOutline = true;
-                                break;
-                            }
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height && pixels[ny * width + nx]) {
+                            isOutline = true;
+                            break;
                         }
                     }
                     if (isOutline) break;
                 }
+                 
                  if (isOutline) {
-                    // Make sure we're not filling in a gap pixel
-                    let isGap = false;
-                     for (let dy = -1; dy <= 1; dy++) {
-                        for (let dx = -1; dx <= 1; dx++) {
-                            if (dx === 0 && dy === 0) continue;
-                            const nx = x + dx;
-                            const ny = y + dy;
-                            if (nx >= 0 && nx < width && ny >= 0 && ny < height && pixels[ny * width + nx]) {
-                                isGap = true;
-                                break;
-                            }
+                    // Make sure we're not filling a gap pixel
+                    let isGapPixel = false;
+                     for (let dy = -gap; dy <= gap; dy++) {
+                        for (let dx = -gap; dx <= gap; dx++) {
+                             const nx = x + dx;
+                             const ny = y + dy;
+                             if (nx >= 0 && nx < width && ny >= 0 && ny < height && pixels[ny * width + nx]) {
+                                 isGapPixel = true;
+                                 break;
+                             }
                         }
-                        if(isGap) break;
+                        if(isGapPixel) break;
                      }
-                     if(!isGap) {
+                     if(!isGapPixel) {
                         outlinePixels[y * width + x] = true;
                      }
                 }
