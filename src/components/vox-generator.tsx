@@ -39,7 +39,7 @@ export function VoxGenerator() {
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
   const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
-  const [halfDiskDirection, setHalfDiskDirection] = useState<'horizontal' | 'vertical'>('horizontal');
+  const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -117,9 +117,9 @@ export function VoxGenerator() {
           if (radius === null || height === null) return;
           let part: VoxShape['part'] = 'full';
           if (diskPart === 'half') {
-            part = `half-${halfDiskDirection}`;
+            part = `half`;
           }
-          shapeParams = { type: 'disk', radius, height, part };
+          shapeParams = { type: 'disk', radius, height, part, orientation: diskOrientation };
           break;
         }
         default:
@@ -297,20 +297,18 @@ export function VoxGenerator() {
                     </div>
                 </RadioGroup>
               </div>
-              {diskPart === 'half' && (
-                <div className="space-y-2">
-                    <Label htmlFor="halfdisk-direction">{t('voxGenerator.disk.orientation')}</Label>
-                    <Select value={halfDiskDirection} onValueChange={(v) => setHalfDiskDirection(v as any)}>
-                        <SelectTrigger id="halfdisk-direction">
-                            <SelectValue placeholder={t('voxGenerator.disk.selectDirection')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="horizontal">{t('voxGenerator.disk.orientations.horizontal')}</SelectItem>
-                            <SelectItem value="vertical">{t('voxGenerator.disk.orientations.vertical')}</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-              )}
+              <div className="space-y-2">
+                  <Label htmlFor="disk-direction">{t('voxGenerator.disk.orientation')}</Label>
+                  <Select value={diskOrientation} onValueChange={(v) => setDiskOrientation(v as any)}>
+                      <SelectTrigger id="disk-direction">
+                          <SelectValue placeholder={t('voxGenerator.disk.selectDirection')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="horizontal">{t('voxGenerator.disk.orientations.horizontal')}</SelectItem>
+                          <SelectItem value="vertical">{t('voxGenerator.disk.orientations.vertical')}</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
             </div>
           </div>
         );

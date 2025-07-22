@@ -1,6 +1,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -28,7 +29,8 @@ export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
 
 type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
-type HalfDiskPart = `half-${'horizontal' | 'vertical'}`;
+type DiskOrientation = 'horizontal' | 'vertical';
+
 
 export type VoxShape = 
     | { type: 'cuboid', width: number, height: number, depth: number }
@@ -37,7 +39,7 @@ export type VoxShape =
     | { type: 'cone', radius: number, height: number }
     | { type: 'column', radius: number, height: number }
     | { type: 'arch', width: number, height: number, depth: number }
-    | { type: 'disk', radius: number, height: number, part?: 'full' | HalfDiskPart };
+    | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
 
 
 // A simple helper to generate schematic data string
@@ -234,19 +236,22 @@ export function shapeToSchematic(shape:
             const centerX = width / 2.0;
             const centerY = height / 2.0;
             
-            const hexHeight = Math.sqrt(3) * r;
-
             for (let y_scan = 0; y_scan < height; y_scan++) {
                 const y_rel = y_scan + 0.5 - centerY;
                 
-                const x_width = 2*r - (2*Math.abs(y_rel) / Math.sqrt(3));
+                // For a flat-topped hexagon, the width at a given y is related to its distance from the center.
+                // The max width is 2*r at the center (y_rel = 0). It decreases linearly to r at the top/bottom.
+                // This formula calculates the horizontal distance from the center to the edge at a given y.
+                const x_dist = r - (Math.abs(y_rel) / Math.sqrt(3));
                 
-                const startX = centerX - x_width / 2;
-                const endX = centerX + x_width / 2;
+                const startX = centerX - x_dist;
+                const endX = centerX + x_dist;
 
                 for (let x = 0; x < width; x++) {
-                    if (x + 0.5 >= startX && x + 0.5 <= endX) {
-                        pixels[y_scan * width + x] = true;
+                    const px = x + 0.5;
+                    // Additional check for the angled sides
+                    if (px >= startX && px <= endX && Math.abs(y_rel) <= (Math.sqrt(3) * r / 2.0)) {
+                         pixels[y_scan * width + x] = true;
                     }
                 }
             }
@@ -451,22 +456,48 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
 
         case 'disk':
-            const diskPart = shape.part || 'full';
-            width = depth = shape.radius * 2;
-            height = shape.height;
-            const diskCenter = shape.radius;
+            const { part: diskPart = 'full', orientation: diskOrientation = 'horizontal' } = shape;
+            
+            if (diskOrientation === 'vertical') {
+                width = shape.height;
+                height = shape.radius * 2;
+                depth = shape.radius * 2;
+            } else { // horizontal
+                width = shape.radius * 2;
+                height = shape.height;
+                depth = shape.radius * 2;
+            }
+            
+            const diskCenterY = diskOrientation === 'vertical' ? shape.radius : shape.height / 2;
+            const diskCenterZ = shape.radius;
+
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
                   for (let x = 0; x < width; x++) {
-                      const dx = x - diskCenter + 0.5;
-                      const dz = z - diskCenter + 0.5;
-                      if (dx * dx + dz * dz <= shape.radius * shape.radius) {
+                      let dx: number, dy: number, dz: number;
+                      let withinRadius: boolean;
+                      
+                      if (diskOrientation === 'vertical') {
+                          dx = x - (shape.height / 2) + 0.5;
+                          dy = y - shape.radius + 0.5;
+                          dz = z - shape.radius + 0.5;
+                          withinRadius = dy * dy + dz * dz <= shape.radius * shape.radius;
+                      } else {
+                          dx = x - shape.radius + 0.5;
+                          dy = y - (shape.height / 2) + 0.5;
+                          dz = z - shape.radius + 0.5;
+                          withinRadius = dx * dx + dz * dz <= shape.radius * shape.radius;
+                      }
+
+                      if (withinRadius) {
                           if (diskPart === 'full') {
                               addVoxel(x, y, z);
-                          } else if (diskPart === 'half-horizontal' && z < diskCenter) {
-                              addVoxel(x, y, z);
-                          } else if (diskPart === 'half-vertical' && x < diskCenter) {
-                              addVoxel(x, y, z);
+                          } else if (diskPart === 'half') {
+                              if (diskOrientation === 'horizontal' && z < diskCenterZ) {
+                                  addVoxel(x, y, z);
+                              } else if (diskOrientation === 'vertical' && y < diskCenterY) {
+                                  addVoxel(x, y, z);
+                              }
                           }
                       }
                   }
