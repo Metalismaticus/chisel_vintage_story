@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A server action for generating .vox models of 3D shapes.
@@ -16,6 +17,7 @@ export interface VoxOutput {
   height: number;
   isVox: boolean;
   voxData: string; // Base64 encoded string
+  totalBlocks?: number;
 }
 
 // This is the main exported function that the client will call.
@@ -38,5 +40,6 @@ export async function generateVoxFlow(input: VoxShape): Promise<VoxOutput> {
       height: result.height,
       isVox: result.isVox,
       voxData: voxDataB64,
+      totalBlocks: result.totalBlocks,
   };
 }

@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Copy, Download, Package, Loader2, Info } from 'lucide-react';
+import { Copy, Download, Package, Loader2, Info, Cuboid } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useI18n } from '@/locales/client';
 import { VoxPreview } from './vox-preview';
 
 interface SchematicPreviewProps {
-  schematicOutput?: SchematicOutput | null;
+  schematicOutput?: (SchematicOutput & { totalBlocks?: number }) | null;
   loading: boolean;
 }
 
@@ -27,6 +27,7 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const finalSchematicData = schematicOutput?.schematicData;
   const isVox = schematicOutput?.isVox;
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
+  const totalBlocks = schematicOutput?.totalBlocks;
 
 
   const handleCopy = () => {
@@ -229,7 +230,18 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
     
     if (isVox && schematicOutput.voxData) {
         return (
-           <VoxPreview voxData={schematicOutput.voxData} />
+          <div className="space-y-4">
+            <VoxPreview voxData={schematicOutput.voxData} />
+            {totalBlocks !== undefined && (
+              <Alert variant="default" className="border-primary/30 bg-primary/10">
+                  <Cuboid className="h-4 w-4 text-primary" />
+                  <AlertTitle>{t('schematicPreview.totalBlocks')}</AlertTitle>
+                  <AlertDescription>
+                     {totalBlocks.toLocaleString()}
+                  </AlertDescription>
+              </Alert>
+            )}
+          </div>
         );
     }
 

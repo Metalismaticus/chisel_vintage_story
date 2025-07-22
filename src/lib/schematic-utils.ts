@@ -21,6 +21,7 @@ export interface SchematicOutput {
   palette?: PaletteColor[];
   originalWidth?: number;
   originalHeight?: number;
+  totalBlocks?: number;
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
@@ -898,6 +899,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         pixels: [], // No 2D pixel preview for voxels
         isVox: true,
         voxData: buffer,
+        totalBlocks: xyziValues.length,
     };
 }
 

@@ -217,6 +217,7 @@ export default {
     awaiting: 'Ожидание генерации...',
     voxGenerated: 'VOX файл сгенерирован',
     voxDescription: 'Создан 3D .vox файл. Используйте кнопку ниже, чтобы сохранить его. 3D-предпросмотр недоступен.',
+    totalBlocks: 'Всего блоков',
     scaledTitle: 'Контент выровнен по сетке',
     scaledDescription: 'Контент размером {originalWidth}x{originalHeight} был отцентрирован внутри сетки {finalWidth}x{finalHeight} для соответствия чанкам в игре.',
     noPreview: 'Предпросмотр для этого типа схемы недоступен, но вы можете скопировать или скачать данные ниже.',

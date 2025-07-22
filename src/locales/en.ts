@@ -217,6 +217,7 @@ export default {
     awaiting: 'Awaiting generation...',
     voxGenerated: 'VOX file generated',
     voxDescription: 'A 3D .vox file has been created. Use the button below to save it. 3D preview is not available.',
+    totalBlocks: 'Total Blocks',
     scaledTitle: 'Content Centered in Grid',
     scaledDescription: 'Content size is {originalWidth}x{originalHeight}. It has been centered within a {finalWidth}x{finalHeight} grid to align with game chunks.',
     noPreview: 'Preview is not available for this schematic type, but you can copy or download the data below.',

@@ -27,6 +27,7 @@ export interface QrToVoxOutput {
   height: number;
   isVox: boolean;
   voxData: string; // Base64 encoded string
+  totalBlocks?: number;
 }
 
 function createSchematicData(name: string, dimensions: {width: number, height: number, depth?: number}): string {
@@ -97,5 +98,6 @@ export async function generateQrToVoxFlow(input: QrToVoxInput): Promise<QrToVoxO
       height: modelHeight,
       isVox: true,
       voxData: voxDataB64,
+      totalBlocks: xyziValues.length,
   };
 }
