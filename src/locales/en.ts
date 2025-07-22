@@ -60,6 +60,7 @@ export default {
     uploadLabel: 'Upload Custom Font (.ttf, .otf, .woff)',
     uploadButton: 'Choose Font',
     sizeLabel: 'Font Size',
+    outlineLabel: 'Add outline with 1px gap',
     button: 'Generate Schematic',
     errors: {
       noText: 'Text is empty',

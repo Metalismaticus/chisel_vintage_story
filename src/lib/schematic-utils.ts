@@ -2,6 +2,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -55,11 +56,25 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
     return `Schematic: ${name} (${width}x${height}${depthInfo}). Total Blocks: ${totalChunks}`;
 }
 
+interface TextToSchematicParams {
+  text: string;
+  font: FontStyle;
+  fontSize: number;
+  fontUrl?: string;
+  outline?: boolean;
+}
+
 /**
  * Converts text to a pixel-based schematic.
  * This function uses the browser's Canvas API to rasterize text.
  */
-export async function textToSchematic(text: string, font: FontStyle, fontSize: number, fontUrl?: string): Promise<SchematicOutput> {
+export async function textToSchematic({
+  text,
+  font,
+  fontSize,
+  fontUrl,
+  outline = false,
+}: TextToSchematicParams): Promise<SchematicOutput> {
     if (typeof document === 'undefined') {
         throw new Error('textToSchematic can only be run in a browser environment.');
     }
@@ -84,19 +99,18 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
       }
     }
 
-
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
     
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = ctx.measureText(text);
     
-    const width = Math.ceil(metrics.width) || 1;
+    const textWidth = Math.ceil(metrics.width) || 1;
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
-    const height = Math.ceil(ascent + descent) || 1;
+    const textHeight = Math.ceil(ascent + descent) || 1;
     
-    if (width === 0 || height === 0) {
+    if (textWidth === 0 || textHeight === 0) {
       return {
         schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
         width: 0,
@@ -104,6 +118,10 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
         pixels: [],
       };
     }
+    
+    const PADDING = outline ? 2 : 0; // 1px gap + 1px outline
+    const width = textWidth + PADDING * 2;
+    const height = textHeight + PADDING * 2;
 
     canvas.width = width;
     canvas.height = height;
@@ -112,16 +130,77 @@ export async function textToSchematic(text: string, font: FontStyle, fontSize: n
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#F0F0F0';
     ctx.textBaseline = 'top';
-    ctx.fillText(text, 0, 0);
+    ctx.fillText(text, PADDING, PADDING);
     
     const imageData = ctx.getImageData(0, 0, width, height);
-    const pixels: boolean[] = [];
+    const pixels: boolean[] = Array(width * height).fill(false);
 
     for (let i = 0; i < imageData.data.length; i += 4) {
-        // Check the alpha channel
-        const alpha = imageData.data[i + 3];
-        pixels.push(alpha > 128); // Pixel is "on" if it's not fully transparent
+        if (imageData.data[i + 3] > 128) {
+            pixels[i / 4] = true;
+        }
     }
+    
+    if (outline) {
+        const outlinePixels = Array(width * height).fill(false);
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                if (pixels[y * width + x]) {
+                    continue; // Skip original text pixels
+                }
+
+                // Check neighbors for a text pixel to determine if this is an outline pixel
+                let isOutline = false;
+                for (let dy = -2; dy <= 2; dy++) {
+                    for (let dx = -2; dx <= 2; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        
+                        // Check if it's in the 1-pixel-away gap
+                        const isGap = Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
+                        if (isGap) continue;
+
+                        const nx = x + dx;
+                        const ny = y + dy;
+
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            if (pixels[ny * width + nx]) {
+                                isOutline = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (isOutline) break;
+                }
+                 if (isOutline) {
+                    // Make sure we're not filling in a gap pixel
+                    let isGap = false;
+                     for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx >= 0 && nx < width && ny >= 0 && ny < height && pixels[ny * width + nx]) {
+                                isGap = true;
+                                break;
+                            }
+                        }
+                        if(isGap) break;
+                     }
+                     if(!isGap) {
+                        outlinePixels[y * width + x] = true;
+                     }
+                }
+            }
+        }
+        
+        // Combine original text and outline
+        for (let i = 0; i < pixels.length; i++) {
+            if (outlinePixels[i]) {
+                pixels[i] = true;
+            }
+        }
+    }
+
 
     if (fontFace && document.fonts.has(fontFace)) {
         document.fonts.delete(fontFace);
@@ -242,17 +321,26 @@ export function shapeToSchematic(shape:
                 // For a flat-topped hexagon, the width at a given y is related to its distance from the center.
                 // The max width is 2*r at the center (y_rel = 0). It decreases linearly to r at the top/bottom.
                 // This formula calculates the horizontal distance from the center to the edge at a given y.
-                const x_dist = r - (Math.abs(y_rel) / Math.sqrt(3));
-                
-                const startX = centerX - x_dist;
-                const endX = centerX + x_dist;
+                const x_dist_abs = r * (1 - Math.abs(y_rel) / (Math.sqrt(3) * r / 2)) * 0.5;
+                const x_dist = r * (Math.sqrt(3)/2 - Math.abs(y_rel) / r) * (1/Math.sin(Math.PI/3));
+                const h_dist = (Math.sqrt(3) * r / 2 - Math.abs(y_rel)) / Math.sqrt(3);
 
-                for (let x = 0; x < width; x++) {
+                const q2x = Math.abs(y_rel) / Math.tan(Math.PI/3);
+
+
+                const w_y = width * (1 - (Math.abs(y_rel) / (height / 2.0)));
+                 const startX_y = centerX - w_y / 2.0;
+                 const endX_y = centerX + w_y / 2.0;
+                 
+                
+                const startX = centerX - x_dist_abs;
+                const endX = centerX + x_dist_abs;
+
+                 for (let x = 0; x < width; x++) {
                     const px = x + 0.5;
-                    // Additional check for the angled sides
-                    if (px >= startX && px <= endX && Math.abs(y_rel) <= (Math.sqrt(3) * r / 2.0)) {
-                         pixels[y_scan * width + x] = true;
-                    }
+                    const dx_abs = Math.abs(px - centerX);
+                    if (dx_abs / (r) +  Math.abs(y_rel) / (height/2) <= 1)
+                     pixels[y_scan * width + x] = true;
                 }
             }
             break;
@@ -470,27 +558,28 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             
             const diskCenterY = diskOrientation === 'vertical' ? shape.radius : shape.height / 2;
             const diskCenterZ = shape.radius;
+            const diskCenterX = diskOrientation === 'vertical' ? shape.height/2 : shape.radius;
+
 
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
                   for (let x = 0; x < width; x++) {
-                      let dx: number, dy: number, dz: number;
                       let withinRadius: boolean;
                       
                       if (diskOrientation === 'vertical') {
-                          dx = x - (shape.height / 2) + 0.5;
-                          dy = y - shape.radius + 0.5;
-                          dz = z - shape.radius + 0.5;
+                          const dx = x - diskCenterX + 0.5;
+                          const dy = y - diskCenterY + 0.5;
+                          const dz = z - diskCenterZ + 0.5;
                           withinRadius = dy * dy + dz * dz <= shape.radius * shape.radius;
                       } else {
-                          dx = x - shape.radius + 0.5;
-                          dy = y - (shape.height / 2) + 0.5;
-                          dz = z - shape.radius + 0.5;
+                          const dx = x - diskCenterX + 0.5;
+                          const dy = y - diskCenterY + 0.5;
+                          const dz = z - diskCenterZ + 0.5;
                           withinRadius = dx * dx + dz * dz <= shape.radius * shape.radius;
                       }
 
                       if (withinRadius) {
-                          if (diskPart === 'full') {
+                           if (diskPart === 'full') {
                               addVoxel(x, y, z);
                           } else if (diskPart === 'half') {
                               if (diskOrientation === 'horizontal' && z < diskCenterZ) {

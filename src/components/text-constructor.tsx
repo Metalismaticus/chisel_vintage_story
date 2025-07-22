@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { textToSchematic, type SchematicOutput, type FontStyle } from '@/lib/schematic-utils';
 import { Upload } from 'lucide-react';
 import { useI18n } from '@/locales/client';
+import { Switch } from '@/components/ui/switch';
 
 export function TextConstructor() {
   const t = useI18n();
@@ -19,6 +20,7 @@ export function TextConstructor() {
   const [fontSize, setFontSize] = useState([24]);
   const [font, setFont] = useState<FontStyle>('monospace');
   const [fontFile, setFontFile] = useState<File | null>(null);
+  const [outline, setOutline] = useState(false);
   const fontFileUrlRef = useRef<string | null>(null);
   const [schematicOutput, setSchematicOutput] = useState<SchematicOutput | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -59,7 +61,13 @@ export function TextConstructor() {
     setSchematicOutput(null);
     startTransition(async () => {
       try {
-        const result = await textToSchematic(text, font, fontSize[0], fontFileUrlRef.current ?? undefined);
+        const result = await textToSchematic({
+            text, 
+            font, 
+            fontSize: fontSize[0], 
+            fontUrl: fontFileUrlRef.current ?? undefined, 
+            outline,
+        });
         setSchematicOutput(result);
       } catch (error) {
         console.error(error);
@@ -96,31 +104,33 @@ export function TextConstructor() {
             <Label htmlFor="text-input">{t('textConstructor.textLabel')}</Label>
             <Input id="text-input" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
           </div>
-          <div className="space-y-2">
-            <Label>{t('textConstructor.fontLabel')}</Label>
-            <Select 
-              value={font} 
-              onValueChange={(v) => handleFontChange(v as FontStyle)}>
-              <SelectTrigger>
-                <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
-                <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
-                <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
-                 {fontFile && <SelectItem value="custom" disabled>{fontFile.name}</SelectItem>}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="font-upload">{t('textConstructor.uploadLabel')}</Label>
-            <Button asChild variant="outline" className="w-full">
-              <label className="cursor-pointer flex items-center justify-center">
-                <Upload className="mr-2 h-4 w-4" />
-                {fontFile ? fontFile.name : t('textConstructor.uploadButton')}
-                <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
-              </label>
-            </Button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label>{t('textConstructor.fontLabel')}</Label>
+                <Select 
+                value={font} 
+                onValueChange={(v) => handleFontChange(v as FontStyle)}>
+                <SelectTrigger>
+                    <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
+                    <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
+                    <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
+                    {fontFile && <SelectItem value="custom" disabled>{fontFile.name}</SelectItem>}
+                </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="font-upload">{t('textConstructor.uploadLabel')}</Label>
+                <Button asChild variant="outline" className="w-full">
+                <label className="cursor-pointer flex items-center justify-center">
+                    <Upload className="mr-2 h-4 w-4" />
+                    {fontFile ? fontFile.name : t('textConstructor.uploadButton')}
+                    <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
+                </label>
+                </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="font-size">{t('textConstructor.sizeLabel')}: {fontSize[0]}px</Label>
@@ -132,6 +142,10 @@ export function TextConstructor() {
               value={fontSize}
               onValueChange={setFontSize}
             />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch id="outline-switch" checked={outline} onCheckedChange={setOutline} />
+            <Label htmlFor="outline-switch">{t('textConstructor.outlineLabel')}</Label>
           </div>
           <Button onClick={handleGenerate} disabled={isPending} className="w-full uppercase font-bold tracking-wider">
             {isPending ? t('common.generating') : t('textConstructor.button')}
