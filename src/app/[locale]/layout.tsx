@@ -4,11 +4,12 @@ import { LocaleProvider } from '@/components/locale-provider';
 
 export default function LocaleLayout({
   children,
-  params: { locale }
+  params
 }: {
   children: ReactNode;
   params: { locale: string };
 }) {
+  const { locale } = params;
   return (
     <LocaleProvider locale={locale}>
       {children}
