@@ -142,70 +142,47 @@ export function shapeToSchematic(shape:
     let width: number, height: number;
 
     switch (shape.type) {
-        case 'circle':
+        case 'circle': {
             width = height = shape.radius * 2;
-            const center = shape.radius;
+            if (shape.radius <= 0) {
+                pixels = [];
+                break;
+            };
+
+            const centerX = width / 2.0;
+            const centerY = height / 2.0;
+            const r = shape.radius;
+
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = x - center + 0.5;
-                    const dy = y - center + 0.5;
-                    pixels.push(dx * dx + dy * dy <= shape.radius * shape.radius);
+                    const px = x + 0.5;
+                    const py = y + 0.5;
+                    const dx = px - centerX;
+                    const dy = py - centerY;
+                    pixels.push(dx * dx + dy * dy < r * r);
                 }
             }
             break;
+        }
 
         case 'triangle': {
             width = shape.base;
             height = shape.height;
             pixels = Array(width * height).fill(false);
-
-            if (height <= 0 || width <= 0) {
-                 return {
-                    schematicData: createSchematicData(`Shape: ${shape.type}`, {width, height}),
-                    width,
-                    height,
-                    pixels,
-                };
-            }
-
-            const apexCenter = (width - 1) / 2 + shape.apexOffset;
             
-            const line = (pA: {x: number, y: number}, pB: {x: number, y: number}) => {
-                let x0 = Math.round(pA.x), y0 = Math.round(pA.y);
-                let x1 = Math.round(pB.x), y1 = Math.round(pB.y);
-                let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-                let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-                let err = dx + dy, e2;
-                const points = [];
-                for (;;) {
-                    points.push({x: x0, y: y0});
-                    if (x0 === x1 && y0 === y1) break;
-                    e2 = 2 * err;
-                    if (e2 >= dy) { err += dy; x0 += sx; }
-                    if (e2 <= dx) { err += dx; y0 += sy; }
-                }
-                return points;
-            }
-            
-            const p1 = { x: apexCenter, y: 0 };
-            const p2 = { x: 0, y: height - 1 };
-            const p3 = { x: width - 1, y: height - 1 };
+            if (height > 0 && width > 0) {
+                const geometricCenterX = (width / 2.0) + shape.apexOffset;
 
-            const leftLine = line(p1, p2);
-            const rightLine = line(p1, p3);
+                for (let y = 0; y < height; y++) {
+                    const progress = height > 1 ? y / (height - 1) : 1;
+                    const currentWidth = progress * width;
+                    
+                    const startX = geometricCenterX - currentWidth / 2.0;
+                    const endX = geometricCenterX + currentWidth / 2.0;
 
-            const edges: { [key: number]: { min: number, max: number } } = {};
-
-            for(const point of [...leftLine, ...rightLine]) {
-                if(!edges[point.y]) edges[point.y] = { min: point.x, max: point.x };
-                edges[point.y].min = Math.min(edges[point.y].min, point.x);
-                edges[point.y].max = Math.max(edges[point.y].max, point.x);
-            }
-            
-            for (let y = 0; y < height; y++) {
-                if (edges[y]) {
-                    for (let x = edges[y].min; x <= edges[y].max; x++) {
-                        if (x >= 0 && x < width) {
+                    for (let x = 0; x < width; x++) {
+                        const px = x + 0.5;
+                        if (px >= startX && px <= endX) {
                             pixels[y * width + x] = true;
                         }
                     }
@@ -214,35 +191,57 @@ export function shapeToSchematic(shape:
             break;
         }
             
-        case 'rhombus':
+        case 'rhombus': {
             width = shape.width;
             height = shape.height;
-            const centerX = (width - 1) / 2;
-            const centerY = (height - 1) / 2;
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = Math.abs(x - centerX);
-                    const dy = Math.abs(y - centerY);
-                    pixels.push((dx / (width / 2)) + (dy / (height / 2)) <= 1);
-                }
-            }
-            break;
+            if (width <= 0 || height <= 0) {
+                pixels = [];
+                break;
+            };
 
-        case 'hexagon':
-            const r = shape.radius;
-            width = r * 2;
-            height = Math.ceil(Math.sqrt(3) * r);
-            const hexCenterX = r;
-            const hexCenterY = height / 2;
-            const sideLength = r;
+            const centerX = width / 2.0;
+            const centerY = height / 2.0;
+
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = Math.abs(x - hexCenterX);
-                    const dy = Math.abs(y - hexCenterY);
-                    pixels.push(dy <= (Math.sqrt(3) / 2) * sideLength && dx <= sideLength - (1 / Math.sqrt(3)) * dy);
+                    const px = x + 0.5;
+                    const py = y + 0.5;
+                    const dx = Math.abs(px - centerX);
+                    const dy = Math.abs(py - centerY);
+                    pixels.push((dx / (width / 2.0)) + (dy / (height / 2.0)) <= 1);
                 }
             }
             break;
+        }
+
+        case 'hexagon': {
+            const r = shape.radius;
+            if (r <= 0) {
+                width = 0;
+                height = 0;
+                pixels = [];
+            } else {
+                width = r * 2;
+                height = Math.round(Math.sqrt(3) * r);
+                
+                const centerX = width / 2.0;
+                const centerY = height / 2.0;
+                
+                const hexRadius = r; 
+                
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const px = x + 0.5;
+                        const py = y + 0.5;
+                        const dx = Math.abs(px - centerX);
+                        const dy = Math.abs(py - centerY);
+                        
+                        pixels.push(dx <= hexRadius && dy <= (Math.sqrt(3)/2) * hexRadius && (dx * (Math.sqrt(3)/2) + dy) <= (Math.sqrt(3)) * hexRadius);
+                    }
+                }
+            }
+            break;
+        }
     }
 
     return {
@@ -252,6 +251,7 @@ export function shapeToSchematic(shape:
         pixels,
     };
 }
+
 
 /**
  * Converts an image from a canvas context to a pixel-based schematic.
