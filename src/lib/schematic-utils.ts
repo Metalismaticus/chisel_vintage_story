@@ -95,10 +95,10 @@ export async function textToSchematic({
         loadedFontFamily = '"Roboto Condensed", sans-serif';
       }
     }
-
-    const PADDING = outline ? (outlineGap + 2) : 1;
     
-    // Step 1: Measure text on a temporary canvas
+    // Use a large padding to ensure text and outline have enough space
+    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 10;
+    
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = tempCtx.measureText(text);
@@ -111,7 +111,6 @@ export async function textToSchematic({
     const contentWidth = textWidth + PADDING * 2;
     const contentHeight = textHeight + PADDING * 2;
     
-    // Step 2: Draw on a work canvas
     const workCanvas = document.createElement('canvas');
     workCanvas.width = contentWidth;
     workCanvas.height = contentHeight;
@@ -129,7 +128,6 @@ export async function textToSchematic({
     const imageData = ctx.getImageData(0, 0, contentWidth, contentHeight);
     const data = imageData.data;
 
-    // Step 3: Get text and outline pixels
     const textPixels = Array(contentWidth * contentHeight).fill(false);
     for (let i = 0; i < data.length; i += 4) {
         if (data[i+3] > 0) {
@@ -141,14 +139,22 @@ export async function textToSchematic({
 
     if (outline) {
         const outlinePixels = Array(contentWidth * contentHeight).fill(false);
-        const distanceThreshold = outlineGap + 1;
+        const distanceThreshold = (outlineGap ?? 1) + 1;
 
         for (let y = 0; y < contentHeight; y++) {
             for (let x = 0; x < contentWidth; x++) {
-                if (!textPixels[y * contentWidth + x]) { // Check only empty pixels
+                if (!textPixels[y * contentWidth + x]) { 
                     let minDistance = Infinity;
-                    for (let y2 = 0; y2 < contentHeight; y2++) {
-                        for (let x2 = 0; x2 < contentWidth; x2++) {
+                    
+                    // Optimization: check a smaller box around the pixel
+                    const searchBox = distanceThreshold + 2;
+                    const startY = Math.max(0, y - searchBox);
+                    const endY = Math.min(contentHeight - 1, y + searchBox);
+                    const startX = Math.max(0, x - searchBox);
+                    const endX = Math.min(contentWidth - 1, x + searchBox);
+
+                    for (let y2 = startY; y2 <= endY; y2++) {
+                        for (let x2 = startX; x2 <= endX; x2++) {
                             if (textPixels[y2 * contentWidth + x2]) {
                                 const dist = Math.sqrt(Math.pow(x - x2, 2) + Math.pow(y - y2, 2));
                                 if (dist < minDistance) {
@@ -168,7 +174,6 @@ export async function textToSchematic({
         combinedPixels = textPixels.map((p, i) => p || outlinePixels[i]);
     }
 
-    // Step 4: Crop the content to its actual bounding box
     let minX = contentWidth, minY = contentHeight, maxX = -1, maxY = -1;
     for(let y = 0; y < contentHeight; y++) {
         for (let x = 0; x < contentWidth; x++) {
@@ -200,7 +205,6 @@ export async function textToSchematic({
         }
     }
 
-    // Step 5: Place cropped content onto the final, chunk-aligned canvas
     const finalWidth = Math.ceil(croppedWidth / 16) * 16;
     const finalHeight = Math.ceil(croppedHeight / 16) * 16;
     const finalPixels = Array(finalWidth * finalHeight).fill(false);
@@ -567,16 +571,23 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             width = shape.width;
             height = shape.height;
             depth = shape.depth;
-            const archRadius = width / 2;
-            const archCenterX = archRadius;
+            const archRadius = shape.width / 2.0;
+            const centerX = (shape.width - 1) / 2.0;
 
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = x - archCenterX;
+                    // Check if voxel is part of the solid rectangular base
+                    if (y < height - archRadius) {
+                        addVoxel(x, y, z);
+                        continue;
+                    }
+                    
+                    // Check if voxel is part of the upper block but outside the semicircle cutout
+                    const dx = x - centerX;
                     const dy = y - (height - archRadius);
-                    const isInCircle = dx * dx + dy * dy < archRadius * archRadius;
-                    if (y < (height - archRadius) || !isInCircle) {
+                    
+                    if (dx * dx + dy * dy >= archRadius * archRadius) {
                         addVoxel(x, y, z);
                     }
                 }
