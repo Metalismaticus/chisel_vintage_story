@@ -178,6 +178,12 @@ export default {
         letterDepth: 'Letter Depth',
         backgroundDepth: 'Background Depth',
         engraveDepth: 'Engraving Depth',
+        orientation: {
+            label: 'Text Orientation',
+            horizontal: 'Horizontal',
+            vertical: 'Vertical',
+            column: 'Column',
+        },
     },
     button: 'Generate .vox File',
     errors: {

@@ -25,6 +25,7 @@ export interface SchematicOutput {
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
+export type TextOrientation = 'horizontal' | 'vertical-lr' | 'column-tb';
 
 type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
@@ -76,6 +77,7 @@ interface RasterizeTextParams {
   fontUrl?: string;
   outline?: boolean;
   outlineGap?: number;
+  orientation?: TextOrientation;
 }
 
 export async function rasterizeText({
@@ -85,6 +87,7 @@ export async function rasterizeText({
   fontUrl,
   outline = false,
   outlineGap = 1,
+  orientation = 'horizontal',
 }: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
     if (typeof document === 'undefined') {
         throw new Error('rasterizeText can only be run in a browser environment.');
@@ -112,22 +115,41 @@ export async function rasterizeText({
     // Create a temporary canvas to measure text
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
-    const metrics = tempCtx.measureText(text);
-    
-    // Determine the actual bounding box of the text
-    const textWidth = Math.ceil(metrics.width);
-    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
-    const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
-    const textHeight = Math.ceil(ascent + descent);
 
-    if (textWidth <= 0 || textHeight <= 0) {
+    const lines = orientation === 'column-tb' ? text.split('') : [text];
+    
+    let totalWidth = 0;
+    let totalHeight = 0;
+    const lineMetrics = [];
+    
+    for (const line of lines) {
+        const metrics = tempCtx.measureText(line);
+        const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
+        const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
+        const height = Math.ceil(ascent + descent);
+        const width = Math.ceil(metrics.width);
+
+        if (width <= 0 || height <= 0) continue;
+
+        lineMetrics.push({ line, width, height, ascent });
+
+        if (orientation === 'column-tb') {
+            totalWidth = Math.max(totalWidth, width);
+            totalHeight += height;
+        } else {
+            totalWidth = Math.max(totalWidth, width);
+            totalHeight = Math.max(totalHeight, height);
+        }
+    }
+
+    if (totalWidth <= 0 || totalHeight <= 0) {
         return { width: 0, height: 0, pixels: [] };
     }
     
     // Create a working canvas with enough padding for the outline
     const PADDING = (outline ? (outlineGap ?? 1) : 0) + 2; 
-    const contentWidth = textWidth + PADDING * 2;
-    const contentHeight = textHeight + PADDING * 2;
+    const contentWidth = totalWidth + PADDING * 2;
+    const contentHeight = totalHeight + PADDING * 2;
     
     const workCanvas = document.createElement('canvas');
     workCanvas.width = contentWidth;
@@ -137,8 +159,16 @@ export async function rasterizeText({
     // Draw the text onto the working canvas
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#FFFFFF';
-    ctx.textBaseline = 'top'; // Use top to align with ascent/descent measurements
-    ctx.fillText(text, PADDING, PADDING + (metrics.fontBoundingBoxAscent ? (fontSize - metrics.fontBoundingBoxAscent) : 0));
+    ctx.textBaseline = 'top'; 
+    
+    let currentY = PADDING;
+    for (const { line, width, height, ascent } of lineMetrics) {
+        const xPos = PADDING + (totalWidth - width) / 2; // Center each line
+        ctx.fillText(line, xPos, currentY);
+        if(orientation === 'column-tb') {
+            currentY += height;
+        }
+    }
     
     // Cleanup custom font
     if (fontFace && document.fonts.has(fontFace)) {

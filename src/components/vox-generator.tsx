@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
-import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle } from '@/lib/schematic-utils';
+import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput } from '@/ai/flows/text-to-vox-flow';
@@ -70,6 +70,7 @@ export function VoxGenerator() {
   const [letterDepth, setLetterDepth] = useState([5]);
   const [backgroundDepth, setBackgroundDepth] = useState([10]);
   const [engraveDepth, setEngraveDepth] = useState([3]);
+  const [textOrientation, setTextOrientation] = useState<TextOrientation>('horizontal');
   
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -141,6 +142,7 @@ export function VoxGenerator() {
             font, 
             fontSize: fontSize[0], 
             fontUrl: fontFileUrlRef.current ?? undefined,
+            orientation: textOrientation,
         });
 
         const input: TextToVoxInput = {
@@ -151,6 +153,7 @@ export function VoxGenerator() {
             letterDepth: letterDepth[0],
             backgroundDepth: textVoxMode === 'engrave' ? backgroundDepth[0] : 0,
             engraveDepth: textVoxMode === 'engrave' ? engraveDepth[0] : 0,
+            orientation: textOrientation,
         };
 
         const result = await generateTextToVoxFlow(input);
@@ -628,6 +631,23 @@ export function VoxGenerator() {
               value={fontSize}
               onValueChange={setFontSize}
             />
+          </div>
+           <div className="space-y-2">
+            <Label>{t('voxGenerator.text.orientation.label')}</Label>
+            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="flex pt-2 space-x-2">
+                <RadioGroupItem value="horizontal" id="text-horizontal" className="sr-only" />
+                <Label htmlFor="text-horizontal" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary">
+                    {t('voxGenerator.text.orientation.horizontal')}
+                </Label>
+                 <RadioGroupItem value="vertical-lr" id="text-vertical" className="sr-only" />
+                <Label htmlFor="text-vertical" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary">
+                    {t('voxGenerator.text.orientation.vertical')}
+                </Label>
+                 <RadioGroupItem value="column-tb" id="text-column" className="sr-only" />
+                <Label htmlFor="text-column" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary">
+                    {t('voxGenerator.text.orientation.column')}
+                </Label>
+            </RadioGroup>
           </div>
 
           <div className="space-y-2">

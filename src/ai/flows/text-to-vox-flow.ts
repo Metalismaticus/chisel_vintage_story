@@ -10,7 +10,7 @@
 
 import { z } from 'zod';
 const writeVox = require('vox-saver');
-import type { PaletteColor } from '@/lib/schematic-utils';
+import type { PaletteColor, TextOrientation } from '@/lib/schematic-utils';
 
 const TextToVoxInputSchema = z.object({
   pixels: z.array(z.boolean()),
@@ -20,6 +20,7 @@ const TextToVoxInputSchema = z.object({
   letterDepth: z.number().int().positive(),
   backgroundDepth: z.number().int().min(0),
   engraveDepth: z.number().int().min(0),
+  orientation: z.enum(['horizontal', 'vertical-lr', 'column-tb']),
 });
 
 export type TextToVoxInput = z.infer<typeof TextToVoxInputSchema>;
@@ -47,7 +48,8 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     mode, 
     letterDepth, 
     backgroundDepth, 
-    engraveDepth 
+    engraveDepth,
+    orientation,
   } = TextToVoxInputSchema.parse(input);
 
   let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
@@ -84,6 +86,20 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
         }
       }
     }
+  }
+
+  // Handle vertical orientation by swapping model dimensions and rotating voxels
+  if (orientation === 'vertical-lr') {
+    const originalWidth = modelWidth;
+    modelWidth = modelHeight;
+    modelHeight = originalWidth;
+
+    xyziValues = xyziValues.map(({ x, y, z, i }) => ({
+        x: y, // new x is old y
+        y: originalWidth - 1 - x, // new y is flipped old x
+        z,
+        i,
+    }));
   }
 
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));

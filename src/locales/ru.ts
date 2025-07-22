@@ -178,6 +178,12 @@ export default {
         letterDepth: 'Глубина букв',
         backgroundDepth: 'Глубина фона',
         engraveDepth: 'Глубина гравировки',
+        orientation: {
+            label: 'Ориентация текста',
+            horizontal: 'Горизонтальная',
+            vertical: 'Вертикальная',
+            column: 'Столбец',
+        },
     },
     button: 'Сгенерировать .vox файл',
     errors: {
