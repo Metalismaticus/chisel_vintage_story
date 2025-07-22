@@ -1,8 +1,7 @@
 
 
 import type { ConversionMode } from './schematic-utils';
-// This is the correct way to import a CommonJS module with a default export in this environment.
-const { default: writeVox } = require('vox-saver');
+const writeVox = require('vox-saver');
 
 
 export interface PaletteColor {
