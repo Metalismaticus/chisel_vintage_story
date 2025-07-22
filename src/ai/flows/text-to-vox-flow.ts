@@ -29,9 +29,9 @@ export interface TextToVoxOutput {
   schematicData: string;
   width: number;
   height: number;
+  depth: number;
   isVox: boolean;
   voxData: string; // Base64 encoded string
-  totalBlocks?: number;
 }
 
 function createSchematicData(name: string, dimensions: {width: number, height: number, depth?: number}): string {
@@ -114,10 +114,10 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   }
 
   // Adjust final model dimensions based on orientation for the schematic info
+  let finalWidth = modelWidth, finalHeight = modelHeight, finalDepth = modelDepth;
   if (orientation === 'vertical-lr') {
-    const originalHeight = modelHeight;
-    modelHeight = modelDepth; // New height is the depth
-    modelDepth = originalHeight; // New depth is the text height
+    finalHeight = modelDepth; // New height is the depth
+    finalDepth = modelHeight; // New depth is the text height
   }
  
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
@@ -138,11 +138,11 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   const voxDataB64 = Buffer.from(buffer).toString('base64');
   
   return {
-      schematicData: createSchematicData('VOX Text', {width: modelWidth, height: modelHeight, depth: modelDepth}),
-      width: modelWidth,
-      height: modelHeight,
+      schematicData: createSchematicData('VOX Text', {width: finalWidth, height: finalHeight, depth: finalDepth}),
+      width: finalWidth,
+      height: finalHeight,
+      depth: finalDepth,
       isVox: true,
       voxData: voxDataB64,
-      totalBlocks: xyziValues.length,
   };
 }

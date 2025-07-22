@@ -15,13 +15,13 @@ export interface SchematicOutput {
   schematicData: string;
   width: number;
   height: number;
+  depth: number;
   pixels: (boolean | number)[];
   isVox?: boolean;
   voxData?: Uint8Array;
   palette?: PaletteColor[];
   originalWidth?: number;
   originalHeight?: number;
-  totalBlocks?: number;
 }
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
@@ -69,7 +69,7 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
     const zChunks = depth ? Math.ceil(depth / 16) : 1;
     const totalChunks = xChunks * yChunks * zChunks;
 
-    return `Schematic: ${name} (${width}x${height}${depthInfo}). Total Blocks: ${totalChunks}`;
+    return `Schematic: ${name} (${width}x${height}${depthInfo})`;
 }
 
 interface RasterizeTextParams {
@@ -232,6 +232,20 @@ export async function rasterizeText({
         }
     }
 
+    if (orientation === 'vertical-lr') {
+        const rotatedPixels = Array(croppedWidth * croppedHeight).fill(false);
+        const rotatedWidth = croppedHeight;
+        const rotatedHeight = croppedWidth;
+        for (let y = 0; y < croppedHeight; y++) {
+            for (let x = 0; x < croppedWidth; x++) {
+                if (croppedPixels[y * croppedWidth + x]) {
+                    rotatedPixels[x * rotatedWidth + (rotatedWidth - 1 - y)] = true;
+                }
+            }
+        }
+        return { pixels: rotatedPixels, width: rotatedWidth, height: rotatedHeight };
+    }
+
     return { pixels: croppedPixels, width: croppedWidth, height: croppedHeight };
 }
 
@@ -256,7 +270,7 @@ export async function textToSchematic({
   fontUrl,
   outline = false,
   outlineGap = 1,
-}: TextToSchematicParams): Promise<SchematicOutput> {
+}: TextToSchematicParams): Promise<Omit<SchematicOutput, 'depth'>> {
    
     const { pixels: croppedPixels, width: croppedWidth, height: croppedHeight } = await rasterizeText({ text, font, fontSize, fontUrl, outline, outlineGap});
     
@@ -304,7 +318,7 @@ export function shapeToSchematic(shape:
     { type: 'triangle', base: number, height: number, apexOffset: number } |
     { type: 'rhombus', width: number, height: number } |
     { type: 'hexagon', radius: number }
-): SchematicOutput {
+): Omit<SchematicOutput, 'depth'> {
     let rawPixels: boolean[] = [];
     let contentWidth: number, contentHeight: number;
 
@@ -452,7 +466,7 @@ export function shapeToSchematic(shape:
  * Converts an image from a canvas context to a pixel-based schematic.
  * This is designed to work with OffscreenCanvas in a Web Worker.
  */
-export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, threshold: number, mode: ConversionMode): Promise<SchematicOutput> {
+export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, threshold: number, mode: ConversionMode): Promise<Omit<SchematicOutput, 'depth'>> {
     const { canvas } = ctx;
     const { width: contentWidth, height: contentHeight } = canvas;
     
@@ -896,14 +910,13 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         schematicData: createSchematicData(name, {width, height, depth}),
         width,
         height,
+        depth,
         pixels: [], // No 2D pixel preview for voxels
         isVox: true,
         voxData: buffer,
-        totalBlocks: xyziValues.length,
     };
 }
 
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
-

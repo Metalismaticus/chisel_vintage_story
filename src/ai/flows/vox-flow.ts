@@ -15,9 +15,9 @@ export interface VoxOutput {
   schematicData: string;
   width: number;
   height: number;
+  depth: number;
   isVox: boolean;
   voxData: string; // Base64 encoded string
-  totalBlocks?: number;
 }
 
 // This is the main exported function that the client will call.
@@ -38,8 +38,8 @@ export async function generateVoxFlow(input: VoxShape): Promise<VoxOutput> {
       schematicData: result.schematicData,
       width: result.width,
       height: result.height,
+      depth: result.depth,
       isVox: result.isVox,
       voxData: voxDataB64,
-      totalBlocks: result.totalBlocks,
   };
 }
