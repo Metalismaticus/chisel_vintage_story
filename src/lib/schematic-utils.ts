@@ -96,7 +96,9 @@ export async function textToSchematic({
       }
     }
 
-    // Step 1: Measure text and determine padding
+    const PADDING = outline ? (outlineGap + 2) : 1;
+    
+    // Step 1: Measure text on a temporary canvas
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = tempCtx.measureText(text);
@@ -105,16 +107,15 @@ export async function textToSchematic({
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
     const textHeight = Math.ceil(ascent + descent) || 1;
-    
-    const PADDING = outline ? (outlineGap + 2) : 1;
+
     const contentWidth = textWidth + PADDING * 2;
     const contentHeight = textHeight + PADDING * 2;
     
-    // Step 2: Draw on a temporary canvas
-    const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = contentWidth;
-    tempCanvas.height = contentHeight;
-    const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })!;
+    // Step 2: Draw on a work canvas
+    const workCanvas = document.createElement('canvas');
+    workCanvas.width = contentWidth;
+    workCanvas.height = contentHeight;
+    const ctx = workCanvas.getContext('2d', { willReadFrequently: true })!;
     
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#FFFFFF';
