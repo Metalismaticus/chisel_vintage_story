@@ -1,6 +1,7 @@
 
 
-import { writeVox, type VoxData } from './vox-writer';
+import { write } from './vox-writer';
+
 
 export type ConversionMode = 'bw' | 'color';
 
@@ -17,7 +18,7 @@ export interface SchematicOutput {
   height: number;
   pixels: (boolean | number)[];
   isVox?: boolean;
-  voxData?: Uint8Array;
+  voxData?: Uint8Array; // This will now be the full file buffer from vox-saver
   palette?: PaletteColor[];
   originalWidth?: number;
   originalHeight?: number;
@@ -314,20 +315,18 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 
 
 /**
- * Generates a .vox file for a given 3D shape.
+ * Generates a .vox file for a given 3D shape using a local writer.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
-    const voxels: VoxData['voxels'] = [];
+    const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
-    // In our app, Y is up. In MagicaVoxel, Z is up. We will perform the coordinate swap
-    // right before adding the voxel to the list.
+    // In our app, Y is up. In MagicaVoxel, Z is up. vox-writer expects Z-up.
     const addVoxel = (x: number, y: number, z: number) => {
-        // The color index is 1, which will map to the first color in our palette.
+        // The color index is 1, which maps to the first color in our palette.
         voxels.push({ x: Math.round(x), y: Math.round(z), z: Math.round(y), colorIndex: 1 });
     };
-
 
     switch (shape.type) {
         case 'cuboid':
@@ -462,8 +461,13 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         y: depth, // y and z are swapped for MagicaVoxel's coordinate system
         z: height,
     };
-    
-    const buffer = writeVox({size, voxels, palette});
+
+    // Use local vox-writer to generate the file buffer
+    const buffer = write({
+        voxels,
+        palette,
+        size
+    });
 
     return {
         schematicData: createSchematicData(name, {width, height, depth}),

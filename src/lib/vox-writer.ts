@@ -1,130 +1,112 @@
-// A lightweight, self-contained .vox file writer based on the format specification.
-// This avoids external dependencies that have caused installation issues.
+// A standalone script to write .vox files, based on the format specification
+// and learnings from other parsers. No external dependencies.
 
-export interface Voxel {
+interface Voxel {
     x: number;
     y: number;
     z: number;
     colorIndex: number;
 }
 
-export interface PaletteColor {
+interface PaletteColor {
     r: number;
     g: number;
     b: number;
     a: number;
 }
 
-export interface VoxData {
-    size: { x: number; y: number; z: number };
+interface VoxData {
     voxels: Voxel[];
-    palette?: PaletteColor[];
-}
-
-const defaultPalette: PaletteColor[] = [
-    { r: 255, g: 255, b: 255, a: 255 }, { r: 255, g: 255, b: 0, a: 255 },
-    { r: 255, g: 0, b: 255, a: 255 }, { r: 255, g: 0, b: 0, a: 255 },
-    { r: 0, g: 255, b: 255, a: 255 }, { r: 0, g: 255, b: 0, a: 255 },
-    { r: 0, g: 0, b: 255, a: 255 }, { r: 0, g: 0, b: 0, a: 255 }
-];
-
-
-function writeString(dataView: DataView, offset: number, str: string) {
-    for (let i = 0; i < str.length; i++) {
-        dataView.setUint8(offset + i, str.charCodeAt(i));
+    palette: PaletteColor[];
+    size: {
+        x: number;
+        y: number;
+        z: number;
     }
-    return offset + str.length;
 }
 
-function writeInt(dataView: DataView, offset: number, value: number) {
-    dataView.setInt32(offset, value, true);
-    return offset + 4;
+const textEncoder = new TextEncoder();
+
+function writeInt(value: number): Uint8Array {
+    const buffer = new ArrayBuffer(4);
+    const view = new DataView(buffer);
+    view.setUint32(0, value, true);
+    return new Uint8Array(buffer);
 }
 
-function writeChunk(id: string, content: Uint8Array, children: Uint8Array) {
-    const view = new DataView(new ArrayBuffer(12));
-    writeString(view, 0, id);
-    writeInt(view, 4, content.byteLength);
-    writeInt(view, 8, children.byteLength);
-
-    const result = new Uint8Array(12 + content.byteLength + children.byteLength);
-    result.set(new Uint8Array(view.buffer), 0);
-    result.set(content, 12);
-    result.set(children, 12 + content.byteLength);
-    return result;
+function writeString(value: string): Uint8Array {
+    return textEncoder.encode(value);
 }
 
-export function writeVox(data: VoxData): Uint8Array {
-    const { size, voxels } = data;
-    const palette = data.palette || defaultPalette;
+function writeChunk(id: string, content: Uint8Array, children: Uint8Array = new Uint8Array(0)): Uint8Array {
+    const idBytes = writeString(id);
+    const contentSize = writeInt(content.length);
+    const childrenSize = writeInt(children.length);
 
-    // SIZE chunk
+    const chunk = new Uint8Array(idBytes.length + 8 + content.length + children.length);
+    chunk.set(idBytes, 0);
+    chunk.set(contentSize, 4);
+    chunk.set(childrenSize, 8);
+    chunk.set(content, 12);
+    chunk.set(children, 12 + content.length);
+
+    return chunk;
+}
+
+export function write(data: VoxData): Uint8Array {
+    const { voxels, palette, size } = data;
+
+    // ---- SIZE chunk ----
     const sizeContent = new Uint8Array(12);
-    const sizeView = new DataView(sizeContent.buffer);
-    writeInt(sizeView, 0, size.x);
-    writeInt(sizeView, 4, size.y);
-    writeInt(sizeView, 8, size.z);
-    const sizeChunk = writeChunk('SIZE', sizeContent, new Uint8Array(0));
+    sizeContent.set(writeInt(size.x), 0);
+    sizeContent.set(writeInt(size.y), 4);
+    sizeContent.set(writeInt(size.z), 8);
+    const sizeChunk = writeChunk('SIZE', sizeContent);
 
-    // XYZI chunk
+    // ---- XYZI chunk (voxels) ----
     const xyziContent = new Uint8Array(4 + voxels.length * 4);
-    const xyziView = new DataView(xyziContent.buffer);
-    writeInt(xyziView, 0, voxels.length);
-    let offset = 4;
-    for (const voxel of voxels) {
-        xyziView.setUint8(offset++, voxel.x);
-        xyziView.setUint8(offset++, voxel.y);
-        xyziView.setUint8(offset++, voxel.z);
-        xyziView.setUint8(offset++, voxel.colorIndex);
-    }
-    const xyziChunk = writeChunk('XYZI', xyziContent, new Uint8Array(0));
-
-    // RGBA chunk
-    const rgbaContent = new Uint8Array(palette.length * 4);
-    const rgbaView = new DataView(rgbaContent.buffer);
-    offset = 0;
-    for (const color of palette) {
-        rgbaView.setUint8(offset++, color.r);
-        rgbaView.setUint8(offset++, color.g);
-        rgbaView.setUint8(offset++, color.b);
-        rgbaView.setUint8(offset++, color.a);
-    }
-    // MagicaVoxel requires a full 256 color palette, so we pad with zeroes
-    const fullRgbaContent = new Uint8Array(256 * 4);
-    fullRgbaContent.set(rgbaContent, 0);
-     // The first color is reserved, so we add a dummy color at the end of our used palette
-    if (palette.length < 255) {
-        fullRgbaContent[rgbaContent.length] = 0;
-        fullRgbaContent[rgbaContent.length+1] = 0;
-        fullRgbaContent[rgbaContent.length+2] = 0;
-        fullRgbaContent[rgbaContent.length+3] = 0;
-    }
-
-
-    const rgbaChunk = writeChunk('RGBA', fullRgbaContent, new Uint8Array(0));
-
-    // MAIN chunk (contains other chunks)
-    const packContent = new Uint8Array(4);
-    writeInt(new DataView(packContent.buffer), 0, 1); // number of models
-    const packChunk = writeChunk('PACK', packContent, new Uint8Array(0));
+    xyziContent.set(writeInt(voxels.length), 0);
+    const voxelDataView = new DataView(xyziContent.buffer, 4);
+    voxels.forEach((v, i) => {
+        voxelDataView.setUint8(i * 4, v.x);
+        voxelDataView.setUint8(i * 4 + 1, v.y);
+        voxelDataView.setUint8(i * 4 + 2, v.z);
+        voxelDataView.setUint8(i * 4 + 3, v.colorIndex);
+    });
+    const xyziChunk = writeChunk('XYZI', xyziContent);
     
-    const mainChildren = new Uint8Array(packChunk.byteLength + sizeChunk.byteLength + xyziChunk.byteLength + rgbaChunk.byteLength);
-    mainChildren.set(packChunk, 0);
-    mainChildren.set(sizeChunk, packChunk.byteLength);
-    mainChildren.set(xyziChunk, packChunk.byteLength + sizeChunk.byteLength);
-    mainChildren.set(rgbaChunk, packChunk.byteLength + sizeChunk.byteLength + xyziChunk.byteLength);
+    // ---- RGBA chunk (palette) ----
+    const rgbaContent = new Uint8Array(palette.length * 4);
+    const paletteDataView = new DataView(rgbaContent.buffer);
+    palette.forEach((c, i) => {
+        paletteDataView.setUint8(i * 4, c.r);
+        paletteDataView.setUint8(i * 4 + 1, c.g);
+        paletteDataView.setUint8(i * 4 + 2, c.b);
+        paletteDataView.setUint8(i * 4 + 3, c.a);
+    });
+    // The palette in .vox files has 256 colors, index 0 is empty.
+    // Our single color is at index 1. We pad the rest.
+    const finalRgbaContent = new Uint8Array(256 * 4);
+    finalRgbaContent.set(rgbaContent, 4); // Start at index 1 (byte 4)
+    const rgbaChunk = writeChunk('RGBA', finalRgbaContent);
+    
+    // ---- MAIN chunk (container) ----
+    const mainChildren = new Uint8Array(sizeChunk.length + xyziChunk.length + rgbaChunk.length);
+    mainChildren.set(sizeChunk, 0);
+    mainChildren.set(xyziChunk, sizeChunk.length);
+    mainChildren.set(rgbaChunk, sizeChunk.length + xyziChunk.length);
     
     const mainChunk = writeChunk('MAIN', new Uint8Array(0), mainChildren);
+    
+    // ---- Final file ----
+    const header = new Uint8Array([
+        ...writeString('VOX '),
+        ...writeInt(150) // Version number
+    ]);
+    
+    const file = new Uint8Array(header.length + mainChunk.length);
+    file.set(header, 0);
+    file.set(mainChunk, header.length);
 
-    // VOX file header
-    const header = new Uint8Array(8);
-    const headerView = new DataView(header.buffer);
-    writeString(headerView, 0, 'VOX ');
-    writeInt(headerView, 4, 150); // version
-
-    const result = new Uint8Array(header.byteLength + mainChunk.byteLength);
-    result.set(header, 0);
-    result.set(mainChunk, 8);
-
-    return result;
+    return file;
 }
