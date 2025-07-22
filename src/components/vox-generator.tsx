@@ -35,7 +35,7 @@ export function VoxGenerator() {
     archHeight: '16',
     archDepth: '8',
     archOuterRadius: '4',
-    circularArchOuterRadius: '16',
+    circularArchWidth: '32',
     circularArchThickness: '4',
     diskRadius: '16',
     diskHeight: '1',
@@ -45,6 +45,7 @@ export function VoxGenerator() {
   const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
   const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
+  const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
 
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -115,15 +116,16 @@ export function VoxGenerator() {
         }
         case 'arch': {
           if (archType === 'circular') {
-            const outerRadius = validateAndParse(dimensions.circularArchOuterRadius, t('voxGenerator.arch.outerRadius'));
+            const width = validateAndParse(dimensions.circularArchWidth, t('voxGenerator.dims.width'));
             const thickness = validateAndParse(dimensions.circularArchThickness, t('voxGenerator.arch.thickness'));
             const depth = validateAndParse(dimensions.archDepth, t('voxGenerator.dims.depth'));
-            if (outerRadius === null || thickness === null || depth === null) return;
+            if (width === null || thickness === null || depth === null) return;
+            const outerRadius = width / 2;
             if (thickness >= outerRadius) {
               toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.arch.thickness')}), description: t('voxGenerator.errors.thicknessTooLarge'), variant: "destructive" });
               return;
             }
-            shapeParams = { type: 'arch', archType, outerRadius, thickness, depth };
+            shapeParams = { type: 'arch', archType, width, thickness, depth, orientation: circularArchOrientation };
           } else {
             const width = validateAndParse(dimensions.archWidth, t('voxGenerator.dims.width'));
             const height = validateAndParse(dimensions.archHeight, t('voxGenerator.dims.height'));
@@ -284,7 +286,8 @@ export function VoxGenerator() {
             </div>
           </div>
         );
-      case 'arch':
+      case 'arch': {
+        const circularArchHeight = (parseInt(dimensions.circularArchWidth, 10) || 0) / 2;
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -306,18 +309,35 @@ export function VoxGenerator() {
             </div>
 
             {archType === 'circular' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="circularArchOuterRadius">{t('voxGenerator.arch.outerRadius')} (voxels)</Label>
-                  <Input id="circularArchOuterRadius" type="number" value={dimensions.circularArchOuterRadius} onChange={e => handleDimensionChange('circularArchOuterRadius', e.target.value)} placeholder="e.g. 16" />
+               <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                    <Label htmlFor="circularArchWidth">{t('voxGenerator.dims.width')} (voxels)</Label>
+                    <Input id="circularArchWidth" type="number" value={dimensions.circularArchWidth} onChange={e => handleDimensionChange('circularArchWidth', e.target.value)} placeholder="e.g. 32" />
+                     <p className="text-xs text-muted-foreground">{t('voxGenerator.arch.heightInfo', { height: circularArchHeight })}</p>
+                    </div>
+                    <div className="space-y-2">
+                    <Label htmlFor="circularArchThickness">{t('voxGenerator.arch.thickness')} (voxels)</Label>
+                    <Input id="circularArchThickness" type="number" value={dimensions.circularArchThickness} onChange={e => handleDimensionChange('circularArchThickness', e.target.value)} placeholder="e.g. 4" />
+                    </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="circularArchThickness">{t('voxGenerator.arch.thickness')} (voxels)</Label>
-                  <Input id="circularArchThickness" type="number" value={dimensions.circularArchThickness} onChange={e => handleDimensionChange('circularArchThickness', e.target.value)} placeholder="e.g. 4" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="archDepth">{t('voxGenerator.dims.depth')} (voxels)</Label>
-                  <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="archDepth">{t('voxGenerator.dims.depth')} (voxels)</Label>
+                        <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="circular-arch-orientation">{t('voxGenerator.sphere.orientation')}</Label>
+                      <Select value={circularArchOrientation} onValueChange={(v) => setCircularArchOrientation(v as any)}>
+                          <SelectTrigger id="circular-arch-orientation">
+                              <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="top">{t('voxGenerator.arch.orientations.top')}</SelectItem>
+                              <SelectItem value="bottom">{t('voxGenerator.arch.orientations.bottom')}</SelectItem>
+                          </SelectContent>
+                      </Select>
+                    </div>
                 </div>
               </div>
             ) : (
@@ -354,6 +374,7 @@ export function VoxGenerator() {
             )}
           </div>
         );
+      }
        case 'disk':
         return (
            <div className="space-y-4">
@@ -457,5 +478,7 @@ export function VoxGenerator() {
     </div>
   );
 }
+
+    
 
     

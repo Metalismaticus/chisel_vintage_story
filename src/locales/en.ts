@@ -152,6 +152,11 @@ export default {
         },
         outerRadius: 'Outer corner radius',
         thickness: 'Thickness',
+        heightInfo: '(Height = {height})',
+        orientations: {
+            top: 'Top',
+            bottom: 'Bottom',
+        },
     },
     button: 'Generate .vox File',
     errors: {
@@ -188,5 +193,7 @@ export default {
     },
   },
 } as const;
+
+    
 
     

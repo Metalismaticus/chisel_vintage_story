@@ -152,6 +152,11 @@ export default {
         },
         outerRadius: 'Радиус внешнего скругления',
         thickness: 'Толщина',
+        heightInfo: '(Высота = {height})',
+        orientations: {
+            top: 'Верхняя',
+            bottom: 'Нижняя',
+        },
     },
     button: 'Сгенерировать .vox файл',
     errors: {
@@ -188,5 +193,7 @@ export default {
     },
   },
 } as const;
+
+    
 
     

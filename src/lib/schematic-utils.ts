@@ -1,6 +1,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -30,11 +31,12 @@ export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
 type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
+type CircularArchOrientation = 'top' | 'bottom';
 
 
 type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
 type ArchRounded = { archType: 'rounded', width: number, height: number, depth: number, outerCornerRadius: number };
-type ArchCircular = { archType: 'circular', outerRadius: number, thickness: number, depth: number };
+type ArchCircular = { archType: 'circular', width: number, thickness: number, depth: number, orientation: CircularArchOrientation };
 
 
 export type VoxShape = 
@@ -104,8 +106,7 @@ export async function textToSchematic({
       }
     }
     
-    // Use a large padding to ensure text and outline have enough space
-    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 15;
+    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 20; // Increased padding
     
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
@@ -138,7 +139,7 @@ export async function textToSchematic({
 
     const textPixels = Array(contentWidth * contentHeight).fill(false);
     for (let i = 0; i < data.length; i += 4) {
-        if (data[i+3] > 0) {
+        if (data[i+3] > 0) { // Check alpha channel
             textPixels[i / 4] = true;
         }
     }
@@ -147,33 +148,35 @@ export async function textToSchematic({
 
     if (outline) {
         const outlinePixels = Array(contentWidth * contentHeight).fill(false);
-        const distanceThreshold = (outlineGap ?? 1) + 1;
+        // The distance check needs to be precise
+        const distanceCheck = (outlineGap ?? 1) + 1;
 
         for (let y = 0; y < contentHeight; y++) {
             for (let x = 0; x < contentWidth; x++) {
-                if (!textPixels[y * contentWidth + x]) { 
-                    let minDistance = Infinity;
-                    
-                    const searchBox = distanceThreshold + 2;
-                    const startY = Math.max(0, y - searchBox);
-                    const endY = Math.min(contentHeight - 1, y + searchBox);
-                    const startX = Math.max(0, x - searchBox);
-                    const endX = Math.min(contentWidth - 1, x + searchBox);
+                if (textPixels[y * contentWidth + x]) { 
+                    continue; // Skip pixels that are part of the text
+                }
+                
+                let minDistance = Infinity;
+                
+                // Heuristic to limit search area for performance
+                const searchBox = distanceCheck + 2;
+                const startY = Math.max(0, y - searchBox);
+                const endY = Math.min(contentHeight - 1, y + searchBox);
+                const startX = Math.max(0, x - searchBox);
+                const endX = Math.min(contentWidth - 1, x + searchBox);
 
-                    for (let y2 = startY; y2 <= endY; y2++) {
-                        for (let x2 = startX; x2 <= endX; x2++) {
-                            if (textPixels[y2 * contentWidth + x2]) {
-                                const dist = Math.sqrt(Math.pow(x - x2, 2) + Math.pow(y - y2, 2));
-                                if (dist < minDistance) {
-                                    minDistance = dist;
-                                }
-                            }
+                for (let y2 = startY; y2 <= endY; y2++) {
+                    for (let x2 = startX; x2 <= endX; x2++) {
+                        if (textPixels[y2 * contentWidth + x2]) {
+                            const dist = Math.sqrt(Math.pow(x - x2, 2) + Math.pow(y - y2, 2));
+                            minDistance = Math.min(minDistance, dist);
                         }
                     }
+                }
 
-                    if (Math.round(minDistance) === distanceThreshold) {
-                         outlinePixels[y * contentWidth + x] = true;
-                    }
+                if (Math.round(minDistance) === distanceCheck) {
+                     outlinePixels[y * contentWidth + x] = true;
                 }
             }
         }
@@ -577,20 +580,22 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         case 'arch': {
              depth = shape.depth;
              if (shape.archType === 'circular') {
-                width = shape.outerRadius * 2;
-                height = shape.outerRadius;
-                const innerRadius = shape.outerRadius - shape.thickness;
-                const center = shape.outerRadius;
-
-                for (let y = 0; y < height; y++) {
-                    for (let z = 0; z < depth; z++) {
+                width = shape.width;
+                const outerRadius = width / 2;
+                height = outerRadius;
+                const innerRadius = outerRadius - shape.thickness;
+                const centerX = (width - 1) / 2.0;
+                
+                for (let z = 0; z < depth; z++) {
+                    for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
-                            const dx = x - center + 0.5;
-                            const dy = y - height + 0.5;
-                            const distSq = dx * dx + dy * dy;
-                            if (distSq <= shape.outerRadius * shape.outerRadius && distSq > innerRadius * innerRadius) {
+                             const dx = x - centerX;
+                             const dy = shape.orientation === 'top' ? y - (height-1) : y;
+                             const distSq = dx * dx + dy * dy;
+
+                             if (distSq <= outerRadius * outerRadius && distSq > innerRadius * innerRadius) {
                                 addVoxel(x, y, z);
-                            }
+                             }
                         }
                     }
                 }
@@ -730,5 +735,8 @@ function grayscale(r: number, g: number, b: number): number {
 }
 
     
+
+    
+
 
     
