@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center min-h-screen p-4 sm:p-6 md:p-8">
       <header className="flex items-center gap-4 my-4 border-b-2 border-primary/50 pb-4 px-8 text-center">
-        <VintageVisionsLogo className="w-16 h-16 text-primary" />
+        <VintageVisionsLogo className="w-16 h-16 text-primary animate-spin-slow" />
         <h1 className="text-4xl md:text-5xl font-headline text-foreground font-bold tracking-wider uppercase">
           {t('title')}
         </h1>
