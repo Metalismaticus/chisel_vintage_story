@@ -29,9 +29,21 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const isVox = schematicOutput?.isVox;
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
   
-  const modelDimensions = isVox && schematicOutput
-    ? `${Math.ceil(schematicOutput.width / BLOCK_SIZE)} x ${Math.ceil(schematicOutput.height / BLOCK_SIZE)} x ${Math.ceil((schematicOutput.depth || 0) / BLOCK_SIZE)}`
-    : null;
+  const getModelDimensionsText = () => {
+    if (!isVox || !schematicOutput) {
+      return null;
+    }
+    const blocksX = Math.ceil(schematicOutput.width / BLOCK_SIZE);
+    const blocksY = Math.ceil(schematicOutput.height / BLOCK_SIZE);
+    const blocksZ = Math.ceil((schematicOutput.depth || 0) / BLOCK_SIZE);
+
+    if (blocksX === 1 && blocksY === 1 && blocksZ === 1) {
+      return '1';
+    }
+    return `${blocksX} x ${blocksY} x ${blocksZ}`;
+  };
+
+  const modelDimensions = getModelDimensionsText();
 
 
   const handleCopy = () => {
