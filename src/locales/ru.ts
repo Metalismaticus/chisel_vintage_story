@@ -190,6 +190,8 @@ export default {
     qr: {
         urlLabel: 'URL или текст для QR-кода',
         urlPlaceholder: 'например, https://www.vintagestory.at/',
+        codeDepth: 'Глубина QR-кода',
+        backgroundDepth: 'Глубина фона',
     },
     button: 'Сгенерировать .vox файл',
     errors: {

@@ -82,7 +82,8 @@ export function VoxGenerator() {
   
   // QR Code State
   const [qrUrl, setQrUrl] = useState('https://www.vintagestory.at/');
-  const [qrDepth, setQrDepth] = useState([16]);
+  const [qrCodeDepth, setQrCodeDepth] = useState([2]);
+  const [qrBackgroundDepth, setQrBackgroundDepth] = useState([4]);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -235,7 +236,8 @@ export function VoxGenerator() {
       const input: QrToVoxInput = {
           pixels,
           size: borderSize,
-          depth: qrDepth[0],
+          depth: qrCodeDepth[0],
+          backgroundDepth: qrBackgroundDepth[0],
       };
 
       const result = await generateQrToVoxFlow(input);
@@ -868,14 +870,25 @@ export function VoxGenerator() {
                     <img src={qrPreview} alt="QR Code Preview" className="w-48 h-48" />
                 </div>
             )}
-            <div className="space-y-2">
-                <Label htmlFor="qr-depth">{t('voxGenerator.dims.depth')}: {qrDepth[0]}px</Label>
-                <Slider
-                    id="qr-depth"
-                    min={1} max={50} step={1}
-                    value={qrDepth}
-                    onValueChange={setQrDepth}
-                />
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="qr-code-depth">{t('voxGenerator.qr.codeDepth')}: {qrCodeDepth[0]}px</Label>
+                    <Slider
+                        id="qr-code-depth"
+                        min={1} max={50} step={1}
+                        value={qrCodeDepth}
+                        onValueChange={setQrCodeDepth}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="qr-background-depth">{t('voxGenerator.qr.backgroundDepth')}: {qrBackgroundDepth[0]}px</Label>
+                    <Slider
+                        id="qr-background-depth"
+                        min={0} max={50} step={1}
+                        value={qrBackgroundDepth}
+                        onValueChange={setQrBackgroundDepth}
+                    />
+                </div>
             </div>
         </div>
     );
