@@ -1,4 +1,5 @@
-import { writeVox } from 'vox-saver';
+
+import * as voxSaver from 'vox-saver';
 
 
 export type ConversionMode = 'bw' | 'color';
@@ -465,7 +466,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
     };
     
-    const buffer = writeVox(voxObject);
+    const buffer = voxSaver.writeVox(voxObject);
 
     return {
         schematicData: createSchematicData(name, {width, height, depth}),
