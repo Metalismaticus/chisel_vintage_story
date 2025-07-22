@@ -220,23 +220,90 @@ export function shapeToSchematic(shape:
                 width = 0;
                 height = 0;
                 pixels = [];
-            } else {
-                width = r * 2;
-                height = Math.round(Math.sqrt(3) * r);
+                break;
+            }
+            // Flat-topped hexagon
+            width = r * 2;
+            height = Math.round(Math.sqrt(3) * r);
+            pixels = Array(width * height).fill(false);
+            const centerX = width / 2.0;
+            const centerY = height / 2.0;
+            const sideLength = r;
+
+            for (let y = 0; y < height; y++) {
+                const py = y + 0.5;
+                const dy = Math.abs(py - centerY);
                 
-                const centerX = width / 2.0;
-                const centerY = height / 2.0;
+                // Calculate width at this y level
+                let currentWidth;
+                if (dy <= height / 2) {
+                   currentWidth = sideLength * (1 + (height / 2 - dy) / (height / 2));
+                   currentWidth = Math.min(width, currentWidth);
+                } else {
+                    currentWidth = 0;
+                }
+                if (dy * 2 > Math.sqrt(3) * r) {
+                  currentWidth = 2 * r - (2 * dy / Math.sqrt(3)) * r;
+                } else {
+                  currentWidth = 2*r;
+                }
+                const ratio = Math.abs( (y - centerY + 0.5) / (height/2) );
+                const w = width - Math.floor(ratio * width/2)*2;
+
+
+                const startX = centerX - w / 2.0;
+                const endX = centerX + w / 2.0;
+
+                for (let x = 0; x < width; x++) {
+                    const px = x + 0.5;
+                     if (px >= startX && px <= endX) {
+                        const relX = Math.abs(px - centerX);
+                        const relY = Math.abs(py - centerY);
+                        if (relX * 0.57735 + relY <= r * 0.866025) { // Sqrt(3)/2
+                           pixels[y * width + x] = true;
+                        }
+                    }
+                }
+            }
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const py = y + 0.5 - centerY;
+                    const px = x + 0.5 - centerX;
+
+                    const q2 = (2/3) * px;
+                    const r2 = (-1/3) * px + (Math.sqrt(3)/3) * py;
+
+                    if(Math.abs(q2) + Math.abs(r2) + Math.abs(-q2-r2) <= sideLength * 2) {
+                       // pixels[y*width+x] = true;
+                    }
+                }
+            }
+
+            const hexHeight = Math.sqrt(3) * r;
+
+            for (let y_scan = 0; y_scan < height; y_scan++) {
+                const y_rel = y_scan + 0.5 - centerY;
+
+                // Calculate the width of the hexagon at this y
+                let x_width;
+                if (Math.abs(y_rel) > hexHeight / 2) {
+                    x_width = 0; // Outside the hexagon
+                } else if (Math.abs(y_rel) > hexHeight / 4) {
+                    // Sloped part
+                    x_width = (hexHeight / 2 - Math.abs(y_rel)) * (2 / Math.sqrt(3)) * 2;
+                } else {
+                    // Flat part
+                    x_width = r * 2;
+                }
+                x_width = 2*r - (2*Math.abs(y_rel) / Math.sqrt(3));
                 
-                const hexRadius = r; 
-                
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const px = x + 0.5;
-                        const py = y + 0.5;
-                        const dx = Math.abs(px - centerX);
-                        const dy = Math.abs(py - centerY);
-                        
-                        pixels.push(dx <= hexRadius && dy <= (Math.sqrt(3)/2) * hexRadius && (dx * (Math.sqrt(3)/2) + dy) <= (Math.sqrt(3)) * hexRadius);
+                const startX = centerX - x_width / 2;
+                const endX = centerX + x_width / 2;
+
+                for (let x = 0; x < width; x++) {
+                    if (x + 0.5 >= startX && x + 0.5 <= endX) {
+                        pixels[y_scan * width + x] = true;
                     }
                 }
             }
@@ -483,3 +550,5 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
+    
