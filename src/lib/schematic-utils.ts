@@ -1,4 +1,5 @@
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -35,7 +36,7 @@ export type VoxShape =
     | { type: 'pyramid', base: number, height: number }
     | { type: 'cone', radius: number, height: number }
     | { type: 'column', radius: number, height: number }
-    | { type: 'arch', width: number, height: number, depth: number }
+    | { type: 'arch', width: number, height: number, depth: number, roundOuterCorners?: boolean, outerCornerRadius?: number }
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
 
 
@@ -97,7 +98,7 @@ export async function textToSchematic({
     }
     
     // Use a large padding to ensure text and outline have enough space
-    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 10;
+    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 15;
     
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
@@ -146,7 +147,6 @@ export async function textToSchematic({
                 if (!textPixels[y * contentWidth + x]) { 
                     let minDistance = Infinity;
                     
-                    // Optimization: check a smaller box around the pixel
                     const searchBox = distanceThreshold + 2;
                     const startY = Math.max(0, y - searchBox);
                     const endY = Math.min(contentHeight - 1, y + searchBox);
@@ -567,7 +567,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
         
-        case 'arch':
+        case 'arch': {
             width = shape.width;
             height = shape.height;
             depth = shape.depth;
@@ -577,23 +577,48 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    // Check if voxel is part of the solid rectangular base
-                    if (y < height - archRadius) {
-                        addVoxel(x, y, z);
-                        continue;
-                    }
-                    
-                    // Check if voxel is part of the upper block but outside the semicircle cutout
-                    const dx = x - centerX;
-                    const dy = y - (height - archRadius);
-                    
-                    if (dx * dx + dy * dy >= archRadius * archRadius) {
-                        addVoxel(x, y, z);
-                    }
+                  let shouldPlace = false;
+                  // Inner cutout
+                  const innerDx = x - centerX;
+                  const innerDy = y - (height - archRadius);
+                  const isOutsideInnerCutout = innerDx * innerDx + innerDy * innerDy >= archRadius * archRadius;
+                  
+                  if (y < height - archRadius) {
+                      shouldPlace = true; // Base part
+                  } else {
+                     if (isOutsideInnerCutout) {
+                        shouldPlace = true;
+                     }
+                  }
+                  
+                  // Outer rounding
+                  if (shouldPlace && shape.roundOuterCorners && shape.outerCornerRadius && y >= height - shape.outerCornerRadius) {
+                      // Top-left corner
+                      if (x < shape.outerCornerRadius) {
+                          const outerDx = x - shape.outerCornerRadius + 0.5;
+                          const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
+                          if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
+                              shouldPlace = false;
+                          }
+                      }
+                      // Top-right corner
+                      if (x > width - 1 - shape.outerCornerRadius) {
+                          const outerDx = x - (width - 1 - shape.outerCornerRadius) - 0.5;
+                          const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
+                           if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
+                              shouldPlace = false;
+                          }
+                      }
+                  }
+
+                  if (shouldPlace) {
+                      addVoxel(x, y, z);
+                  }
                 }
               }
             }
             break;
+        }
 
         case 'disk':
             const { part: diskPart = 'full', orientation: diskOrientation = 'horizontal' } = shape;
@@ -680,5 +705,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
+    
 
     

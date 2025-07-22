@@ -143,6 +143,10 @@ export default {
         vertical: 'Vertical cut',
       },
     },
+    arch: {
+        roundOuter: 'Round outer corners',
+        outerRadius: 'Outer corner radius',
+    },
     button: 'Generate .vox File',
     errors: {
       invalid: 'Invalid {name}',
@@ -150,6 +154,7 @@ export default {
       unknownShape: 'Unknown shape',
       selectValidShape: 'Please select a valid shape.',
       noDataFromServer: 'No data returned from server.',
+      radiusTooLarge: 'Radius cannot be larger than half the width.'
     },
   },
   schematicPreview: {
@@ -176,3 +181,5 @@ export default {
     },
   },
 } as const;
+
+    

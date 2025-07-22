@@ -143,6 +143,10 @@ export default {
         vertical: 'Вертикальный срез',
       },
     },
+    arch: {
+        roundOuter: 'Закруглить внешние углы',
+        outerRadius: 'Радиус внешнего скругления',
+    },
     button: 'Сгенерировать .vox файл',
     errors: {
       invalid: 'Неверный {name}',
@@ -150,6 +154,7 @@ export default {
       unknownShape: 'Неизвестная фигура',
       selectValidShape: 'Пожалуйста, выберите корректную фигуру.',
       noDataFromServer: 'Сервер не вернул данные.',
+      radiusTooLarge: 'Радиус не может быть больше половины ширины.'
     },
   },
   schematicPreview: {
@@ -176,3 +181,5 @@ export default {
     },
   },
 } as const;
+
+    
