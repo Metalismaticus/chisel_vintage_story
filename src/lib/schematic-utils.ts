@@ -1,8 +1,7 @@
 
-import * as voxSaver from 'vox-saver';
+import { type ConversionMode } from './schematic-utils';
+const voxSaver = require('vox-saver');
 
-
-export type ConversionMode = 'bw' | 'color';
 
 export interface PaletteColor {
     r: number;
@@ -313,7 +312,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 
 
 /**
- * Generates a .vox file for a given 3D shape using a local writer.
+ * Generates a .vox file for a given 3D shape using vox-saver library.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
     const xyziValues: {x: number, y: number, z: number, i: number}[] = [];
@@ -321,7 +320,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     let name = `VOX Shape: ${shape.type}`;
     
     // In our app, Y is up. In MagicaVoxel, Z is up. 
-    // We generate with Y-up and then swap for the writer.
+    // We generate with Y-up and then collect voxels.
     const addVoxel = (x: number, y: number, z: number) => {
         // The color index is 1, which maps to the first color in our palette.
         xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
@@ -466,7 +465,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
     };
     
-    const buffer = voxSaver.writeVox(voxObject);
+    const buffer = voxSaver(voxObject);
 
     return {
         schematicData: createSchematicData(name, {width, height, depth}),
