@@ -1,9 +1,5 @@
 
 
-
-
-
-
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -73,7 +69,7 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
     return `Schematic: ${name} (${width}x${height}${depthInfo}). Total Blocks: ${totalChunks}`;
 }
 
-interface TextToSchematicParams {
+interface RasterizeTextParams {
   text: string;
   font: FontStyle;
   fontSize: number;
@@ -82,20 +78,16 @@ interface TextToSchematicParams {
   outlineGap?: number;
 }
 
-/**
- * Converts text to a pixel-based schematic.
- * This function uses the browser's Canvas API to rasterize text.
- */
-export async function textToSchematic({
+export async function rasterizeText({
   text,
   font,
   fontSize,
   fontUrl,
   outline = false,
   outlineGap = 1,
-}: TextToSchematicParams): Promise<SchematicOutput> {
+}: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
     if (typeof document === 'undefined') {
-        throw new Error('textToSchematic can only be run in a browser environment.');
+        throw new Error('rasterizeText can only be run in a browser environment.');
     }
 
     let loadedFontFamily = font as string;
@@ -129,12 +121,7 @@ export async function textToSchematic({
     const textHeight = Math.ceil(ascent + descent);
 
     if (textWidth <= 0 || textHeight <= 0) {
-        return {
-            schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
-            width: 0,
-            height: 0,
-            pixels: [],
-        };
+        return { width: 0, height: 0, pixels: [] };
     }
     
     // Create a working canvas with enough padding for the outline
@@ -226,12 +213,7 @@ export async function textToSchematic({
     }
     
     if (maxX === -1) { // Empty schematic
-        return {
-            schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
-            width: 0,
-            height: 0,
-            pixels: [],
-        };
+       return { width: 0, height: 0, pixels: [] };
     }
     
     const croppedWidth = maxX - minX + 1;
@@ -242,6 +224,43 @@ export async function textToSchematic({
         for(let x = 0; x < croppedWidth; x++) {
             croppedPixels[y * croppedWidth + x] = combinedPixels[(y + minY) * contentWidth + (x + minX)];
         }
+    }
+
+    return { pixels: croppedPixels, width: croppedWidth, height: croppedHeight };
+}
+
+
+interface TextToSchematicParams {
+  text: string;
+  font: FontStyle;
+  fontSize: number;
+  fontUrl?: string;
+  outline?: boolean;
+  outlineGap?: number;
+}
+
+/**
+ * Converts text to a pixel-based schematic.
+ * This function uses the browser's Canvas API to rasterize text.
+ */
+export async function textToSchematic({
+  text,
+  font,
+  fontSize,
+  fontUrl,
+  outline = false,
+  outlineGap = 1,
+}: TextToSchematicParams): Promise<SchematicOutput> {
+   
+    const { pixels: croppedPixels, width: croppedWidth, height: croppedHeight } = await rasterizeText({ text, font, fontSize, fontUrl, outline, outlineGap});
+    
+     if (croppedWidth === 0) { // Empty schematic
+        return {
+            schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
+            width: 0,
+            height: 0,
+            pixels: [],
+        };
     }
 
     // Align to chunk grid
@@ -830,3 +849,5 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
+    

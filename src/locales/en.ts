@@ -98,6 +98,10 @@ export default {
   voxGenerator: {
     title: 'VOX Generator',
     description: 'Create 3D shapes for your builds in .vox format.',
+    modes: {
+      shape: 'Shape',
+      text: 'Text',
+    },
     shapeLabel: '3D Shape',
     shapes: {
       cuboid: 'Cuboid',
@@ -165,6 +169,16 @@ export default {
             bottom: 'Bottom',
         },
     },
+    text: {
+        modeLabel: 'Mode',
+        modes: {
+            extrude: 'Volumetric Text',
+            engrave: 'Engraving',
+        },
+        letterDepth: 'Letter Depth',
+        backgroundDepth: 'Background Depth',
+        engraveDepth: 'Engraving Depth',
+    },
     button: 'Generate .vox File',
     errors: {
       invalid: 'Invalid {name}',
@@ -201,3 +215,5 @@ export default {
     },
   },
 } as const;
+
+    

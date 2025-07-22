@@ -98,6 +98,10 @@ export default {
   voxGenerator: {
     title: 'VOX Генератор',
     description: 'Создавайте 3D-фигуры для ваших построек в формате .vox.',
+    modes: {
+      shape: 'Фигура',
+      text: 'Текст',
+    },
     shapeLabel: '3D Фигура',
     shapes: {
       cuboid: 'Параллелепипед',
@@ -165,6 +169,16 @@ export default {
             bottom: 'Нижняя',
         },
     },
+    text: {
+        modeLabel: 'Режим',
+        modes: {
+            extrude: 'Объёмный текст',
+            engrave: 'Гравировка',
+        },
+        letterDepth: 'Глубина букв',
+        backgroundDepth: 'Глубина фона',
+        engraveDepth: 'Глубина гравировки',
+    },
     button: 'Сгенерировать .vox файл',
     errors: {
       invalid: 'Неверный {name}',
@@ -201,3 +215,5 @@ export default {
     },
   },
 } as const;
+
+    
