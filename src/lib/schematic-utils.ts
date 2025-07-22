@@ -1,7 +1,8 @@
 
 
 import type { ConversionMode } from './schematic-utils';
-const { writeVox } = require('vox-saver');
+// This is the correct way to import a CommonJS module with a default export in this environment.
+const { default: writeVox } = require('vox-saver');
 
 
 export interface PaletteColor {
@@ -453,7 +454,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
     // The library expects a full 256 color palette. We'll fill it with a default color.
     const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
-    palette[0] = { r: 200, g: 164, b: 100, a: 255 };
+    palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed, so 0 is empty
+    palette[1] = { r: 200, g: 164, b: 100, a: 255 };
     
     const voxObject = {
         size: { x: width, y: depth, z: height }, // Z is up in .vox format, so we map our depth to Y and height to Z
