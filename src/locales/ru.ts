@@ -143,6 +143,13 @@ export default {
         vertical: 'Вертикальный срез',
       },
     },
+    column: {
+        withBase: 'Добавить основание',
+        brokenTop: 'Сломанный верх',
+        baseRadius: 'Радиус основания',
+        baseHeight: 'Высота основания',
+        breakIntensity: 'Интенсивность разрушения',
+    },
     arch: {
         archType: 'Тип арки',
         types: {
@@ -167,6 +174,7 @@ export default {
       noDataFromServer: 'Сервер не вернул данные.',
       radiusTooLarge: 'Радиус не может быть больше половины ширины.',
       thicknessTooLarge: 'Толщина должна быть меньше внешнего радиуса.',
+      baseRadiusTooSmall: 'Радиус основания должен быть больше радиуса колонны.',
     },
   },
   schematicPreview: {

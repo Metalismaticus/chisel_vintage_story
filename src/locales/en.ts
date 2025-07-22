@@ -143,6 +143,13 @@ export default {
         vertical: 'Vertical cut',
       },
     },
+    column: {
+        withBase: 'Add base',
+        brokenTop: 'Broken top',
+        baseRadius: 'Base radius',
+        baseHeight: 'Base height',
+        breakIntensity: 'Break intensity',
+    },
     arch: {
         archType: 'Arch Type',
         types: {
@@ -167,6 +174,7 @@ export default {
       noDataFromServer: 'No data returned from server.',
       radiusTooLarge: 'Radius cannot be larger than half the width.',
       thicknessTooLarge: 'Thickness must be less than the outer radius.',
+      baseRadiusTooSmall: 'Base radius must be larger than the column radius.',
     },
   },
   schematicPreview: {

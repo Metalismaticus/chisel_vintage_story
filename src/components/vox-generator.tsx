@@ -15,6 +15,7 @@ import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from './ui/switch';
 
 
 export function VoxGenerator() {
@@ -31,6 +32,9 @@ export function VoxGenerator() {
     coneHeight: '16',
     columnRadius: '8',
     columnHeight: '16',
+    baseRadius: '10',
+    baseHeight: '2',
+    breakIntensity: '3',
     archWidth: '16',
     archHeight: '16',
     archDepth: '8',
@@ -46,6 +50,8 @@ export function VoxGenerator() {
   const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
   const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
+  const [withBase, setWithBase] = useState(false);
+  const [brokenTop, setBrokenTop] = useState(false);
 
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -104,7 +110,19 @@ export function VoxGenerator() {
            const radius = validateAndParse(dimensions.columnRadius, t('voxGenerator.dims.radius'));
            const height = validateAndParse(dimensions.columnHeight, t('voxGenerator.dims.height'));
            if (radius === null || height === null) return;
-           shapeParams = { type: 'column', radius, height };
+
+           const baseRadius = withBase ? validateAndParse(dimensions.baseRadius, t('voxGenerator.column.baseRadius')) : undefined;
+           const baseHeight = withBase ? validateAndParse(dimensions.baseHeight, t('voxGenerator.column.baseHeight')) : undefined;
+           if (withBase && (baseRadius === null || baseHeight === null)) return;
+           if (withBase && baseRadius && baseRadius <= radius) {
+                toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.column.baseRadius')}), description: t('voxGenerator.errors.baseRadiusTooSmall'), variant: "destructive" });
+                return;
+           }
+
+           const breakIntensity = brokenTop ? validateAndParse(dimensions.breakIntensity, t('voxGenerator.column.breakIntensity')) : undefined;
+           if(brokenTop && breakIntensity === null) return;
+
+           shapeParams = { type: 'column', radius, height, withBase, baseRadius, baseHeight, brokenTop, breakIntensity };
           break;
         }
         case 'cone': {
@@ -262,14 +280,55 @@ export function VoxGenerator() {
         );
       case 'column':
         return (
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="columnRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
-              <Input id="columnRadius" type="number" value={dimensions.columnRadius} onChange={e => handleDimensionChange('columnRadius', e.target.value)} placeholder="e.g. 8" />
+           <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="columnRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
+                <Input id="columnRadius" type="number" value={dimensions.columnRadius} onChange={e => handleDimensionChange('columnRadius', e.target.value)} placeholder="e.g. 8" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="columnHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
+                <Input id="columnHeight" type="number" value={dimensions.columnHeight} onChange={e => handleDimensionChange('columnHeight', e.target.value)} placeholder="e.g. 16" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="columnHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
-              <Input id="columnHeight" type="number" value={dimensions.columnHeight} onChange={e => handleDimensionChange('columnHeight', e.target.value)} placeholder="e.g. 16" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+               <div className="space-y-2">
+                    <div className="flex items-center space-x-2 pt-2">
+                        <Switch id="with-base" checked={withBase} onCheckedChange={setWithBase} />
+                        <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
+                    </div>
+                    {withBase && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 pl-1">
+                            <div className="space-y-2">
+                                <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>
+                                <Input id="baseRadius" type="number" value={dimensions.baseRadius} onChange={e => handleDimensionChange('baseRadius', e.target.value)} placeholder="e.g. 10" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="baseHeight">{t('voxGenerator.column.baseHeight')}</Label>
+                                <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 2" />
+                            </div>
+                        </div>
+                    )}
+               </div>
+                <div className="space-y-2">
+                    <div className="flex items-center space-x-2 pt-2">
+                        <Switch id="broken-top" checked={brokenTop} onCheckedChange={setBrokenTop} />
+                        <Label htmlFor="broken-top">{t('voxGenerator.column.brokenTop')}</Label>
+                    </div>
+                    {brokenTop && (
+                         <div className="space-y-2 pt-2 pl-1">
+                            <Label htmlFor="break-intensity">{t('voxGenerator.column.breakIntensity')}: {dimensions.breakIntensity}</Label>
+                            <Slider 
+                                id="break-intensity"
+                                min={1}
+                                max={10}
+                                step={1}
+                                value={[parseInt(dimensions.breakIntensity, 10)]}
+                                onValueChange={(val) => handleSliderChange('breakIntensity', val)}
+                            />
+                        </div>
+                    )}
+               </div>
             </div>
           </div>
         );

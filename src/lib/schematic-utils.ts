@@ -2,6 +2,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -44,7 +45,16 @@ export type VoxShape =
     | { type: 'sphere', radius: number, part?: 'full' | HemispherePart }
     | { type: 'pyramid', base: number, height: number }
     | { type: 'cone', radius: number, height: number }
-    | { type: 'column', radius: number, height: number }
+    | { 
+        type: 'column', 
+        radius: number, 
+        height: number,
+        withBase?: boolean,
+        baseRadius?: number,
+        baseHeight?: number,
+        brokenTop?: boolean,
+        breakIntensity?: number,
+      }
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
 
@@ -106,17 +116,28 @@ export async function textToSchematic({
       }
     }
     
-    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 20; // Increased padding
-    
+    // Create a temporary canvas to measure text
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = tempCtx.measureText(text);
     
-    const textWidth = Math.ceil(metrics.width) || 1;
+    // Determine the actual bounding box of the text
+    const textWidth = Math.ceil(metrics.width);
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
-    const textHeight = Math.ceil(ascent + descent) || 1;
+    const textHeight = Math.ceil(ascent + descent);
 
+    if (textWidth <= 0 || textHeight <= 0) {
+        return {
+            schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
+            width: 0,
+            height: 0,
+            pixels: [],
+        };
+    }
+    
+    // Create a working canvas with enough padding for the outline
+    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 2; 
     const contentWidth = textWidth + PADDING * 2;
     const contentHeight = textHeight + PADDING * 2;
     
@@ -125,18 +146,22 @@ export async function textToSchematic({
     workCanvas.height = contentHeight;
     const ctx = workCanvas.getContext('2d', { willReadFrequently: true })!;
     
+    // Draw the text onto the working canvas
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#FFFFFF';
-    ctx.textBaseline = 'top';
-    ctx.fillText(text, PADDING, PADDING);
-
+    ctx.textBaseline = 'top'; // Use top to align with ascent/descent measurements
+    ctx.fillText(text, PADDING, PADDING + (metrics.fontBoundingBoxAscent ? (fontSize - metrics.fontBoundingBoxAscent) : 0));
+    
+    // Cleanup custom font
     if (fontFace && document.fonts.has(fontFace)) {
         document.fonts.delete(fontFace);
     }
     
+    // Get pixel data from the working canvas
     const imageData = ctx.getImageData(0, 0, contentWidth, contentHeight);
     const data = imageData.data;
 
+    // Create a boolean array for the text pixels
     const textPixels = Array(contentWidth * contentHeight).fill(false);
     for (let i = 0; i < data.length; i += 4) {
         if (data[i+3] > 0) { // Check alpha channel
@@ -148,8 +173,7 @@ export async function textToSchematic({
 
     if (outline) {
         const outlinePixels = Array(contentWidth * contentHeight).fill(false);
-        // The distance check needs to be precise
-        const distanceCheck = (outlineGap ?? 1) + 1;
+        const distanceCheck = (outlineGap ?? 1); 
 
         for (let y = 0; y < contentHeight; y++) {
             for (let x = 0; x < contentWidth; x++) {
@@ -157,7 +181,7 @@ export async function textToSchematic({
                     continue; // Skip pixels that are part of the text
                 }
                 
-                let minDistance = Infinity;
+                let minDistanceSq = Infinity;
                 
                 // Heuristic to limit search area for performance
                 const searchBox = distanceCheck + 2;
@@ -169,13 +193,16 @@ export async function textToSchematic({
                 for (let y2 = startY; y2 <= endY; y2++) {
                     for (let x2 = startX; x2 <= endX; x2++) {
                         if (textPixels[y2 * contentWidth + x2]) {
-                            const dist = Math.sqrt(Math.pow(x - x2, 2) + Math.pow(y - y2, 2));
-                            minDistance = Math.min(minDistance, dist);
+                            const distSq = Math.pow(x - x2, 2) + Math.pow(y - y2, 2);
+                            minDistanceSq = Math.min(minDistanceSq, distSq);
                         }
                     }
                 }
-
-                if (Math.round(minDistance) === distanceCheck) {
+                
+                const minDistance = Math.sqrt(minDistanceSq);
+                
+                // Check if the pixel is within the outline stroke (1px wide)
+                if (minDistance > distanceCheck && minDistance <= distanceCheck + 1) {
                      outlinePixels[y * contentWidth + x] = true;
                 }
             }
@@ -184,6 +211,7 @@ export async function textToSchematic({
         combinedPixels = textPixels.map((p, i) => p || outlinePixels[i]);
     }
 
+    // Crop the combined pixels to their actual bounding box
     let minX = contentWidth, minY = contentHeight, maxX = -1, maxY = -1;
     for(let y = 0; y < contentHeight; y++) {
         for (let x = 0; x < contentWidth; x++) {
@@ -215,6 +243,7 @@ export async function textToSchematic({
         }
     }
 
+    // Align to chunk grid
     const finalWidth = Math.ceil(croppedWidth / 16) * 16;
     const finalHeight = Math.ceil(croppedHeight / 16) * 16;
     const finalPixels = Array(finalWidth * finalHeight).fill(false);
@@ -474,7 +503,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
  * Generates a .vox file for a given 3D shape using the vox-saver library.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
-    const xyziValues: {x: number, y: number, z: number, i: number}[] = [];
+    let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
@@ -541,22 +570,94 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
         
-        case 'column':
-            width = depth = shape.radius * 2;
-            height = shape.height;
-            const colCenter = shape.radius;
-            for (let y = 0; y < height; y++) {
-                for (let z = 0; z < depth; z++) {
-                    for (let x = 0; x < width; x++) {
-                        const dx = x - colCenter + 0.5;
-                        const dz = z - colCenter + 0.5;
-                        if (dx * dx + dz * dz <= shape.radius * shape.radius) {
-                            addVoxel(x, y, z);
+        case 'column': {
+            const { 
+                radius: colRadius, 
+                height: colHeight, 
+                withBase = false,
+                baseRadius = 0,
+                baseHeight = 0,
+                brokenTop = false,
+                breakIntensity = 0,
+            } = shape;
+
+            const finalBaseHeight = withBase ? baseHeight : 0;
+            const finalBaseRadius = withBase ? baseRadius : 0;
+            const finalHeight = finalBaseHeight + colHeight;
+            
+            width = depth = Math.max(colRadius * 2, finalBaseRadius * 2);
+            height = finalHeight;
+
+            let voxels = new Set<string>();
+
+            // Generate base
+            if (withBase) {
+                const baseCenter = width / 2;
+                for (let y = 0; y < finalBaseHeight; y++) {
+                    for (let z = 0; z < depth; z++) {
+                        for (let x = 0; x < width; x++) {
+                            const dx = x - baseCenter + 0.5;
+                            const dz = z - baseCenter + 0.5;
+                            if (dx * dx + dz * dz <= finalBaseRadius * finalBaseRadius) {
+                                voxels.add(`${x},${y},${z}`);
+                            }
                         }
                     }
                 }
             }
+
+            // Generate shaft
+            const shaftCenter = width / 2;
+            for (let y = finalBaseHeight; y < finalHeight; y++) {
+                for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                         const dx = x - shaftCenter + 0.5;
+                         const dz = z - shaftCenter + 0.5;
+                         if (dx * dx + dz * dz <= colRadius * colRadius) {
+                            voxels.add(`${x},${y},${z}`);
+                         }
+                    }
+                }
+            }
+            
+            // Break top
+            if (brokenTop && breakIntensity > 0) {
+                const topY = finalHeight - 1;
+                const intensityRatio = breakIntensity / 10;
+                
+                // Convert set to array for easier manipulation
+                let voxelArray = Array.from(voxels);
+                
+                // Get all top-level voxels
+                let topVoxels = voxelArray.filter(v => parseInt(v.split(',')[1]) === topY);
+                
+                for(let i = 0; i < intensityRatio * 2; i++) {
+                    // Reduce the height of some top voxels randomly
+                    if (topVoxels.length > 0) {
+                         const randIndex = Math.floor(Math.random() * topVoxels.length);
+                         const voxelToRemove = topVoxels[randIndex];
+                         const coords = voxelToRemove.split(',').map(Number);
+                         
+                         const newHeight = topY - 1 - Math.floor(Math.random() * 3 * intensityRatio);
+                         
+                         for (let y = newHeight + 1; y <= topY; y++) {
+                             voxels.delete(`${coords[0]},${y},${coords[2]}`);
+                         }
+                         
+                         // Remove from top list to avoid picking again
+                         topVoxels.splice(randIndex, 1);
+                    }
+                }
+            }
+            
+            // Add final voxels from set
+            voxels.forEach(v => {
+                const [x, y, z] = v.split(',').map(Number);
+                addVoxel(x, y, z);
+            });
+
             break;
+        }
         
         case 'cone':
             width = depth = shape.radius * 2;
@@ -590,7 +691,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                     for (let y = 0; y < height; y++) {
                         for (let x = 0; x < width; x++) {
                              const dx = x - centerX;
-                             const dy = shape.orientation === 'top' ? y - (height-1) : y;
+                             const dy = shape.orientation === 'top' ? y - (height -1) : -y;
                              const distSq = dx * dx + dy * dy;
 
                              if (distSq <= outerRadius * outerRadius && distSq > innerRadius * innerRadius) {
@@ -621,18 +722,19 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                          }
                       }
                       
-                      if (shouldPlace && shape.archType === 'rounded' && shape.outerCornerRadius && y >= height - shape.outerCornerRadius) {
-                          if (x < shape.outerCornerRadius) {
-                              const outerDx = x - shape.outerCornerRadius + 0.5;
-                              const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
-                              if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
+                      const outerCornerRadius = shape.outerCornerRadius ?? 0;
+                      if (shouldPlace && shape.archType === 'rounded' && outerCornerRadius > 0 && y >= height - outerCornerRadius) {
+                          if (x < outerCornerRadius) {
+                              const outerDx = x - outerCornerRadius + 0.5;
+                              const outerDy = y - (height - outerCornerRadius) + 0.5;
+                              if (outerDx * outerDx + outerDy * outerDy > outerCornerRadius * outerCornerRadius) {
                                   shouldPlace = false;
                               }
                           }
-                          if (x > width - 1 - shape.outerCornerRadius) {
-                              const outerDx = x - (width - 1 - shape.outerCornerRadius) - 0.5;
-                              const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
-                               if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
+                          if (x > width - 1 - outerCornerRadius) {
+                              const outerDx = x - (width - 1 - outerCornerRadius) - 0.5;
+                              const outerDy = y - (height - outerCornerRadius) + 0.5;
+                               if (outerDx * outerDx + outerDy * outerDy > outerCornerRadius * outerCornerRadius) {
                                   shouldPlace = false;
                               }
                           }
