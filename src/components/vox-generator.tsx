@@ -69,7 +69,7 @@ export function VoxGenerator() {
   const fontFileUrlRef = useRef<string | null>(null);
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
   const [letterDepth, setLetterDepth] = useState([5]);
-  const [backgroundDepth, setBackgroundDepth] = useState([10]);
+  const [backgroundDepth, setBackgroundDepth] = useState([16]);
   const [engraveDepth, setEngraveDepth] = useState([3]);
   const [textOrientation, setTextOrientation] = useState<TextOrientation>('horizontal');
   
@@ -801,5 +801,3 @@ export function VoxGenerator() {
     </div>
   );
 }
-
-    

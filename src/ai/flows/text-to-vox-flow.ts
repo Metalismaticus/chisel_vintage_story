@@ -92,9 +92,20 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     for (let py = 0; py < textHeight; py++) {
       for (let px = 0; px < textWidth; px++) {
         const isTextPixel = pixels[py * textWidth + px];
-        const startDepth = isTextPixel ? engraveDepth : 0;
+        let endDepth = backgroundDepth;
+        if (isTextPixel) {
+            // For vertical orientation, we engrave from the top.
+            // For other orientations, we engrave from the front.
+            if (orientation === 'vertical-lr') {
+                endDepth = backgroundDepth - engraveDepth;
+            } else {
+                endDepth = backgroundDepth;
+            }
+        }
+
+        const startDepth = (orientation !== 'vertical-lr' && isTextPixel) ? engraveDepth : 0;
         
-        for (let pz = startDepth; pz < backgroundDepth; pz++) {
+        for (let pz = startDepth; pz < endDepth; pz++) {
           addVoxelByOrientation(px, textHeight - 1 - py, pz);
         }
       }
@@ -133,5 +144,3 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
       voxData: voxDataB64,
   };
 }
-
-    
