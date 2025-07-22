@@ -54,63 +54,70 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
 
   let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
   
-  const addVoxel = (x: number, y: number, z: number) => {
+  // Use a helper function for consistent voxel addition.
+  // Y is the vertical axis in our 2D pixel map.
+  // We'll map this to the appropriate 3D coordinates based on orientation.
+  const addVoxelByOrientation = (px: number, py: number, pz: number) => {
+    let x, y, z;
+    if (orientation === 'vertical-lr') { // Laying flat on the floor
+      x = px;
+      y = pz; // Depth becomes the Y (up) axis
+      z = py; // Height of text runs along Z
+    } else { // Standing up on a wall (horizontal or column)
+      x = px;
+      y = py;
+      z = pz;
+    }
     xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
   };
-
+  
   let modelWidth = textWidth;
   let modelHeight = textHeight;
   let modelDepth = 0;
 
   if (mode === 'extrude') {
     modelDepth = letterDepth;
-    for (let y = 0; y < textHeight; y++) {
-      for (let x = 0; x < textWidth; x++) {
-        if (pixels[y * textWidth + x]) {
-          for (let z = 0; z < letterDepth; z++) {
+    for (let py = 0; py < textHeight; py++) {
+      for (let px = 0; px < textWidth; px++) {
+        if (pixels[py * textWidth + px]) {
+          for (let pz = 0; pz < letterDepth; pz++) {
             // We flip the y-axis to match the typical 2D canvas coordinates (top-left 0,0)
-            addVoxel(x, textHeight - 1 - y, z);
+            addVoxelByOrientation(px, textHeight - 1 - py, pz);
           }
         }
       }
     }
   } else if (mode === 'engrave') {
     modelDepth = backgroundDepth;
-    for (let y = 0; y < textHeight; y++) {
-      for (let x = 0; x < textWidth; x++) {
-        const isTextPixel = pixels[y * textWidth + x];
+    for (let py = 0; py < textHeight; py++) {
+      for (let px = 0; px < textWidth; px++) {
+        const isTextPixel = pixels[py * textWidth + px];
         const startDepth = isTextPixel ? engraveDepth : 0;
         
-        for (let z = startDepth; z < backgroundDepth; z++) {
-          addVoxel(x, textHeight - 1 - y, z);
+        for (let pz = startDepth; pz < backgroundDepth; pz++) {
+          addVoxelByOrientation(px, textHeight - 1 - py, pz);
         }
       }
     }
   }
 
-  // Handle vertical orientation by swapping model dimensions and rotating voxels
+  // Adjust final model dimensions based on orientation for the schematic info
   if (orientation === 'vertical-lr') {
-    const originalWidth = modelWidth;
-    modelWidth = modelHeight;
-    modelHeight = originalWidth;
-
-    xyziValues = xyziValues.map(({ x, y, z, i }) => ({
-        x: y, // new x is old y
-        y: originalWidth - 1 - x, // new y is flipped old x
-        z,
-        i,
-    }));
+    const originalHeight = modelHeight;
+    modelHeight = modelDepth; // New height is the depth
+    modelDepth = originalHeight; // New depth is the text height
   }
-
+ 
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
   palette[0] = { r: 0, g: 0, b: 0, a: 0 };
   palette[1] = { r: 200, g: 164, b: 100, a: 255 };
 
+  // Note: vox-saver expects Z-up, so we swap Y and Z in the final object.
   const voxObject = {
-      size: { x: modelWidth, y: modelHeight, z: modelDepth },
+      size: { x: modelWidth, y: modelDepth, z: modelHeight },
       xyzi: {
           numVoxels: xyziValues.length,
-          values: xyziValues.map(v => ({ x: v.x, y: v.y, z: v.z, i: v.i }))
+          values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
       },
       rgba: { values: palette }
   };

@@ -17,6 +17,7 @@ import { Loader2, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from './ui/switch';
+import { cn } from '@/lib/utils';
 
 
 type GeneratorMode = 'shape' | 'text';
@@ -128,7 +129,7 @@ export function VoxGenerator() {
   }
   
   const handleGenerateText = async () => {
-    if (!text) {
+    if (!text || !text.trim()) {
         toast({ title: t('textConstructor.errors.noText'), description: t('textConstructor.errors.noTextDesc'), variant: "destructive" });
         return;
     }
@@ -144,6 +145,12 @@ export function VoxGenerator() {
             fontUrl: fontFileUrlRef.current ?? undefined,
             orientation: textOrientation,
         });
+
+        if (width === 0 || height === 0) {
+            toast({ title: t('common.errors.generationFailed'), description: t('textConstructor.errors.rasterizeFailed'), variant: 'destructive'});
+            setIsPending(false);
+            return;
+        }
 
         const input: TextToVoxInput = {
             pixels,
@@ -634,17 +641,35 @@ export function VoxGenerator() {
           </div>
            <div className="space-y-2">
             <Label>{t('voxGenerator.text.orientation.label')}</Label>
-            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="flex pt-2 space-x-2">
+            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="grid grid-cols-3 gap-2">
                 <RadioGroupItem value="horizontal" id="text-horizontal" className="sr-only" />
-                <Label htmlFor="text-horizontal" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary">
+                <Label 
+                    htmlFor="text-horizontal"
+                    className={cn(
+                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer border",
+                        textOrientation === 'horizontal' ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent/50'
+                     )}
+                 >
                     {t('voxGenerator.text.orientation.horizontal')}
                 </Label>
                  <RadioGroupItem value="vertical-lr" id="text-vertical" className="sr-only" />
-                <Label htmlFor="text-vertical" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary">
+                <Label 
+                    htmlFor="text-vertical"
+                    className={cn(
+                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer border",
+                        textOrientation === 'vertical-lr' ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent/50'
+                     )}
+                >
                     {t('voxGenerator.text.orientation.vertical')}
                 </Label>
                  <RadioGroupItem value="column-tb" id="text-column" className="sr-only" />
-                <Label htmlFor="text-column" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer border data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary">
+                <Label 
+                    htmlFor="text-column"
+                    className={cn(
+                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer border",
+                        textOrientation === 'column-tb' ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent/50'
+                     )}
+                 >
                     {t('voxGenerator.text.orientation.column')}
                 </Label>
             </RadioGroup>
@@ -712,11 +737,11 @@ export function VoxGenerator() {
         <CardContent className="space-y-6">
             <RadioGroup value={mode} onValueChange={(v) => setMode(v as GeneratorMode)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
                 <RadioGroupItem value="shape" id="mode-shape" className="sr-only" />
-                <Label htmlFor="mode-shape" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground">
+                <Label htmlFor="mode-shape" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'shape' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
                    {t('voxGenerator.modes.shape')}
                 </Label>
                 <RadioGroupItem value="text" id="mode-text" className="sr-only" />
-                <Label htmlFor="mode-text" className="flex-1 text-center py-2 px-4 rounded-md cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground">
+                <Label htmlFor="mode-text" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'text' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
                     {t('voxGenerator.modes.text')}
                 </Label>
             </RadioGroup>

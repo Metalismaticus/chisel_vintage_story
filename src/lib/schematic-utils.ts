@@ -1,5 +1,6 @@
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -89,15 +90,14 @@ export async function rasterizeText({
   outlineGap = 1,
   orientation = 'horizontal',
 }: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
-    if (typeof document === 'undefined') {
-        throw new Error('rasterizeText can only be run in a browser environment.');
+    if (typeof document === 'undefined' || !text || !text.trim()) {
+        return { width: 0, height: 0, pixels: [] };
     }
 
     let loadedFontFamily = font as string;
     if (font === 'monospace') loadedFontFamily = '"Roboto Mono", monospace';
     if (font === 'serif') loadedFontFamily = '"Roboto Slab", serif';
     if (font === 'sans-serif') loadedFontFamily = '"Roboto Condensed", sans-serif';
-
 
     let fontFace: FontFace | undefined;
     if (fontUrl && font === 'custom') {
@@ -123,6 +123,7 @@ export async function rasterizeText({
     const lineMetrics = [];
     
     for (const line of lines) {
+        if (!line.trim()) continue; // Skip empty or whitespace-only lines
         const metrics = tempCtx.measureText(line);
         const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
         const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
@@ -131,7 +132,7 @@ export async function rasterizeText({
 
         if (width <= 0 || height <= 0) continue;
 
-        lineMetrics.push({ line, width, height, ascent });
+        lineMetrics.push({ line, width, height, ascent, descent });
 
         if (orientation === 'column-tb') {
             totalWidth = Math.max(totalWidth, width);
@@ -141,13 +142,13 @@ export async function rasterizeText({
             totalHeight = Math.max(totalHeight, height);
         }
     }
-
+    
     if (totalWidth <= 0 || totalHeight <= 0) {
         return { width: 0, height: 0, pixels: [] };
     }
     
-    // Create a working canvas with enough padding for the outline
-    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 2; 
+    // Create a working canvas with enough padding for the outline and measurement inaccuracies
+    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 5; 
     const contentWidth = totalWidth + PADDING * 2;
     const contentHeight = totalHeight + PADDING * 2;
     
@@ -163,7 +164,7 @@ export async function rasterizeText({
     
     let currentY = PADDING;
     for (const { line, width, height, ascent } of lineMetrics) {
-        const xPos = PADDING + (totalWidth - width) / 2; // Center each line
+        const xPos = PADDING + (totalWidth - width) / 2; // Center each line horizontally
         ctx.fillText(line, xPos, currentY);
         if(orientation === 'column-tb') {
             currentY += height;
@@ -182,7 +183,7 @@ export async function rasterizeText({
     // Create a boolean array for the text pixels
     const textPixels = Array(contentWidth * contentHeight).fill(false);
     for (let i = 0; i < data.length; i += 4) {
-        if (data[i+3] > 0) { // Check alpha channel
+        if (data[i+3] > 128) { // Check alpha channel
             textPixels[i / 4] = true;
         }
     }

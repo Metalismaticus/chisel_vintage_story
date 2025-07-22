@@ -66,6 +66,7 @@ export default {
     errors: {
       noText: 'Text is empty',
       noTextDesc: 'Please enter some text to generate a schematic.',
+      rasterizeFailed: 'Could not generate text from the input. It might be empty or contain only unsupported characters.',
     },
   },
   shapeGenerator: {
@@ -180,9 +181,9 @@ export default {
         engraveDepth: 'Engraving Depth',
         orientation: {
             label: 'Text Orientation',
-            horizontal: 'Horizontal',
-            vertical: 'Vertical',
-            column: 'Column',
+            horizontal: 'Horizontal (on wall)',
+            vertical: 'Vertical (on floor)',
+            column: 'Column (on wall)',
         },
     },
     button: 'Generate .vox File',
