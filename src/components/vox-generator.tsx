@@ -33,8 +33,8 @@ export function VoxGenerator() {
     columnRadius: '8',
     columnHeight: '16',
     baseRadius: '10',
-    baseHeight: '2',
-    breakIntensity: '3',
+    baseHeight: '4',
+    breakAngle: '45',
     archWidth: '16',
     archHeight: '16',
     archDepth: '8',
@@ -119,10 +119,10 @@ export function VoxGenerator() {
                 return;
            }
 
-           const breakIntensity = brokenTop ? validateAndParse(dimensions.breakIntensity, t('voxGenerator.column.breakIntensity')) : undefined;
-           if(brokenTop && breakIntensity === null) return;
+           const breakAngle = brokenTop ? validateAndParse(dimensions.breakAngle, t('voxGenerator.column.breakAngle')) : undefined;
+           if(brokenTop && breakAngle === null) return;
 
-           shapeParams = { type: 'column', radius, height, withBase, baseRadius, baseHeight, brokenTop, breakIntensity };
+           shapeParams = { type: 'column', radius, height, withBase, baseRadius, baseHeight, brokenTop, breakAngle };
           break;
         }
         case 'cone': {
@@ -305,7 +305,7 @@ export function VoxGenerator() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="baseHeight">{t('voxGenerator.column.baseHeight')}</Label>
-                                <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 2" />
+                                <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 4" />
                             </div>
                         </div>
                     )}
@@ -317,14 +317,14 @@ export function VoxGenerator() {
                     </div>
                     {brokenTop && (
                          <div className="space-y-2 pt-2 pl-1">
-                            <Label htmlFor="break-intensity">{t('voxGenerator.column.breakIntensity')}: {dimensions.breakIntensity}</Label>
+                            <Label htmlFor="break-angle">{t('voxGenerator.column.breakAngle')}: {dimensions.breakAngle}°</Label>
                             <Slider 
-                                id="break-intensity"
-                                min={1}
-                                max={10}
+                                id="break-angle"
+                                min={15}
+                                max={60}
                                 step={1}
-                                value={[parseInt(dimensions.breakIntensity, 10)]}
-                                onValueChange={(val) => handleSliderChange('breakIntensity', val)}
+                                value={[parseInt(dimensions.breakAngle, 10)]}
+                                onValueChange={(val) => handleSliderChange('breakAngle', val)}
                             />
                         </div>
                     )}
@@ -537,7 +537,3 @@ export function VoxGenerator() {
     </div>
   );
 }
-
-    
-
-    

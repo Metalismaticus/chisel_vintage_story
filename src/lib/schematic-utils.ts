@@ -3,6 +3,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -53,7 +54,7 @@ export type VoxShape =
         baseRadius?: number,
         baseHeight?: number,
         brokenTop?: boolean,
-        breakIntensity?: number,
+        breakAngle?: number,
       }
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
@@ -202,7 +203,7 @@ export async function textToSchematic({
                 const minDistance = Math.sqrt(minDistanceSq);
                 
                 // Check if the pixel is within the outline stroke (1px wide)
-                if (minDistance > distanceCheck && minDistance <= distanceCheck + 1) {
+                if (minDistance > distanceCheck && minDistance <= distanceCheck + 1.2) { // Use 1.2 to fill gaps
                      outlinePixels[y * contentWidth + x] = true;
                 }
             }
@@ -578,38 +579,45 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 baseRadius = 0,
                 baseHeight = 0,
                 brokenTop = false,
-                breakIntensity = 0,
+                breakAngle = 45,
             } = shape;
-
-            const finalBaseHeight = withBase ? baseHeight : 0;
-            const finalBaseRadius = withBase ? baseRadius : 0;
-            const finalHeight = finalBaseHeight + colHeight;
             
-            width = depth = Math.max(colRadius * 2, finalBaseRadius * 2);
-            height = finalHeight;
+            width = depth = Math.max(colRadius * 2, withBase ? baseRadius * 2 : 0);
+            height = (withBase ? baseHeight : 0) + colHeight;
+            const shaftCenter = width / 2;
 
             let voxels = new Set<string>();
 
-            // Generate base
-            if (withBase) {
-                const baseCenter = width / 2;
-                for (let y = 0; y < finalBaseHeight; y++) {
-                    for (let z = 0; z < depth; z++) {
-                        for (let x = 0; x < width; x++) {
-                            const dx = x - baseCenter + 0.5;
-                            const dz = z - baseCenter + 0.5;
-                            if (dx * dx + dz * dz <= finalBaseRadius * finalBaseRadius) {
-                                voxels.add(`${x},${y},${z}`);
+            // Generate detailed base
+            if (withBase && baseHeight > 0 && baseRadius > 0) {
+                const baseLayers = [
+                    { h: Math.ceil(baseHeight * 0.4), r: baseRadius },
+                    { h: Math.ceil(baseHeight * 0.3), r: baseRadius * 0.9 },
+                    { h: baseHeight - Math.ceil(baseHeight * 0.4) - Math.ceil(baseHeight * 0.3), r: baseRadius * 0.8 },
+                ];
+                
+                let currentY = 0;
+                for(const layer of baseLayers) {
+                    const layerHeight = Math.max(1, layer.h);
+                    for (let y = currentY; y < currentY + layerHeight; y++) {
+                        for (let z = 0; z < width; z++) {
+                            for (let x = 0; x < width; x++) {
+                                const dx = x - shaftCenter + 0.5;
+                                const dz = z - shaftCenter + 0.5;
+                                if (dx * dx + dz * dz <= layer.r * layer.r) {
+                                    voxels.add(`${x},${y},${z}`);
+                                }
                             }
                         }
                     }
+                    currentY += layerHeight;
                 }
             }
 
             // Generate shaft
-            const shaftCenter = width / 2;
-            for (let y = finalBaseHeight; y < finalHeight; y++) {
-                for (let z = 0; z < depth; z++) {
+            const shaftStartY = withBase ? baseHeight : 0;
+            for (let y = shaftStartY; y < height; y++) {
+                for (let z = 0; z < width; z++) {
                     for (let x = 0; x < width; x++) {
                          const dx = x - shaftCenter + 0.5;
                          const dz = z - shaftCenter + 0.5;
@@ -620,42 +628,29 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 }
             }
             
-            // Break top
-            if (brokenTop && breakIntensity > 0) {
-                const topY = finalHeight - 1;
-                const intensityRatio = breakIntensity / 10;
-                
-                // Convert set to array for easier manipulation
-                let voxelArray = Array.from(voxels);
-                
-                // Get all top-level voxels
-                let topVoxels = voxelArray.filter(v => parseInt(v.split(',')[1]) === topY);
-                
-                for(let i = 0; i < intensityRatio * 2; i++) {
-                    // Reduce the height of some top voxels randomly
-                    if (topVoxels.length > 0) {
-                         const randIndex = Math.floor(Math.random() * topVoxels.length);
-                         const voxelToRemove = topVoxels[randIndex];
-                         const coords = voxelToRemove.split(',').map(Number);
-                         
-                         const newHeight = topY - 1 - Math.floor(Math.random() * 3 * intensityRatio);
-                         
-                         for (let y = newHeight + 1; y <= topY; y++) {
-                             voxels.delete(`${coords[0]},${y},${coords[2]}`);
-                         }
-                         
-                         // Remove from top list to avoid picking again
-                         topVoxels.splice(randIndex, 1);
+            // Break top with an angled slice
+            if (brokenTop && breakAngle) {
+                const tanAngle = Math.tan(breakAngle * Math.PI / 180);
+                // The plane equation: y = tan(angle) * x + c. We start the cut from one edge.
+                const slicePlane = (x: number, y: number) => {
+                    return y - (height - colRadius) > tanAngle * (x - (shaftCenter - colRadius));
+                };
+
+                let voxelsToRemove = new Set<string>();
+                voxels.forEach(v => {
+                    const [x, y, z] = v.split(',').map(Number);
+                    if (slicePlane(x, y)) {
+                        voxelsToRemove.add(v);
                     }
-                }
+                });
+                voxelsToRemove.forEach(v => voxels.delete(v));
             }
-            
+
             // Add final voxels from set
             voxels.forEach(v => {
                 const [x, y, z] = v.split(',').map(Number);
                 addVoxel(x, y, z);
             });
-
             break;
         }
         
@@ -835,10 +830,3 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
-
-    
-
-    
-
-
-    

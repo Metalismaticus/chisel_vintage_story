@@ -148,7 +148,7 @@ export default {
         brokenTop: 'Broken top',
         baseRadius: 'Base radius',
         baseHeight: 'Base height',
-        breakIntensity: 'Break intensity',
+        breakAngle: 'Slice angle',
     },
     arch: {
         archType: 'Arch Type',
@@ -201,7 +201,3 @@ export default {
     },
   },
 } as const;
-
-    
-
-    

@@ -148,7 +148,7 @@ export default {
         brokenTop: 'Сломанный верх',
         baseRadius: 'Радиус основания',
         baseHeight: 'Высота основания',
-        breakIntensity: 'Интенсивность разрушения',
+        breakAngle: 'Угол среза',
     },
     arch: {
         archType: 'Тип арки',
@@ -201,7 +201,3 @@ export default {
     },
   },
 } as const;
-
-    
-
-    
