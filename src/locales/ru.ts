@@ -144,8 +144,14 @@ export default {
       },
     },
     arch: {
-        roundOuter: 'Закруглить внешние углы',
+        archType: 'Тип арки',
+        types: {
+            rectangular: 'Прямоугольная',
+            rounded: 'С закруглением',
+            circular: 'Круглая (полукольцо)',
+        },
         outerRadius: 'Радиус внешнего скругления',
+        thickness: 'Толщина',
     },
     button: 'Сгенерировать .vox файл',
     errors: {
@@ -154,7 +160,8 @@ export default {
       unknownShape: 'Неизвестная фигура',
       selectValidShape: 'Пожалуйста, выберите корректную фигуру.',
       noDataFromServer: 'Сервер не вернул данные.',
-      radiusTooLarge: 'Радиус не может быть больше половины ширины.'
+      radiusTooLarge: 'Радиус не может быть больше половины ширины.',
+      thicknessTooLarge: 'Толщина должна быть меньше внешнего радиуса.',
     },
   },
   schematicPreview: {

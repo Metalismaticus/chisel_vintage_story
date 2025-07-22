@@ -1,5 +1,6 @@
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -28,6 +29,12 @@ export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
 
 type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
+type ArchType = 'rectangular' | 'rounded' | 'circular';
+
+
+type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
+type ArchRounded = { archType: 'rounded', width: number, height: number, depth: number, outerCornerRadius: number };
+type ArchCircular = { archType: 'circular', outerRadius: number, thickness: number, depth: number };
 
 
 export type VoxShape = 
@@ -36,7 +43,7 @@ export type VoxShape =
     | { type: 'pyramid', base: number, height: number }
     | { type: 'cone', radius: number, height: number }
     | { type: 'column', radius: number, height: number }
-    | { type: 'arch', width: number, height: number, depth: number, roundOuterCorners?: boolean, outerCornerRadius?: number }
+    | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
 
 
@@ -365,7 +372,7 @@ export function shapeToSchematic(shape:
     const yOffset = Math.floor((finalHeight - contentHeight) / 2);
     
     for(let y = 0; y < contentHeight; y++) {
-        for (let x = 0; x < contentWidth; x++) {
+        for(let x = 0; x < contentWidth; x++) {
             if (rawPixels[y * contentWidth + x]) {
                 finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
             }
@@ -568,54 +575,70 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'arch': {
-            width = shape.width;
-            height = shape.height;
-            depth = shape.depth;
-            const archRadius = shape.width / 2.0;
-            const centerX = (shape.width - 1) / 2.0;
+             depth = shape.depth;
+             if (shape.archType === 'circular') {
+                width = shape.outerRadius * 2;
+                height = shape.outerRadius;
+                const innerRadius = shape.outerRadius - shape.thickness;
+                const center = shape.outerRadius;
 
-            for (let y = 0; y < height; y++) {
-              for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                  let shouldPlace = false;
-                  // Inner cutout
-                  const innerDx = x - centerX;
-                  const innerDy = y - (height - archRadius);
-                  const isOutsideInnerCutout = innerDx * innerDx + innerDy * innerDy >= archRadius * archRadius;
-                  
-                  if (y < height - archRadius) {
-                      shouldPlace = true; // Base part
-                  } else {
-                     if (isOutsideInnerCutout) {
-                        shouldPlace = true;
-                     }
-                  }
-                  
-                  // Outer rounding
-                  if (shouldPlace && shape.roundOuterCorners && shape.outerCornerRadius && y >= height - shape.outerCornerRadius) {
-                      // Top-left corner
-                      if (x < shape.outerCornerRadius) {
-                          const outerDx = x - shape.outerCornerRadius + 0.5;
-                          const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
-                          if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
-                              shouldPlace = false;
+                for (let y = 0; y < height; y++) {
+                    for (let z = 0; z < depth; z++) {
+                        for (let x = 0; x < width; x++) {
+                            const dx = x - center + 0.5;
+                            const dy = y - height + 0.5;
+                            const distSq = dx * dx + dy * dy;
+                            if (distSq <= shape.outerRadius * shape.outerRadius && distSq > innerRadius * innerRadius) {
+                                addVoxel(x, y, z);
+                            }
+                        }
+                    }
+                }
+            } else { // Rectangular or Rounded
+                width = shape.width;
+                height = shape.height;
+                const archRadius = shape.width / 2.0;
+                const centerX = (shape.width - 1) / 2.0;
+
+                for (let y = 0; y < height; y++) {
+                  for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                      let shouldPlace = false;
+                      const innerDx = x - centerX;
+                      const innerDy = y - (height - archRadius);
+                      const isOutsideInnerCutout = innerDx * innerDx + innerDy * innerDy >= archRadius * archRadius;
+                      
+                      if (y < height - archRadius) {
+                          shouldPlace = true;
+                      } else {
+                         if (isOutsideInnerCutout) {
+                            shouldPlace = true;
+                         }
+                      }
+                      
+                      if (shouldPlace && shape.archType === 'rounded' && shape.outerCornerRadius && y >= height - shape.outerCornerRadius) {
+                          if (x < shape.outerCornerRadius) {
+                              const outerDx = x - shape.outerCornerRadius + 0.5;
+                              const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
+                              if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
+                                  shouldPlace = false;
+                              }
+                          }
+                          if (x > width - 1 - shape.outerCornerRadius) {
+                              const outerDx = x - (width - 1 - shape.outerCornerRadius) - 0.5;
+                              const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
+                               if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
+                                  shouldPlace = false;
+                              }
                           }
                       }
-                      // Top-right corner
-                      if (x > width - 1 - shape.outerCornerRadius) {
-                          const outerDx = x - (width - 1 - shape.outerCornerRadius) - 0.5;
-                          const outerDy = y - (height - shape.outerCornerRadius) + 0.5;
-                           if (outerDx * outerDx + outerDy * outerDy > shape.outerCornerRadius * shape.outerCornerRadius) {
-                              shouldPlace = false;
-                          }
-                      }
-                  }
 
-                  if (shouldPlace) {
-                      addVoxel(x, y, z);
+                      if (shouldPlace) {
+                          addVoxel(x, y, z);
+                      }
+                    }
                   }
                 }
-              }
             }
             break;
         }

@@ -144,8 +144,14 @@ export default {
       },
     },
     arch: {
-        roundOuter: 'Round outer corners',
+        archType: 'Arch Type',
+        types: {
+            rectangular: 'Rectangular',
+            rounded: 'Rounded',
+            circular: 'Circular (Hoop)',
+        },
         outerRadius: 'Outer corner radius',
+        thickness: 'Thickness',
     },
     button: 'Generate .vox File',
     errors: {
@@ -154,7 +160,8 @@ export default {
       unknownShape: 'Unknown shape',
       selectValidShape: 'Please select a valid shape.',
       noDataFromServer: 'No data returned from server.',
-      radiusTooLarge: 'Radius cannot be larger than half the width.'
+      radiusTooLarge: 'Radius cannot be larger than half the width.',
+      thicknessTooLarge: 'Thickness must be less than the outer radius.',
     },
   },
   schematicPreview: {

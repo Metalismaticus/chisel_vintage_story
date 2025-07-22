@@ -12,9 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { VoxShape } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
-import { Loader2, ChevronsRightLeft } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 
 
@@ -36,6 +35,8 @@ export function VoxGenerator() {
     archHeight: '16',
     archDepth: '8',
     archOuterRadius: '4',
+    circularArchOuterRadius: '16',
+    circularArchThickness: '4',
     diskRadius: '16',
     diskHeight: '1',
   });
@@ -43,7 +44,8 @@ export function VoxGenerator() {
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
   const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
   const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
-  const [archRoundOuter, setArchRoundOuter] = useState(false);
+  const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
+
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -112,20 +114,33 @@ export function VoxGenerator() {
           break;
         }
         case 'arch': {
-           const width = validateAndParse(dimensions.archWidth, t('voxGenerator.dims.width'));
-           const height = validateAndParse(dimensions.archHeight, t('voxGenerator.dims.height'));
-           const depth = validateAndParse(dimensions.archDepth, t('voxGenerator.dims.depth'));
-           if (width === null || height === null || depth === null) return;
-
-           const outerCornerRadius = archRoundOuter ? validateAndParse(dimensions.archOuterRadius, t('voxGenerator.arch.outerRadius')) : 0;
-           if (outerCornerRadius === null) return;
-            if (archRoundOuter && outerCornerRadius > width / 2) {
-               toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.arch.outerRadius')}), description: t('voxGenerator.errors.radiusTooLarge'), variant: "destructive" });
-               return;
-           }
-
-           shapeParams = { type: 'arch', width, height, depth, roundOuterCorners: archRoundOuter, outerCornerRadius };
-           break;
+          if (archType === 'circular') {
+            const outerRadius = validateAndParse(dimensions.circularArchOuterRadius, t('voxGenerator.arch.outerRadius'));
+            const thickness = validateAndParse(dimensions.circularArchThickness, t('voxGenerator.arch.thickness'));
+            const depth = validateAndParse(dimensions.archDepth, t('voxGenerator.dims.depth'));
+            if (outerRadius === null || thickness === null || depth === null) return;
+            if (thickness >= outerRadius) {
+              toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.arch.thickness')}), description: t('voxGenerator.errors.thicknessTooLarge'), variant: "destructive" });
+              return;
+            }
+            shapeParams = { type: 'arch', archType, outerRadius, thickness, depth };
+          } else {
+            const width = validateAndParse(dimensions.archWidth, t('voxGenerator.dims.width'));
+            const height = validateAndParse(dimensions.archHeight, t('voxGenerator.dims.height'));
+            const depth = validateAndParse(dimensions.archDepth, t('voxGenerator.dims.depth'));
+            if (width === null || height === null || depth === null) return;
+            
+            let outerCornerRadius = 0;
+            if (archType === 'rounded') {
+              outerCornerRadius = validateAndParse(dimensions.archOuterRadius, t('voxGenerator.arch.outerRadius')) ?? 0;
+              if (outerCornerRadius > width / 2) {
+                 toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.arch.outerRadius')}), description: t('voxGenerator.errors.radiusTooLarge'), variant: "destructive" });
+                 return;
+              }
+            }
+            shapeParams = { type: 'arch', archType, width, height, depth, outerCornerRadius };
+          }
+          break;
         }
          case 'disk': {
           const radius = validateAndParse(dimensions.diskRadius, t('voxGenerator.dims.radius'));
@@ -272,36 +287,70 @@ export function VoxGenerator() {
       case 'arch':
         return (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="archWidth">{t('voxGenerator.dims.width')} (voxels)</Label>
-                <Input id="archWidth" type="number" value={dimensions.archWidth} onChange={e => handleDimensionChange('archWidth', e.target.value)} placeholder="e.g. 16" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="archHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
-                <Input id="archHeight" type="number" value={dimensions.archHeight} onChange={e => handleDimensionChange('archHeight', e.target.value)} placeholder="e.g. 16" />
-              </div>
-               <div className="space-y-2">
-                <Label htmlFor="archDepth">{t('voxGenerator.dims.depth')} (voxels)</Label>
-                <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
-              </div>
+            <div className="space-y-2">
+              <Label>{t('voxGenerator.arch.archType')}</Label>
+              <RadioGroup value={archType} onValueChange={(v) => setArchType(v as any)} className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 pt-2">
+                  <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="rectangular" id="arch-rectangular" />
+                      <Label htmlFor="arch-rectangular">{t('voxGenerator.arch.types.rectangular')}</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="rounded" id="arch-rounded" />
+                      <Label htmlFor="arch-rounded">{t('voxGenerator.arch.types.rounded')}</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="circular" id="arch-circular" />
+                      <Label htmlFor="arch-circular">{t('voxGenerator.arch.types.circular')}</Label>
+                  </div>
+              </RadioGroup>
             </div>
-            <div className="flex items-center space-x-2">
-                <Switch id="arch-round-outer" checked={archRoundOuter} onCheckedChange={setArchRoundOuter}/>
-                <Label htmlFor="arch-round-outer">{t('voxGenerator.arch.roundOuter')}</Label>
-            </div>
-            {archRoundOuter && (
+
+            {archType === 'circular' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="arch-outer-radius">{t('voxGenerator.arch.outerRadius')}: {dimensions.archOuterRadius}</Label>
-                    <Slider 
-                        id="arch-outer-radius"
-                        min={1}
-                        max={Math.max(1, Math.floor(parseInt(dimensions.archWidth, 10) / 2))}
-                        step={1}
-                        value={[parseInt(dimensions.archOuterRadius, 10)]}
-                        onValueChange={(val) => handleSliderChange('archOuterRadius', val)}
-                    />
+                  <Label htmlFor="circularArchOuterRadius">{t('voxGenerator.arch.outerRadius')} (voxels)</Label>
+                  <Input id="circularArchOuterRadius" type="number" value={dimensions.circularArchOuterRadius} onChange={e => handleDimensionChange('circularArchOuterRadius', e.target.value)} placeholder="e.g. 16" />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="circularArchThickness">{t('voxGenerator.arch.thickness')} (voxels)</Label>
+                  <Input id="circularArchThickness" type="number" value={dimensions.circularArchThickness} onChange={e => handleDimensionChange('circularArchThickness', e.target.value)} placeholder="e.g. 4" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="archDepth">{t('voxGenerator.dims.depth')} (voxels)</Label>
+                  <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="archWidth">{t('voxGenerator.dims.width')} (voxels)</Label>
+                    <Input id="archWidth" type="number" value={dimensions.archWidth} onChange={e => handleDimensionChange('archWidth', e.target.value)} placeholder="e.g. 16" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="archHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
+                    <Input id="archHeight" type="number" value={dimensions.archHeight} onChange={e => handleDimensionChange('archHeight', e.target.value)} placeholder="e.g. 16" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="archDepth">{t('voxGenerator.dims.depth')} (voxels)</Label>
+                    <Input id="archDepth" type="number" value={dimensions.archDepth} onChange={e => handleDimensionChange('archDepth', e.target.value)} placeholder="e.g. 8" />
+                  </div>
+                </div>
+
+                {archType === 'rounded' && (
+                    <div className="space-y-2">
+                        <Label htmlFor="arch-outer-radius">{t('voxGenerator.arch.outerRadius')}: {dimensions.archOuterRadius}</Label>
+                        <Slider 
+                            id="arch-outer-radius"
+                            min={1}
+                            max={Math.max(1, Math.floor(parseInt(dimensions.archWidth, 10) / 2))}
+                            step={1}
+                            value={[parseInt(dimensions.archOuterRadius, 10)]}
+                            onValueChange={(val) => handleSliderChange('archOuterRadius', val)}
+                        />
+                    </div>
+                )}
+              </div>
             )}
           </div>
         );
