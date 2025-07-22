@@ -9,6 +9,7 @@ import { Copy, Download, Package, Loader2, Info } from 'lucide-react';
 import type { SchematicOutput } from '@/lib/schematic-utils';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { useI18n } from '@/locales/client';
+import { VoxPreview } from './vox-preview';
 
 interface SchematicPreviewProps {
   schematicOutput?: SchematicOutput | null;
@@ -226,13 +227,9 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
       );
     }
     
-    if (isVox) {
+    if (isVox && schematicOutput.voxData) {
         return (
-            <div className="flex flex-col items-center justify-center h-full border-2 border-dashed border-input rounded-lg p-8 text-center">
-              <Package className="w-16 h-16 text-primary mb-4" />
-              <h3 className="text-xl font-semibold uppercase tracking-wider">{t('schematicPreview.voxGenerated')}</h3>
-              <p className="text-muted-foreground mt-2">{t('schematicPreview.voxDescription')}</p>
-            </div>
+           <VoxPreview voxData={schematicOutput.voxData} />
         );
     }
 
