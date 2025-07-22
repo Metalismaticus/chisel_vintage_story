@@ -83,7 +83,7 @@ export function VoxGenerator() {
   // QR Code State
   const [qrUrl, setQrUrl] = useState('https://www.vintagestory.at/');
   const [qrCodeDepth, setQrCodeDepth] = useState([2]);
-  const [qrBackgroundDepth, setQrBackgroundDepth] = useState([4]);
+  const [qrBackgroundDepth, setQrBackgroundDepth] = useState([5]);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
