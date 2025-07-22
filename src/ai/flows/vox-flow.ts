@@ -19,7 +19,7 @@ export interface VoxOutput {
 }
 
 // This is the main exported function that the client will call.
-// It's a standard Next.js Server Action, not a Genkit flow.
+// It's a standard Next.js Server Action.
 export async function generateVoxFlow(input: VoxShape): Promise<VoxOutput> {
   // Directly call the utility function to generate the schematic and raw .vox data (Uint8Array)
   const result = voxToSchematic(input);

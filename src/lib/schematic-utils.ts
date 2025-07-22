@@ -1,6 +1,6 @@
 
 
-import { writeVox } from './vox-writer';
+import { writeVox, type VoxData } from './vox-writer';
 
 export type ConversionMode = 'bw' | 'color';
 
@@ -317,7 +317,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
  * Generates a .vox file for a given 3D shape.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
-    const voxels: {x: number, y: number, z: number, colorIndex: number}[] = [];
+    const voxels: VoxData['voxels'] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
