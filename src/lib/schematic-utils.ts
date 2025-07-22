@@ -134,21 +134,20 @@ export async function textToSchematic({
     contentCtx.fillText(text, PADDING, PADDING);
     
     const imageData = contentCtx.getImageData(0, 0, contentWidth, contentHeight);
-    const rawPixels = Array(contentWidth * contentHeight).fill(false);
+    const textPixels = Array(contentWidth * contentHeight).fill(false);
     
     // Get the initial text pixels
     for (let i = 0; i < imageData.data.length; i += 4) {
         if (imageData.data[i + 3] > 128) {
-            rawPixels[i / 4] = true;
+            textPixels[i / 4] = true;
         }
     }
     
-    let finalContentPixels: boolean[] = rawPixels;
+    let finalContentPixels: boolean[] = textPixels;
 
     if (outline) {
-        const textPixels = [...rawPixels]; // Keep a copy of original text pixels
         const outlinePixels = Array(contentWidth * contentHeight).fill(false);
-        const distance = outlineGap + 1; // The exact distance for the outline
+        const distance = outlineGap + 1;
 
         for (let y = 0; y < contentHeight; y++) {
             for (let x = 0; x < contentWidth; x++) {
@@ -157,7 +156,7 @@ export async function textToSchematic({
                     // Check in a square around the pixel
                     for (let dy = -distance; dy <= distance; dy++) {
                         for (let dx = -distance; dx <= distance; dx++) {
-                            // We want pixels at the exact distance, forming a hollow square shape
+                            // Check the perimeter of the square defined by 'distance'
                             if (Math.abs(dx) === distance || Math.abs(dy) === distance) {
                                 const checkX = x + dx;
                                 const checkY = y + dy;
@@ -172,8 +171,25 @@ export async function textToSchematic({
                         }
                         if (isOutlinePixel) break;
                     }
-                    if (isOutlinePixel) {
-                        outlinePixels[y * contentWidth + x] = true;
+                     if (isOutlinePixel) {
+                        // Check if it's too close to the text
+                        let isTooClose = false;
+                        for(let dy_inner = -outlineGap; dy_inner <= outlineGap; dy_inner++) {
+                            for(let dx_inner = -outlineGap; dx_inner <= outlineGap; dx_inner++) {
+                                 const checkX_inner = x + dx_inner;
+                                 const checkY_inner = y + dy_inner;
+                                 if (checkX_inner >= 0 && checkX_inner < contentWidth && checkY_inner >= 0 && checkY_inner < contentHeight) {
+                                    if (textPixels[checkY_inner * contentWidth + checkX_inner]) {
+                                        isTooClose = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (isTooClose) break;
+                        }
+                        if (!isTooClose) {
+                            outlinePixels[y * contentWidth + x] = true;
+                        }
                     }
                 }
             }
