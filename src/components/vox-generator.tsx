@@ -13,7 +13,6 @@ import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, typ
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput } from '@/ai/flows/text-to-vox-flow';
-import { generateQrToVoxFlow, type QrToVoxInput } from '@/ai/flows/qr-to-vox-flow';
 import { Loader2, Upload, QrCode } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -233,14 +232,15 @@ export function VoxGenerator() {
           }
       }
 
-      const input: QrToVoxInput = {
+      const shapeParams: VoxShape = {
+          type: 'qrcode',
           pixels,
           size: borderSize,
           depth: qrCodeDepth[0],
           backgroundDepth: qrBackgroundDepth[0],
       };
 
-      const result = await generateQrToVoxFlow(input);
+      const result = await generateVoxFlow(shapeParams);
       const voxDataBytes = Buffer.from(result.voxData, 'base64');
       setSchematicOutput({ ...result, voxData: voxDataBytes });
 

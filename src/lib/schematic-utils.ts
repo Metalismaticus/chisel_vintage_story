@@ -56,7 +56,8 @@ export type VoxShape =
       }
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
-    | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation };
+    | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
+    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, backgroundDepth: number };
 
 
 // A simple helper to generate schematic data string
@@ -549,9 +550,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     
     // In our app, Y is up. MagicaVoxel and vox-saver expect Z to be up.
     // We will generate with our coordinate system (Y-up) and then create the final voxObject with swapped axes.
-    const addVoxel = (x: number, y: number, z: number) => {
+    const addVoxel = (x: number, y: number, z: number, i = 1) => {
         // The color index is 1, which maps to the first color in our palette.
-        xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
+        xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i });
     };
 
     switch (shape.type) {
@@ -884,13 +885,44 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
         }
+        
+        case 'qrcode': {
+            const { pixels, size, depth: qrDepth, backgroundDepth } = shape;
+            width = size;
+            height = size;
+            depth = qrDepth + backgroundDepth;
+
+            for (let py = 0; py < height; py++) {
+              for (let px = 0; px < width; px++) {
+                const isQrPixel = pixels[py * width + px];
+
+                // Create the background plate
+                if (backgroundDepth > 0) {
+                  for (let pz = 0; pz < backgroundDepth; pz++) {
+                    addVoxel(px, height - 1 - py, pz, 2); // Use color index 2 for background
+                  }
+                }
+                
+                // Create the QR code block on top of the background
+                if (isQrPixel) {
+                  for (let pz = backgroundDepth; pz < depth; pz++) {
+                      // We flip the y-axis to match the typical 2D canvas coordinates (top-left 0,0)
+                      addVoxel(px, height - 1 - py, pz, 1); // Use color index 1 for QR code
+                  }
+                }
+              }
+            }
+            break;
+        }
+
     }
     
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
     // The library expects a full 256 color palette. We'll fill it with a default color.
     const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
     palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed, so 0 is empty
-    palette[1] = { r: 200, g: 164, b: 100, a: 255 };
+    palette[1] = { r: 10, g: 10, b: 10, a: 255 }; 
+    palette[2] = { r: 220, g: 220, b: 220, a: 255 };
     
     const voxObject = {
         size: { x: width, y: depth, z: height }, // Z is up in .vox format, so we map our depth to Y and height to Z
@@ -920,3 +952,4 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
