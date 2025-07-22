@@ -96,7 +96,7 @@ export async function textToSchematic({
       }
     }
 
-    // Step 1: Measure text to determine required canvas size
+    // Step 1: Measure text and determine padding
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
     const metrics = tempCtx.measureText(text);
@@ -105,123 +105,114 @@ export async function textToSchematic({
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
     const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
     const textHeight = Math.ceil(ascent + descent) || 1;
-
-    if (textWidth <= 0 || textHeight <= 0) {
-      if (fontFace && document.fonts.has(fontFace)) document.fonts.delete(fontFace);
-      return {
-        schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
-        width: 0,
-        height: 0,
-        pixels: [],
-      };
-    }
     
-    // Calculate padding needed for the outline and gap
     const PADDING = outline ? (outlineGap + 2) : 1;
     const contentWidth = textWidth + PADDING * 2;
     const contentHeight = textHeight + PADDING * 2;
     
-    // Create a canvas large enough for the content
-    const contentCanvas = document.createElement('canvas');
-    contentCanvas.width = contentWidth;
-    contentCanvas.height = contentHeight;
-    const contentCtx = contentCanvas.getContext('2d', { willReadFrequently: true })!;
+    // Step 2: Draw on a temporary canvas
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = contentWidth;
+    tempCanvas.height = contentHeight;
+    const ctx = tempCanvas.getContext('2d', { willReadFrequently: true })!;
+    
+    ctx.font = `${fontSize}px ${loadedFontFamily}`;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textBaseline = 'top';
+    ctx.fillText(text, PADDING, PADDING);
 
-    // Draw the text in the middle of this content canvas
-    contentCtx.font = `${fontSize}px ${loadedFontFamily}`;
-    contentCtx.fillStyle = '#FFFFFF';
-    contentCtx.textBaseline = 'top';
-    contentCtx.fillText(text, PADDING, PADDING);
+    if (fontFace && document.fonts.has(fontFace)) {
+        document.fonts.delete(fontFace);
+    }
     
-    const imageData = contentCtx.getImageData(0, 0, contentWidth, contentHeight);
+    const imageData = ctx.getImageData(0, 0, contentWidth, contentHeight);
+    const data = imageData.data;
+
+    // Step 3: Get text and outline pixels
     const textPixels = Array(contentWidth * contentHeight).fill(false);
-    
-    // Get the initial text pixels
-    for (let i = 0; i < imageData.data.length; i += 4) {
-        if (imageData.data[i + 3] > 128) {
+    for (let i = 0; i < data.length; i += 4) {
+        if (data[i+3] > 0) {
             textPixels[i / 4] = true;
         }
     }
     
-    let finalContentPixels: boolean[] = textPixels;
+    let combinedPixels = textPixels;
 
     if (outline) {
         const outlinePixels = Array(contentWidth * contentHeight).fill(false);
-        const distance = outlineGap + 1;
+        const distanceThreshold = outlineGap + 1;
 
         for (let y = 0; y < contentHeight; y++) {
             for (let x = 0; x < contentWidth; x++) {
                 if (!textPixels[y * contentWidth + x]) { // Check only empty pixels
-                    let isOutlinePixel = false;
-                    // Check in a square around the pixel
-                    for (let dy = -distance; dy <= distance; dy++) {
-                        for (let dx = -distance; dx <= distance; dx++) {
-                            // Check the perimeter of the square defined by 'distance'
-                            if (Math.abs(dx) === distance || Math.abs(dy) === distance) {
-                                const checkX = x + dx;
-                                const checkY = y + dy;
-
-                                if (checkX >= 0 && checkX < contentWidth && checkY >= 0 && checkY < contentHeight) {
-                                    if (textPixels[checkY * contentWidth + checkX]) {
-                                        isOutlinePixel = true;
-                                        break;
-                                    }
+                    let minDistance = Infinity;
+                    for (let y2 = 0; y2 < contentHeight; y2++) {
+                        for (let x2 = 0; x2 < contentWidth; x2++) {
+                            if (textPixels[y2 * contentWidth + x2]) {
+                                const dist = Math.sqrt(Math.pow(x - x2, 2) + Math.pow(y - y2, 2));
+                                if (dist < minDistance) {
+                                    minDistance = dist;
                                 }
                             }
                         }
-                        if (isOutlinePixel) break;
                     }
-                     if (isOutlinePixel) {
-                        // Check if it's too close to the text
-                        let isTooClose = false;
-                        for(let dy_inner = -outlineGap; dy_inner <= outlineGap; dy_inner++) {
-                            for(let dx_inner = -outlineGap; dx_inner <= outlineGap; dx_inner++) {
-                                 const checkX_inner = x + dx_inner;
-                                 const checkY_inner = y + dy_inner;
-                                 if (checkX_inner >= 0 && checkX_inner < contentWidth && checkY_inner >= 0 && checkY_inner < contentHeight) {
-                                    if (textPixels[checkY_inner * contentWidth + checkX_inner]) {
-                                        isTooClose = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (isTooClose) break;
-                        }
-                        if (!isTooClose) {
-                            outlinePixels[y * contentWidth + x] = true;
-                        }
+
+                    if (Math.round(minDistance) === distanceThreshold) {
+                         outlinePixels[y * contentWidth + x] = true;
                     }
                 }
             }
         }
         
-        // Combine original text and the new outline
-        finalContentPixels = Array(contentWidth * contentHeight).fill(false);
-        for(let i = 0; i < finalContentPixels.length; i++) {
-            finalContentPixels[i] = textPixels[i] || outlinePixels[i];
-        }
+        combinedPixels = textPixels.map((p, i) => p || outlinePixels[i]);
     }
 
-
-    // Step 2: Create the final canvas, aligned to 16x16 chunks
-    const finalWidth = Math.ceil(contentWidth / 16) * 16;
-    const finalHeight = Math.ceil(contentHeight / 16) * 16;
-    const finalPixels = Array(finalWidth * finalHeight).fill(false);
-    
-    // Step 3: Place the content from the temp canvas onto the final canvas
-    const xOffset = Math.floor((finalWidth - contentWidth) / 2);
-    const yOffset = Math.floor((finalHeight - contentHeight) / 2);
-    
+    // Step 4: Crop the content to its actual bounding box
+    let minX = contentWidth, minY = contentHeight, maxX = -1, maxY = -1;
     for(let y = 0; y < contentHeight; y++) {
         for (let x = 0; x < contentWidth; x++) {
-            if (finalContentPixels[y * contentWidth + x]) {
-                finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
+            if (combinedPixels[y * contentWidth + x]) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
             }
         }
     }
+    
+    if (maxX === -1) { // Empty schematic
+        return {
+            schematicData: createSchematicData(`Empty Text`, {width: 0, height: 0}),
+            width: 0,
+            height: 0,
+            pixels: [],
+        };
+    }
+    
+    const croppedWidth = maxX - minX + 1;
+    const croppedHeight = maxY - minY + 1;
+    const croppedPixels = Array(croppedWidth * croppedHeight).fill(false);
+    
+    for(let y = 0; y < croppedHeight; y++) {
+        for(let x = 0; x < croppedWidth; x++) {
+            croppedPixels[y * croppedWidth + x] = combinedPixels[(y + minY) * contentWidth + (x + minX)];
+        }
+    }
 
-    if (fontFace && document.fonts.has(fontFace)) {
-        document.fonts.delete(fontFace);
+    // Step 5: Place cropped content onto the final, chunk-aligned canvas
+    const finalWidth = Math.ceil(croppedWidth / 16) * 16;
+    const finalHeight = Math.ceil(croppedHeight / 16) * 16;
+    const finalPixels = Array(finalWidth * finalHeight).fill(false);
+    
+    const xOffset = Math.floor((finalWidth - croppedWidth) / 2);
+    const yOffset = Math.floor((finalHeight - croppedHeight) / 2);
+    
+    for(let y = 0; y < croppedHeight; y++) {
+        for (let x = 0; x < croppedWidth; x++) {
+            if (croppedPixels[y * croppedWidth + x]) {
+                finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
+            }
+        }
     }
 
     return {
@@ -229,8 +220,8 @@ export async function textToSchematic({
         width: finalWidth,
         height: finalHeight,
         pixels: finalPixels,
-        originalWidth: contentWidth,
-        originalHeight: contentHeight
+        originalWidth: croppedWidth,
+        originalHeight: croppedHeight
     };
 }
 
