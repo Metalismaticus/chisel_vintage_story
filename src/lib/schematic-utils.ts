@@ -25,7 +25,7 @@ export interface SchematicOutput {
 
 export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
-export type TextOrientation = 'horizontal' | 'vertical-lr' | 'column-tb';
+export type TextOrientation = 'horizontal' | 'vertical-lr';
 
 type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
@@ -115,32 +115,11 @@ export async function rasterizeText({
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
 
-    const lines = orientation === 'column-tb' ? text.split('') : [text];
-    
-    let totalWidth = 0;
-    let totalHeight = 0;
-    const lineMetrics = [];
-    
-    for (const line of lines) {
-        if (!line.trim()) continue; // Skip empty or whitespace-only lines
-        const metrics = tempCtx.measureText(line);
-        const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
-        const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
-        const height = Math.ceil(ascent + descent);
-        const width = Math.ceil(metrics.width);
-
-        if (width <= 0 || height <= 0) continue;
-
-        lineMetrics.push({ line, width, height, ascent, descent });
-
-        if (orientation === 'column-tb') {
-            totalWidth = Math.max(totalWidth, width);
-            totalHeight += height;
-        } else {
-            totalWidth = Math.max(totalWidth, width);
-            totalHeight = Math.max(totalHeight, height);
-        }
-    }
+    const metrics = tempCtx.measureText(text);
+    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
+    const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
+    const totalHeight = Math.ceil(ascent + descent);
+    const totalWidth = Math.ceil(metrics.width);
     
     if (totalWidth <= 0 || totalHeight <= 0) {
         if (fontFace && document.fonts.has(fontFace)) {
@@ -163,15 +142,7 @@ export async function rasterizeText({
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#FFFFFF';
     ctx.textBaseline = 'top'; 
-    
-    let currentY = PADDING;
-    for (const { line, width, height, ascent } of lineMetrics) {
-        const xPos = PADDING + (totalWidth - width) / 2; // Center each line horizontally
-        ctx.fillText(line, xPos, currentY);
-        if(orientation === 'column-tb') {
-            currentY += height;
-        }
-    }
+    ctx.fillText(text, PADDING, PADDING);
     
     // Cleanup custom font
     if (fontFace && document.fonts.has(fontFace)) {

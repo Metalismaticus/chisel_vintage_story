@@ -183,7 +183,6 @@ export default {
             label: 'Ориентация текста',
             horizontal: 'Горизонтально',
             vertical: 'Вертикально',
-            column: 'Столбец',
         },
     },
     button: 'Сгенерировать .vox файл',

@@ -641,7 +641,7 @@ export function VoxGenerator() {
           </div>
            <div className="space-y-2">
             <Label>{t('voxGenerator.text.orientation.label')}</Label>
-            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="grid grid-cols-3 gap-2">
+            <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="grid grid-cols-2 gap-2">
                 <RadioGroupItem value="horizontal" id="text-horizontal" className="sr-only" />
                 <Label 
                     htmlFor="text-horizontal"
@@ -661,16 +661,6 @@ export function VoxGenerator() {
                      )}
                 >
                     {t('voxGenerator.text.orientation.vertical')}
-                </Label>
-                 <RadioGroupItem value="column-tb" id="text-column" className="sr-only" />
-                <Label 
-                    htmlFor="text-column"
-                    className={cn(
-                        "flex-1 text-center py-2 px-4 rounded-md cursor-pointer border",
-                        textOrientation === 'column-tb' ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent/50'
-                     )}
-                 >
-                    {t('voxGenerator.text.orientation.column')}
                 </Label>
             </RadioGroup>
           </div>

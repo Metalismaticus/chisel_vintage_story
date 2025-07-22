@@ -20,7 +20,7 @@ const TextToVoxInputSchema = z.object({
   letterDepth: z.number().int().positive(),
   backgroundDepth: z.number().int().min(0),
   engraveDepth: z.number().int().min(0),
-  orientation: z.enum(['horizontal', 'vertical-lr', 'column-tb']),
+  orientation: z.enum(['horizontal', 'vertical-lr']),
 });
 
 export type TextToVoxInput = z.infer<typeof TextToVoxInputSchema>;

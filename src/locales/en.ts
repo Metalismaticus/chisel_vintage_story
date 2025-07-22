@@ -183,7 +183,6 @@ export default {
             label: 'Text Orientation',
             horizontal: 'Horizontal',
             vertical: 'Vertical',
-            column: 'Column',
         },
     },
     button: 'Generate .vox File',
