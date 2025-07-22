@@ -114,6 +114,33 @@ export default {
       baseSize: 'Base Size',
       baseRadius: 'Base Radius',
     },
+    sphere: {
+      type: 'Type',
+      types: {
+        full: 'Full',
+        hemisphere: 'Hemisphere',
+      },
+      orientation: 'Orientation',
+      selectDirection: 'Select direction',
+      orientations: {
+        top: 'Top half',
+        bottom: 'Bottom half',
+        vertical: 'Vertical cut',
+      },
+    },
+    disk: {
+      type: 'Type',
+      types: {
+        full: 'Full',
+        half: 'Half',
+      },
+      orientation: 'Orientation',
+      selectDirection: 'Select direction',
+      orientations: {
+        horizontal: 'Horizontal cut',
+        vertical: 'Vertical cut',
+      },
+    },
     button: 'Generate .vox File',
     errors: {
       invalid: 'Invalid {name}',

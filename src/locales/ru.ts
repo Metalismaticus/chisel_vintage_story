@@ -114,6 +114,33 @@ export default {
       baseSize: 'Размер основания',
       baseRadius: 'Радиус основания',
     },
+    sphere: {
+      type: 'Тип',
+      types: {
+        full: 'Целая',
+        hemisphere: 'Полусфера',
+      },
+      orientation: 'Ориентация',
+      selectDirection: 'Выберите направление',
+      orientations: {
+        top: 'Верхняя часть',
+        bottom: 'Нижняя часть',
+        vertical: 'Вертикальный срез',
+      },
+    },
+    disk: {
+      type: 'Тип',
+      types: {
+        full: 'Целый',
+        half: 'Половина',
+      },
+      orientation: 'Ориентация',
+      selectDirection: 'Выберите направление',
+      orientations: {
+        horizontal: 'Горизонтальный срез',
+        vertical: 'Вертикальный срез',
+      },
+    },
     button: 'Сгенерировать .vox файл',
     errors: {
       invalid: 'Неверный {name}',

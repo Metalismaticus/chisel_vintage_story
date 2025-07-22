@@ -13,6 +13,7 @@ import type { VoxShape } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export function VoxGenerator() {
@@ -35,6 +36,11 @@ export function VoxGenerator() {
     diskRadius: '16',
     diskHeight: '1',
   });
+  const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
+  const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
+  const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
+  const [halfDiskDirection, setHalfDiskDirection] = useState<'horizontal' | 'vertical'>('horizontal');
+
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
   const { toast } = useToast();
@@ -69,7 +75,11 @@ export function VoxGenerator() {
         case 'sphere': {
           const radius = validateAndParse(dimensions.radius, t('voxGenerator.dims.radius'));
           if (radius === null) return;
-          shapeParams = { type: 'sphere', radius };
+          let part: VoxShape['part'] = 'full';
+          if (spherePart === 'hemisphere') {
+            part = `hemisphere-${hemisphereDirection}`;
+          }
+          shapeParams = { type: 'sphere', radius, part };
           break;
         }
         case 'pyramid': {
@@ -105,7 +115,11 @@ export function VoxGenerator() {
           const radius = validateAndParse(dimensions.diskRadius, t('voxGenerator.dims.radius'));
           const height = validateAndParse(dimensions.diskHeight, t('voxGenerator.dims.height'));
           if (radius === null || height === null) return;
-          shapeParams = { type: 'disk', radius, height };
+          let part: VoxShape['part'] = 'full';
+          if (diskPart === 'half') {
+            part = `half-${halfDiskDirection}`;
+          }
+          shapeParams = { type: 'disk', radius, height, part };
           break;
         }
         default:
@@ -163,10 +177,40 @@ export function VoxGenerator() {
         );
       case 'sphere':
         return (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="radius">{t('voxGenerator.dims.radius')} (voxels)</Label>
               <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('voxGenerator.sphere.type')}</Label>
+                 <RadioGroup value={spherePart} onValueChange={(v) => setSpherePart(v as any)} className="flex pt-2 space-x-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="full" id="sphere-full" />
+                        <Label htmlFor="sphere-full">{t('voxGenerator.sphere.types.full')}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="hemisphere" id="sphere-hemi" />
+                        <Label htmlFor="sphere-hemi">{t('voxGenerator.sphere.types.hemisphere')}</Label>
+                    </div>
+                </RadioGroup>
+              </div>
+              {spherePart === 'hemisphere' && (
+                <div className="space-y-2">
+                    <Label htmlFor="hemisphere-direction">{t('voxGenerator.sphere.orientation')}</Label>
+                    <Select value={hemisphereDirection} onValueChange={(v) => setHemisphereDirection(v as any)}>
+                        <SelectTrigger id="hemisphere-direction">
+                            <SelectValue placeholder={t('voxGenerator.sphere.selectDirection')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="top">{t('voxGenerator.sphere.orientations.top')}</SelectItem>
+                            <SelectItem value="bottom">{t('voxGenerator.sphere.orientations.bottom')}</SelectItem>
+                            <SelectItem value="vertical">{t('voxGenerator.sphere.orientations.vertical')}</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -228,14 +272,45 @@ export function VoxGenerator() {
         );
        case 'disk':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="diskRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
-              <Input id="diskRadius" type="number" value={dimensions.diskRadius} onChange={e => handleDimensionChange('diskRadius', e.target.value)} placeholder="e.g. 16" />
+           <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                <Label htmlFor="diskRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
+                <Input id="diskRadius" type="number" value={dimensions.diskRadius} onChange={e => handleDimensionChange('diskRadius', e.target.value)} placeholder="e.g. 16" />
+                </div>
+                <div className="space-y-2">
+                <Label htmlFor="diskHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
+                <Input id="diskHeight" type="number" value={dimensions.diskHeight} onChange={e => handleDimensionChange('diskHeight', e.target.value)} placeholder="e.g. 1" />
+                </div>
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="diskHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
-              <Input id="diskHeight" type="number" value={dimensions.diskHeight} onChange={e => handleDimensionChange('diskHeight', e.target.value)} placeholder="e.g. 1" />
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('voxGenerator.disk.type')}</Label>
+                 <RadioGroup value={diskPart} onValueChange={(v) => setDiskPart(v as any)} className="flex pt-2 space-x-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="full" id="disk-full" />
+                        <Label htmlFor="disk-full">{t('voxGenerator.disk.types.full')}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="half" id="disk-half" />
+                        <Label htmlFor="disk-half">{t('voxGenerator.disk.types.half')}</Label>
+                    </div>
+                </RadioGroup>
+              </div>
+              {diskPart === 'half' && (
+                <div className="space-y-2">
+                    <Label htmlFor="halfdisk-direction">{t('voxGenerator.disk.orientation')}</Label>
+                    <Select value={halfDiskDirection} onValueChange={(v) => setHalfDiskDirection(v as any)}>
+                        <SelectTrigger id="halfdisk-direction">
+                            <SelectValue placeholder={t('voxGenerator.disk.selectDirection')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="horizontal">{t('voxGenerator.disk.orientations.horizontal')}</SelectItem>
+                            <SelectItem value="vertical">{t('voxGenerator.disk.orientations.vertical')}</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+              )}
             </div>
           </div>
         );
