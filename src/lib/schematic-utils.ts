@@ -1,6 +1,7 @@
 
-import { type ConversionMode } from './schematic-utils';
-const voxSaver = require('vox-saver');
+
+import type { ConversionMode } from './schematic-utils';
+const { writeVox } = require('vox-saver');
 
 
 export interface PaletteColor {
@@ -312,18 +313,18 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 
 
 /**
- * Generates a .vox file for a given 3D shape using vox-saver library.
+ * Generates a .vox file for a given 3D shape using the vox-saver library.
  */
 export function voxToSchematic(shape: VoxShape): SchematicOutput {
-    const xyziValues: {x: number, y: number, z: number, i: number}[] = [];
+    const voxels: {x: number, y: number, z: number, i: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
-    // In our app, Y is up. In MagicaVoxel, Z is up. 
-    // We generate with Y-up and then collect voxels.
+    // In our app, Y is up. MagicaVoxel and vox-saver expect Z to be up.
+    // We will generate with our coordinate system and then swap y/z for the library.
     const addVoxel = (x: number, y: number, z: number) => {
         // The color index is 1, which maps to the first color in our palette.
-        xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
+        voxels.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i: 1 });
     };
 
     switch (shape.type) {
@@ -450,22 +451,23 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     }
     
     // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
-    const palette: {r: number, g: number, b: number, a: number}[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
+    // The library expects a full 256 color palette. We'll fill it with a default color.
+    const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
     palette[0] = { r: 200, g: 164, b: 100, a: 255 };
     
     const voxObject = {
-        size: { x: width, y: depth, z: height }, // Z is up in .vox format
+        size: { x: width, y: depth, z: height }, // Z is up in .vox format, so we map our depth to Y and height to Z
         xyzi: {
-            numVoxels: xyziValues.length,
-            // .vox format is Z-up, so we swap y and z
-            values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
+            numVoxels: voxels.length,
+            // .vox format is Z-up, so we swap our y and z
+            values: voxels.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
         },
         rgba: {
             values: palette
         }
     };
     
-    const buffer = voxSaver(voxObject);
+    const buffer = writeVox(voxObject);
 
     return {
         schematicData: createSchematicData(name, {width, height, depth}),
