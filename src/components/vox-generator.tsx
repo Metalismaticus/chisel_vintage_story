@@ -110,7 +110,7 @@ export function VoxGenerator() {
     // Generate QR preview when URL changes
   useEffect(() => {
     if (mode === 'qr' && qrUrl) {
-      QRCode.toDataURL(qrUrl, { errorCorrectionLevel: 'H', margin: 2 }, (err, url) => {
+      QRCode.toDataURL(qrUrl, { errorCorrectionLevel: 'L', margin: 2 }, (err, url) => {
         if (err) {
           setQrPreview(null);
           return;
@@ -216,7 +216,7 @@ export function VoxGenerator() {
     
     try {
       // We generate the QR data on the client. `qrcode` library gives us a representation of the QR code data.
-      const qrData = QRCode.create(qrUrl, { errorCorrectionLevel: 'H' });
+      const qrData = QRCode.create(qrUrl, { errorCorrectionLevel: 'L' });
       const pixels: boolean[] = [];
       // The module data is a Uint8Array where 1 is dark and 0 is light.
       // We also add a 1-module white border around for better readability.
