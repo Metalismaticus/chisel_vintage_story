@@ -295,7 +295,7 @@ export async function textToSchematic({
     const yOffset = Math.floor((finalHeight - croppedHeight) / 2);
     
     for(let y = 0; y < croppedHeight; y++) {
-        for(let x = 0; x < croppedWidth; x++) {
+        for(let x = 0; x < contentWidth; x++) {
             if (croppedPixels[y * croppedWidth + x]) {
                 finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
             }
@@ -642,10 +642,11 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                             const dx = x - shaftCenter + 0.5;
                             const dz = z - shaftCenter + 0.5;
                             
-                            const progress = isCapital ? (baseHeight - 1 - y) / baseHeight : y / baseHeight;
+                            // This creates a mirrored curve for the capital
+                            const progress = isCapital ? (baseHeight - 1 - y) / (baseHeight - 1) : y / (baseHeight - 1);
                             
-                            let currentBaseRadius = baseRadius;
-                             if (progress < 0.4) {
+                            let currentBaseRadius;
+                            if (progress < 0.4) {
                                 currentBaseRadius = baseRadius;
                             } else if (progress < 0.7) {
                                 currentBaseRadius = baseRadius * 0.9;
@@ -898,10 +899,11 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
         
         case 'qrcode': {
-            const { pixels, size, depth: qrDepth, withBackdrop, backdropDepth } = shape;
+            const { pixels, size, withBackdrop, backdropDepth } = shape;
             width = size;
             height = size;
             const STICKER_BLOCK_DEPTH = 16;
+            const qrDepth = shape.depth ?? 1;
             depth = STICKER_BLOCK_DEPTH + (withBackdrop ? STICKER_BLOCK_DEPTH : 0);
 
             // Block 1: QR Sticker (z: 0 to 15)
