@@ -84,6 +84,8 @@ export function VoxGenerator() {
   const [qrCodeDepth, setQrCodeDepth] = useState([2]);
   const [qrBackgroundDepth, setQrBackgroundDepth] = useState([5]);
   const [stickerMode, setStickerMode] = useState(false);
+  const [withBackdrop, setWithBackdrop] = useState(false);
+  const [backdropDepth, setBackdropDepth] = useState([4]);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -238,8 +240,10 @@ export function VoxGenerator() {
           pixels,
           size: borderSize,
           depth: qrCodeDepth[0],
-          backgroundDepth: qrBackgroundDepth[0],
-          stickerMode: stickerMode && qrBackgroundDepth[0] === 0,
+          backgroundDepth: stickerMode ? 0 : qrBackgroundDepth[0],
+          stickerMode: stickerMode,
+          withBackdrop: stickerMode && withBackdrop,
+          backdropDepth: stickerMode && withBackdrop ? backdropDepth[0] : 0,
       };
 
       const result = await generateVoxFlow(shapeParams);
@@ -873,29 +877,59 @@ export function VoxGenerator() {
                 </div>
             )}
             <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="qr-code-depth">{t('voxGenerator.qr.codeDepth')}: {qrCodeDepth[0]}px</Label>
-                    <Slider
-                        id="qr-code-depth"
-                        min={1} max={50} step={1}
-                        value={qrCodeDepth}
-                        onValueChange={setQrCodeDepth}
-                    />
+                <div className="flex items-center space-x-2 pt-2">
+                    <Switch id="sticker-mode" checked={stickerMode} onCheckedChange={setStickerMode} />
+                    <Label htmlFor="sticker-mode">{t('voxGenerator.qr.stickerMode')}</Label>
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="qr-background-depth">{t('voxGenerator.qr.backgroundDepth')}: {qrBackgroundDepth[0]}px</Label>
-                    <Slider
-                        id="qr-background-depth"
-                        min={0} max={50} step={1}
-                        value={qrBackgroundDepth}
-                        onValueChange={setQrBackgroundDepth}
-                    />
-                </div>
-                {qrBackgroundDepth[0] === 0 && (
-                   <div className="flex items-center space-x-2 pt-2">
-                     <Switch id="sticker-mode" checked={stickerMode} onCheckedChange={setStickerMode} />
-                     <Label htmlFor="sticker-mode">{t('voxGenerator.qr.stickerMode')}</Label>
-                   </div>
+
+                {stickerMode ? (
+                     <div className="space-y-4 pl-2 pt-2 border-l-2 border-primary/20 ml-3">
+                        <div className="space-y-2">
+                            <Label htmlFor="qr-code-depth">{t('voxGenerator.qr.codeDepth')}: {qrCodeDepth[0]}px</Label>
+                            <Slider
+                                id="qr-code-depth"
+                                min={1} max={14} step={1}
+                                value={qrCodeDepth}
+                                onValueChange={setQrCodeDepth}
+                            />
+                        </div>
+                         <div className="flex items-center space-x-2 pt-2">
+                           <Switch id="with-backdrop" checked={withBackdrop} onCheckedChange={setWithBackdrop} />
+                           <Label htmlFor="with-backdrop">{t('voxGenerator.qr.withBackdrop')}</Label>
+                         </div>
+                         {withBackdrop && (
+                            <div className="space-y-2 pl-2 pt-2 border-l-2 border-primary/20 ml-3">
+                                <Label htmlFor="backdrop-depth">{t('voxGenerator.qr.backdropDepth')}: {backdropDepth[0]}px</Label>
+                                <Slider
+                                    id="backdrop-depth"
+                                    min={1} max={16} step={1}
+                                    value={backdropDepth}
+                                    onValueChange={setBackdropDepth}
+                                />
+                            </div>
+                         )}
+                     </div>
+                ) : (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="qr-code-depth">{t('voxGenerator.qr.codeDepth')}: {qrCodeDepth[0]}px</Label>
+                            <Slider
+                                id="qr-code-depth"
+                                min={1} max={50} step={1}
+                                value={qrCodeDepth}
+                                onValueChange={setQrCodeDepth}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="qr-background-depth">{t('voxGenerator.qr.backgroundDepth')}: {qrBackgroundDepth[0]}px</Label>
+                            <Slider
+                                id="qr-background-depth"
+                                min={0} max={50} step={1}
+                                value={qrBackgroundDepth}
+                                onValueChange={setQrBackgroundDepth}
+                            />
+                        </div>
+                    </>
                 )}
             </div>
         </div>

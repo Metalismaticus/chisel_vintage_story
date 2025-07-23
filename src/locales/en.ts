@@ -193,6 +193,8 @@ export default {
         codeDepth: 'QR Code Depth',
         backgroundDepth: 'Background Depth',
         stickerMode: 'Sticker Mode',
+        withBackdrop: 'Add Mounting Plate',
+        backdropDepth: 'Plate Depth',
     },
     button: 'Generate .vox File',
     errors: {

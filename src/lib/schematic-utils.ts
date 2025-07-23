@@ -57,7 +57,7 @@ export type VoxShape =
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
     | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
-    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, backgroundDepth: number, stickerMode?: boolean }
+    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, backgroundDepth: number, stickerMode?: boolean, withBackdrop?: boolean, backdropDepth?: number }
     | { type: 'checkerboard', width: number, length: number, height: number };
 
 
@@ -294,8 +294,8 @@ export async function textToSchematic({
     const yOffset = Math.floor((finalHeight - croppedHeight) / 2);
     
     for(let y = 0; y < croppedHeight; y++) {
-        for (let x = 0; x < croppedWidth; x++) {
-            if (croppedPixels[y * croppedWidth + x]) {
+        for (let x = 0; x < contentWidth; x++) {
+            if (rawPixels[y * contentWidth + x]) {
                 finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
             }
         }
@@ -878,27 +878,40 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
         
         case 'qrcode': {
-            const { pixels, size, depth: qrDepth, backgroundDepth, stickerMode } = shape;
+            const { pixels, size, depth: qrDepth, backgroundDepth, stickerMode, withBackdrop, backdropDepth } = shape;
             width = size;
             height = size;
+            depth = stickerMode ? 16 + (withBackdrop ? (backdropDepth ?? 0) : 0) : qrDepth + backgroundDepth;
 
             if (stickerMode) {
-                depth = 16; // Force depth to 16 for sticker mode
+                // Sticker part (Block 1)
+                addVoxel(0, 0, 0, 2); // Anchor for the sticker block
+                const qrZOffset = 15 - qrDepth;
                  for (let py = 0; py < height; py++) {
                     for (let px = 0; px < width; px++) {
                         const isQrPixel = pixels[py * width + px];
                         if (isQrPixel) {
                             for (let pz = 0; pz < qrDepth; pz++) {
-                                addVoxel(px, height - 1 - py, pz, 1);
+                                addVoxel(px, height - 1 - py, qrZOffset + pz, 1); // QR code pixels (black)
                             }
                          }
                     }
                 }
-                // Add anchor pillar in the bottom-left-back corner
-                addVoxel(0, 0, 15, 2);
+
+                // Backdrop part (Block 2)
+                if (withBackdrop && backdropDepth) {
+                    addVoxel(0,0,16, 3); // Anchor for the backdrop block, different color
+                    const backdropZOffset = 16;
+                    for (let py = 0; py < height; py++) {
+                        for (let px = 0; px < width; px++) {
+                             for (let pz = 0; pz < backdropDepth; pz++) {
+                                addVoxel(px, height - 1 - py, backdropZOffset + pz, 2); // Backdrop pixels (white)
+                            }
+                        }
+                    }
+                }
             } else {
                 // Plaque mode: draw background and QR code
-                depth = qrDepth + backgroundDepth;
                 addVoxel(0, 0, 0, 2); // Anchor point at the front corner
                 for (let py = 0; py < height; py++) {
                     for (let px = 0; px < width; px++) {
@@ -908,7 +921,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                             addVoxel(px, height - 1 - py, pz, 2); // Background
                         }
                         if (isQrPixel) {
-                            for (let pz = backgroundDepth; pz < depth; pz++) {
+                            for (let pz = backgroundDepth; pz < qrDepth + backgroundDepth; pz++) {
                                 addVoxel(px, height - 1 - py, pz, 1); // QR code
                             }
                         }
@@ -954,6 +967,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed, so 0 is empty
     palette[1] = { r: 10, g: 10, b: 10, a: 255 }; 
     palette[2] = { r: 220, g: 220, b: 220, a: 255 };
+    palette[3] = { r: 100, g: 100, b: 100, a: 255 };
     
     const voxObject = {
         size: { x: width, y: depth, z: height }, // Z is up in .vox format, so we map our depth to Y and height to Z
@@ -983,6 +997,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 

@@ -193,6 +193,8 @@ export default {
         codeDepth: 'Глубина QR-кода',
         backgroundDepth: 'Глубина фона',
         stickerMode: 'Режим наклейки',
+        withBackdrop: 'Добавить монтажную плиту',
+        backdropDepth: 'Глубина плиты',
     },
     button: 'Сгенерировать .vox файл',
     errors: {
