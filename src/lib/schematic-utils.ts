@@ -884,23 +884,26 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             if (stickerMode) {
                 depth = 16; // Force depth to 16 for sticker mode
-            } else {
-                depth = qrDepth + backgroundDepth;
-            }
-            
-            for (let py = 0; py < height; py++) {
-                for (let px = 0; px < width; px++) {
-                    const isQrPixel = pixels[py * width + px];
-
-                    if (stickerMode) {
-                         // Sticker mode: QR at the front, anchor pillar at the back
-                         if (isQrPixel) {
+                 for (let py = 0; py < height; py++) {
+                    for (let px = 0; px < width; px++) {
+                        const isQrPixel = pixels[py * width + px];
+                        if (isQrPixel) {
                             for (let pz = 0; pz < qrDepth; pz++) {
                                 addVoxel(px, height - 1 - py, pz, 1);
                             }
                          }
-                    } else {
-                        // Plaque mode: draw background and QR code
+                    }
+                }
+                // Add anchor pillar in the bottom-left-back corner
+                addVoxel(0, 0, 15, 2);
+            } else {
+                addVoxel(0, 0, 0, 2); 
+                // Plaque mode: draw background and QR code
+                depth = qrDepth + backgroundDepth;
+                for (let py = 0; py < height; py++) {
+                    for (let px = 0; px < width; px++) {
+                        const isQrPixel = pixels[py * width + px];
+    
                         for (let pz = 0; pz < backgroundDepth; pz++) {
                             addVoxel(px, height - 1 - py, pz, 2); // Background
                         }
@@ -911,13 +914,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                         }
                     }
                 }
-            }
-            
-            if (stickerMode) {
-                // Add anchor pillar in the bottom-left-back corner
-                addVoxel(0, 0, 15, 2);
-            } else {
-                addVoxel(0, 0, 0, 2); 
             }
             break;
         }
@@ -987,6 +983,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
