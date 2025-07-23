@@ -556,6 +556,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i });
     };
 
+    // Add anchor point for all shapes to improve game stability
+    addVoxel(0, 0, 0, 2); 
+
     switch (shape.type) {
         case 'cuboid':
             width = shape.width;
@@ -976,6 +979,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
