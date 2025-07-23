@@ -57,7 +57,7 @@ export type VoxShape =
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
     | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
-    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, stickerMode: boolean, withBackdrop?: boolean, backdropDepth?: number }
+    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, withBackdrop?: boolean, backdropDepth?: number }
     | { type: 'checkerboard', width: number, length: number, height: number };
 
 
@@ -881,11 +881,10 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const { pixels, size, depth: qrDepth, withBackdrop, backdropDepth } = shape;
             width = size;
             height = size;
-
             const STICKER_BLOCK_DEPTH = 16;
-            depth = withBackdrop ? STICKER_BLOCK_DEPTH * 2 : STICKER_BLOCK_DEPTH;
-            
-            // Block 1: QR Sticker (z: 0-15)
+            depth = STICKER_BLOCK_DEPTH + (withBackdrop ? STICKER_BLOCK_DEPTH : 0);
+
+            // Block 1: QR Sticker (z: 0 to 15)
             addVoxel(0, 0, 0, 2); // Anchor for the sticker block
             const qrZOffset = STICKER_BLOCK_DEPTH - qrDepth;
             for (let py = 0; py < height; py++) {
@@ -898,14 +897,14 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                }
             }
             
-            // Block 2: Mounting Plate (z: 16-31)
+            // Block 2: Mounting Plate (z: 16 to 31)
             if (withBackdrop && backdropDepth && backdropDepth > 0) {
-                addVoxel(0, 0, STICKER_BLOCK_DEPTH * 2 - 1, 3); // Anchor for the plate block
+                addVoxel(0, 0, STICKER_BLOCK_DEPTH, 3); // Anchor for the plate block
                 const backdropZStart = STICKER_BLOCK_DEPTH;
                 for (let py = 0; py < height; py++) {
                     for (let px = 0; px < width; px++) {
                          for (let pz = 0; pz < backdropDepth; pz++) {
-                            addVoxel(px, height - 1 - py, backdropZStart + pz, 1); // Use same color as QR
+                            addVoxel(px, height - 1 - py, backdropZStart + pz, 1);
                         }
                     }
                 }
