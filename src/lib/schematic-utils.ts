@@ -878,41 +878,37 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
         
         case 'qrcode': {
-            const { pixels, size, depth: qrDepth, stickerMode, withBackdrop, backdropDepth } = shape;
+            const { pixels, size, depth: qrDepth, withBackdrop, backdropDepth } = shape;
             width = size;
             height = size;
 
-            if (stickerMode) {
-                const STICKER_BLOCK_DEPTH = 16;
-                depth = withBackdrop ? STICKER_BLOCK_DEPTH * 2 : STICKER_BLOCK_DEPTH;
-                
-                // QR Block (z: 0 to 15)
-                addVoxel(0, 0, 0, 2); 
-                const qrZOffset = STICKER_BLOCK_DEPTH - qrDepth;
+            const STICKER_BLOCK_DEPTH = 16;
+            depth = withBackdrop ? STICKER_BLOCK_DEPTH * 2 : STICKER_BLOCK_DEPTH;
+            
+            // Block 1: QR Sticker (z: 0-15)
+            addVoxel(0, 0, 0, 2); // Anchor for the sticker block
+            const qrZOffset = STICKER_BLOCK_DEPTH - qrDepth;
+            for (let py = 0; py < height; py++) {
+               for (let px = 0; px < width; px++) {
+                   if (pixels[py * width + px]) {
+                       for (let pz = 0; pz < qrDepth; pz++) {
+                           addVoxel(px, height - 1 - py, qrZOffset + pz, 1);
+                       }
+                    }
+               }
+            }
+            
+            // Block 2: Mounting Plate (z: 16-31)
+            if (withBackdrop && backdropDepth && backdropDepth > 0) {
+                addVoxel(0, 0, STICKER_BLOCK_DEPTH * 2 - 1, 3); // Anchor for the plate block
+                const backdropZStart = STICKER_BLOCK_DEPTH;
                 for (let py = 0; py < height; py++) {
-                   for (let px = 0; px < width; px++) {
-                       if (pixels[py * width + px]) {
-                           for (let pz = 0; pz < qrDepth; pz++) {
-                               addVoxel(px, height - 1 - py, qrZOffset + pz, 1);
-                           }
-                        }
-                   }
-                }
-                
-                // Backdrop Block (z: 16 to 31)
-                if (withBackdrop && backdropDepth && backdropDepth > 0) {
-                    addVoxel(0, 0, STICKER_BLOCK_DEPTH * 2 - 1, 3);
-                    const backdropZStart = STICKER_BLOCK_DEPTH;
-                    for (let py = 0; py < height; py++) {
-                        for (let px = 0; px < width; px++) {
-                             for (let pz = 0; pz < backdropDepth; pz++) {
-                                addVoxel(px, height - 1 - py, backdropZStart + pz, 2);
-                            }
+                    for (let px = 0; px < width; px++) {
+                         for (let pz = 0; pz < backdropDepth; pz++) {
+                            addVoxel(px, height - 1 - py, backdropZStart + pz, 1); // Use same color as QR
                         }
                     }
                 }
-            } else {
-                 // Deprecated: old mode
             }
             break;
         }
