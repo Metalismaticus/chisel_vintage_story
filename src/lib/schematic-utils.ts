@@ -886,21 +886,21 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 const STICKER_BLOCK_DEPTH = 16;
                 depth = STICKER_BLOCK_DEPTH + (withBackdrop && backdropDepth ? backdropDepth : 0);
                 
-                // --- Sticker Block (Block 1, z: 0 to 15) ---
+                // Sticker Block (Block 1, z: 0 to 15)
                 addVoxel(0, 0, 0, 2); // Anchor for the sticker block.
                 const qrZOffset = STICKER_BLOCK_DEPTH - qrDepth;
-                 for (let py = 0; py < height; py++) {
-                    for (let px = 0; px < width; px++) {
-                        const isQrPixel = pixels[py * width + px];
-                        if (isQrPixel) {
-                            for (let pz = 0; pz < qrDepth; pz++) {
-                                addVoxel(px, height - 1 - py, qrZOffset + pz, 1); // QR code pixels (black).
-                            }
-                         }
-                    }
+                for (let py = 0; py < height; py++) {
+                   for (let px = 0; px < width; px++) {
+                       const isQrPixel = pixels[py * width + px];
+                       if (isQrPixel) {
+                           for (let pz = 0; pz < qrDepth; pz++) {
+                               addVoxel(px, height - 1 - py, qrZOffset + pz, 1); // QR code pixels (black).
+                           }
+                        }
+                   }
                 }
 
-                // --- Backdrop Block (Block 2, z: 16 onwards) ---
+                // Backdrop Block (Block 2, z: 16 onwards)
                 if (withBackdrop && backdropDepth && backdropDepth > 0) {
                     addVoxel(0, 0, STICKER_BLOCK_DEPTH, 3); // Anchor for the backdrop block, different color.
                     const backdropZStart = STICKER_BLOCK_DEPTH;
@@ -1000,6 +1000,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
