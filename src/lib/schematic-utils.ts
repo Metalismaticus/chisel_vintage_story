@@ -634,33 +634,36 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const shaftCenter = width / 2;
             const tanAngle = Math.tan(breakAngle * Math.PI / 180);
            
-            // Function to generate the base/capital shape
             const addBaseOrCapital = (yOffset: number, isCapital: boolean) => {
-                for(let y = 0; y < baseHeight; y++) {
-                    for(let z = 0; z < width; z++) {
-                        for(let x = 0; x < width; x++) {
-                            const dx = x - shaftCenter + 0.5;
-                            const dz = z - shaftCenter + 0.5;
-                            
-                            // This creates a mirrored curve for the capital
-                            const progress = isCapital ? (baseHeight - 1 - y) / (baseHeight - 1) : y / (baseHeight - 1);
-                            
-                            let currentBaseRadius;
-                            if (progress < 0.4) {
-                                currentBaseRadius = baseRadius;
-                            } else if (progress < 0.7) {
-                                currentBaseRadius = baseRadius * 0.9;
-                            } else {
-                                currentBaseRadius = baseRadius * 0.8;
-                            }
-                            if (dx * dx + dz * dz <= currentBaseRadius * currentBaseRadius) {
-                                addVoxel(x, y + yOffset, z);
-                            }
-                        }
+              if (!baseRadius || !baseHeight) return;
+              for (let y = 0; y < baseHeight; y++) {
+                for (let z = 0; z < width; z++) {
+                  for (let x = 0; x < width; x++) {
+                    const dx = x - shaftCenter + 0.5;
+                    const dz = z - shaftCenter + 0.5;
+            
+                    // This creates a mirrored curve for the capital
+                    const progress = y / (baseHeight - 1);
+            
+                    let currentBaseRadius;
+                    if (progress < 0.4) {
+                      currentBaseRadius = baseRadius;
+                    } else if (progress < 0.7) {
+                      currentBaseRadius = baseRadius * 0.9;
+                    } else {
+                      currentBaseRadius = baseRadius * 0.8;
                     }
+            
+                    if (dx * dx + dz * dz <= currentBaseRadius * currentBaseRadius) {
+                      // For capital, we invert the y to make it a mirror image
+                      const finalY = isCapital ? yOffset + (baseHeight - 1 - y) : yOffset + y;
+                      addVoxel(x, finalY, z);
+                    }
+                  }
                 }
-            }
-
+              }
+            };
+            
             // Generate Base
             if (withBase) {
                 addBaseOrCapital(0, false);
@@ -900,15 +903,14 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         
         case 'qrcode': {
             const { pixels, size, withBackdrop, backdropDepth } = shape;
+            const qrDepth = shape.depth ?? 1;
             width = size;
             height = size;
-            const STICKER_BLOCK_DEPTH = 16;
-            const qrDepth = shape.depth ?? 1;
-            depth = STICKER_BLOCK_DEPTH + (withBackdrop ? STICKER_BLOCK_DEPTH : 0);
+            depth = 16 + (withBackdrop ? 16 : 0);
 
             // Block 1: QR Sticker (z: 0 to 15)
             addVoxel(0, 0, 0, 2); // Anchor for the sticker block
-            const qrZOffset = STICKER_BLOCK_DEPTH - qrDepth;
+            const qrZOffset = 15 - qrDepth;
             for (let py = 0; py < height; py++) {
                for (let px = 0; px < width; px++) {
                    if (pixels[py * width + px]) {
@@ -922,7 +924,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             // Block 2: Mounting Plate (z: 16 to 31)
             if (withBackdrop && backdropDepth && backdropDepth > 0) {
                 addVoxel(0, 0, 31, 3); // Anchor for the plate block in the far corner
-                const backdropZStart = STICKER_BLOCK_DEPTH;
+                const backdropZStart = 16;
                 for (let py = 0; py < height; py++) {
                     for (let px = 0; px < width; px++) {
                          for (let pz = 0; pz < backdropDepth; pz++) {
@@ -1000,3 +1002,4 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
