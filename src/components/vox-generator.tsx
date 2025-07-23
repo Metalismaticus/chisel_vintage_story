@@ -65,6 +65,7 @@ export function VoxGenerator() {
   const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
   const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
   const [withBase, setWithBase] = useState(false);
+  const [withCapital, setWithCapital] = useState(false);
   const [brokenTop, setBrokenTop] = useState(false);
 
   // Text state
@@ -237,7 +238,7 @@ export function VoxGenerator() {
           pixels,
           size: borderSize,
           depth: qrCodeDepth[0],
-          stickerMode: true, // Always sticker mode now
+          stickerMode: true,
           withBackdrop: withBackdrop,
           backdropDepth: withBackdrop ? backdropDepth[0] : 0,
       };
@@ -295,10 +296,10 @@ export function VoxGenerator() {
            const height = validateAndParse(dimensions.columnHeight, t('voxGenerator.dims.height'));
            if (radius === null || height === null) return;
 
-           const baseRadius = withBase ? validateAndParse(dimensions.baseRadius, t('voxGenerator.column.baseRadius')) : undefined;
-           const baseHeight = withBase ? validateAndParse(dimensions.baseHeight, t('voxGenerator.column.baseHeight')) : undefined;
-           if (withBase && (baseRadius === null || baseHeight === null)) return;
-           if (withBase && baseRadius && baseRadius <= radius) {
+           const baseRadius = withBase || withCapital ? validateAndParse(dimensions.baseRadius, t('voxGenerator.column.baseRadius')) : undefined;
+           const baseHeight = withBase || withCapital ? validateAndParse(dimensions.baseHeight, t('voxGenerator.column.baseHeight')) : undefined;
+           if ((withBase || withCapital) && (baseRadius === null || baseHeight === null)) return;
+           if ((withBase || withCapital) && baseRadius && baseRadius <= radius) {
                 toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.column.baseRadius')}), description: t('voxGenerator.errors.baseRadiusTooSmall'), variant: "destructive" });
                 return;
            }
@@ -306,7 +307,7 @@ export function VoxGenerator() {
            const breakAngle = brokenTop ? validateAndParse(dimensions.breakAngle, t('voxGenerator.column.breakAngle')) : undefined;
            if(brokenTop && breakAngle === null) return;
 
-           shapeParams = { type: 'column', radius, height, withBase, baseRadius, baseHeight, brokenTop, breakAngle };
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, brokenTop, breakAngle };
           break;
         }
         case 'cone': {
@@ -506,7 +507,11 @@ export function VoxGenerator() {
                         <Switch id="with-base" checked={withBase} onCheckedChange={setWithBase} />
                         <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
                     </div>
-                    {withBase && (
+                     <div className="flex items-center space-x-2 pt-2">
+                        <Switch id="with-capital" checked={withCapital} onCheckedChange={setWithCapital} />
+                        <Label htmlFor="with-capital">{t('voxGenerator.column.withCapital')}</Label>
+                    </div>
+                    {(withBase || withCapital) && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 pl-1">
                             <div className="space-y-2">
                                 <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>

@@ -49,6 +49,7 @@ export type VoxShape =
         radius: number, 
         height: number,
         withBase?: boolean,
+        withCapital?: boolean,
         baseRadius?: number,
         baseHeight?: number,
         brokenTop?: boolean,
@@ -57,7 +58,7 @@ export type VoxShape =
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
     | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
-    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, withBackdrop?: boolean, backdropDepth?: number }
+    | { type: 'qrcode', pixels: boolean[], size: number, depth: number, withBackdrop?: boolean, backdropDepth?: number, stickerMode?: boolean }
     | { type: 'checkerboard', width: number, length: number, height: number };
 
 
@@ -621,61 +622,80 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 radius: colRadius, 
                 height: colHeight, 
                 withBase = false,
+                withCapital = false,
                 baseRadius = 0,
                 baseHeight = 0,
                 brokenTop = false,
                 breakAngle = 45,
             } = shape;
 
-            width = depth = Math.max(colRadius * 2, withBase ? baseRadius * 2 : 0);
-            height = (withBase ? baseHeight : 0) + colHeight;
+            width = depth = Math.max(colRadius * 2, (withBase || withCapital) ? baseRadius * 2 : 0);
+            height = (withBase ? baseHeight : 0) + colHeight + (withCapital ? baseHeight : 0);
             const shaftCenter = width / 2;
             const tanAngle = Math.tan(breakAngle * Math.PI / 180);
            
-            for(let y = 0; y < height; y++) {
-                for(let z = 0; z < width; z++) {
-                    for(let x = 0; x < width; x++) {
-                        const dx = x - shaftCenter + 0.5;
-                        const dz = z - shaftCenter + 0.5;
-
-                        // Base check
-                        if (withBase && y < baseHeight) {
-                            const baseProgress = y / baseHeight;
+            // Function to generate the base/capital shape
+            const addBaseOrCapital = (yOffset: number, isCapital: boolean) => {
+                for(let y = 0; y < baseHeight; y++) {
+                    for(let z = 0; z < width; z++) {
+                        for(let x = 0; x < width; x++) {
+                            const dx = x - shaftCenter + 0.5;
+                            const dz = z - shaftCenter + 0.5;
+                            
+                            const progress = isCapital ? (baseHeight - 1 - y) / baseHeight : y / baseHeight;
+                            
                             let currentBaseRadius = baseRadius;
-                             if (baseProgress < 0.4) {
+                             if (progress < 0.4) {
                                 currentBaseRadius = baseRadius;
-                            } else if (baseProgress < 0.7) {
+                            } else if (progress < 0.7) {
                                 currentBaseRadius = baseRadius * 0.9;
                             } else {
                                 currentBaseRadius = baseRadius * 0.8;
                             }
                             if (dx * dx + dz * dz <= currentBaseRadius * currentBaseRadius) {
-                                addVoxel(x, y, z);
-                                continue;
+                                addVoxel(x, y + yOffset, z);
                             }
-                        }
-
-                        // Shaft check
-                        const yInShaft = y - (withBase ? baseHeight : 0);
-                        if (yInShaft >= 0 && yInShaft < colHeight) {
-                             if (dx * dx + dz * dz <= colRadius * colRadius) {
-                                let isCutOff = false;
-                                if (brokenTop) {
-                                    const yForCutCheck = y;
-                                    const xForCutCheck = x;
-                                    // A simple plane equation for the cut
-                                    if (yForCutCheck - (height - colRadius) > tanAngle * (xForCutCheck - (shaftCenter - colRadius))) {
-                                        isCutOff = true;
-                                    }
-                                }
-                                if (!isCutOff) {
-                                    addVoxel(x, y, z);
-                                }
-                             }
                         }
                     }
                 }
             }
+
+            // Generate Base
+            if (withBase) {
+                addBaseOrCapital(0, false);
+            }
+
+            // Generate Shaft
+            const shaftYOffset = withBase ? baseHeight : 0;
+            for(let y = 0; y < colHeight; y++) {
+                for(let z = 0; z < width; z++) {
+                    for(let x = 0; x < width; x++) {
+                         const dx = x - shaftCenter + 0.5;
+                         const dz = z - shaftCenter + 0.5;
+                         if (dx * dx + dz * dz <= colRadius * colRadius) {
+                            let isCutOff = false;
+                            if (brokenTop && !withCapital) { // Only apply broken top if there is no capital
+                                const yForCutCheck = y + shaftYOffset;
+                                const xForCutCheck = x;
+                                // A simple plane equation for the cut
+                                if (yForCutCheck - (height - colRadius) > tanAngle * (xForCutCheck - (shaftCenter - colRadius))) {
+                                    isCutOff = true;
+                                }
+                            }
+                            if (!isCutOff) {
+                                addVoxel(x, y + shaftYOffset, z);
+                            }
+                         }
+                    }
+                }
+            }
+            
+            // Generate Capital
+            if (withCapital) {
+                const capitalYOffset = (withBase ? baseHeight : 0) + colHeight;
+                addBaseOrCapital(capitalYOffset, true);
+            }
+
             break;
         }
 
@@ -899,7 +919,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             
             // Block 2: Mounting Plate (z: 16 to 31)
             if (withBackdrop && backdropDepth && backdropDepth > 0) {
-                addVoxel(0, 0, STICKER_BLOCK_DEPTH, 3); // Anchor for the plate block
+                addVoxel(0, 0, 31, 3); // Anchor for the plate block in the far corner
                 const backdropZStart = STICKER_BLOCK_DEPTH;
                 for (let py = 0; py < height; py++) {
                     for (let px = 0; px < width; px++) {

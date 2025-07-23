@@ -152,9 +152,10 @@ export default {
     },
     column: {
         withBase: 'Добавить основание',
+        withCapital: 'Добавить капитель',
         brokenTop: 'Сломанный верх',
-        baseRadius: 'Радиус основания',
-        baseHeight: 'Высота основания',
+        baseRadius: 'Радиус осн./капители',
+        baseHeight: 'Высота осн./капители',
         breakAngle: 'Угол среза',
     },
     arch: {

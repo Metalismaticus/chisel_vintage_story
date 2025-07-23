@@ -152,9 +152,10 @@ export default {
     },
     column: {
         withBase: 'Add base',
+        withCapital: 'Add capital',
         brokenTop: 'Broken top',
-        baseRadius: 'Base radius',
-        baseHeight: 'Base height',
+        baseRadius: 'Base/Capital Radius',
+        baseHeight: 'Base/Capital Height',
         breakAngle: 'Slice angle',
     },
     arch: {
