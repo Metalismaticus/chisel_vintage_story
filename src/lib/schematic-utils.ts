@@ -556,11 +556,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i });
     };
 
-    // Add anchor point for all shapes to improve game stability
-    addVoxel(0, 0, 0, 2); 
-
     switch (shape.type) {
         case 'cuboid':
+            addVoxel(0, 0, 0, 2); 
             width = shape.width;
             height = shape.height;
             depth = shape.depth;
@@ -574,6 +572,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
 
         case 'sphere':
+            addVoxel(0, 0, 0, 2); 
             width = height = depth = shape.radius * 2;
             const { radius, part = 'full' } = shape;
             const center = radius;
@@ -601,6 +600,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
             
         case 'pyramid':
+            addVoxel(0, 0, 0, 2); 
             width = depth = shape.base;
             height = shape.height;
             for (let y = 0; y < height; y++) {
@@ -616,6 +616,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'column': {
+            addVoxel(0, 0, 0, 2); 
             const { 
                 radius: colRadius, 
                 height: colHeight, 
@@ -680,6 +681,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
         
         case 'cone':
+            addVoxel(0, 0, 0, 2); 
             width = depth = shape.radius * 2;
             height = shape.height;
             const coneCenter = shape.radius;
@@ -699,6 +701,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'arch': {
+            addVoxel(0, 0, 0, 2); 
              depth = shape.depth;
              if (shape.archType === 'circular') {
                 width = shape.width;
@@ -772,6 +775,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
 
         case 'disk': {
+            addVoxel(0, 0, 0, 2); 
             const { part: diskPart = 'full', orientation: diskOrientation = 'horizontal' } = shape;
             
             if (diskOrientation === 'vertical') {
@@ -823,6 +827,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         }
         case 'ring': {
+            addVoxel(0, 0, 0, 2); 
             const { radius: outerR, thickness, height: ringHeight, part: ringPart = 'full', orientation: ringOrientation = 'horizontal' } = shape;
             const innerR = outerR - thickness;
 
@@ -911,11 +916,14 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             if (stickerMode) {
                 // Add anchor pillar in the bottom-left-back corner
                 addVoxel(0, 0, 15, 2);
+            } else {
+                addVoxel(0, 0, 0, 2); 
             }
             break;
         }
 
         case 'checkerboard': {
+            addVoxel(0, 0, 0, 2); 
             const { width: blockWidth, length: blockLength, height: blockHeight } = shape;
             const VOXEL_SIZE = 16;
             width = blockWidth * VOXEL_SIZE;
@@ -979,6 +987,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
