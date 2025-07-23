@@ -622,78 +622,54 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 brokenTop = false,
                 breakAngle = 45,
             } = shape;
-            
+
             width = depth = Math.max(colRadius * 2, withBase ? baseRadius * 2 : 0);
             height = (withBase ? baseHeight : 0) + colHeight;
             const shaftCenter = width / 2;
+            const tanAngle = Math.tan(breakAngle * Math.PI / 180);
+            const slicePlane = (x: number, y: number) => y - (height - colRadius) > tanAngle * (x - (shaftCenter - colRadius));
 
-            let voxels = new Set<string>();
+            for(let y = 0; y < height; y++) {
+                for(let z = 0; z < width; z++) {
+                    for(let x = 0; x < width; x++) {
+                        const dx = x - shaftCenter + 0.5;
+                        const dz = z - shaftCenter + 0.5;
 
-            // Generate detailed base
-            if (withBase && baseHeight > 0 && baseRadius > 0) {
-                const baseLayers = [
-                    { h: Math.ceil(baseHeight * 0.4), r: baseRadius },
-                    { h: Math.ceil(baseHeight * 0.3), r: baseRadius * 0.9 },
-                    { h: baseHeight - Math.ceil(baseHeight * 0.4) - Math.ceil(baseHeight * 0.3), r: baseRadius * 0.8 },
-                ];
-                
-                let currentY = 0;
-                for(const layer of baseLayers) {
-                    const layerHeight = Math.max(1, layer.h);
-                    for (let y = currentY; y < currentY + layerHeight; y++) {
-                        for (let z = 0; z < width; z++) {
-                            for (let x = 0; x < width; x++) {
-                                const dx = x - shaftCenter + 0.5;
-                                const dz = z - shaftCenter + 0.5;
-                                if (dx * dx + dz * dz <= layer.r * layer.r) {
-                                    voxels.add(`${x},${y},${z}`);
+                        // Check if it's part of the base
+                        if (withBase && y < baseHeight) {
+                            // A more detailed base generation
+                            const baseProgress = y / baseHeight;
+                            let currentBaseRadius = baseRadius;
+                            if (baseProgress < 0.4) {
+                                currentBaseRadius = baseRadius;
+                            } else if (baseProgress < 0.7) {
+                                currentBaseRadius = baseRadius * 0.9;
+                            } else {
+                                currentBaseRadius = baseRadius * 0.8;
+                            }
+
+                            if (dx * dx + dz * dz <= currentBaseRadius * currentBaseRadius) {
+                                addVoxel(x, y, z);
+                                continue; 
+                            }
+                        }
+
+                        // Check if it's part of the main shaft
+                        if (y >= (withBase ? baseHeight : 0)) {
+                            if (dx * dx + dz * dz <= colRadius * colRadius) {
+                                if (brokenTop && slicePlane(x, y)) {
+                                    // This part is "cut off"
+                                } else {
+                                    addVoxel(x, y, z);
                                 }
                             }
                         }
                     }
-                    currentY += layerHeight;
                 }
             }
-
-            // Generate shaft
-            const shaftStartY = withBase ? baseHeight : 0;
-            for (let y = shaftStartY; y < height; y++) {
-                for (let z = 0; z < width; z++) {
-                    for (let x = 0; x < width; x++) {
-                         const dx = x - shaftCenter + 0.5;
-                         const dz = z - shaftCenter + 0.5;
-                         if (dx * dx + dz * dz <= colRadius * colRadius) {
-                            voxels.add(`${x},${y},${z}`);
-                         }
-                    }
-                }
-            }
-            
-            // Break top with an angled slice
-            if (brokenTop && breakAngle) {
-                const tanAngle = Math.tan(breakAngle * Math.PI / 180);
-                // The plane equation: y = tan(angle) * x + c. We start the cut from one edge.
-                const slicePlane = (x: number, y: number) => {
-                    return y - (height - colRadius) > tanAngle * (x - (shaftCenter - colRadius));
-                };
-
-                let voxelsToRemove = new Set<string>();
-                voxels.forEach(v => {
-                    const [x, y, z] = v.split(',').map(Number);
-                    if (slicePlane(x, y)) {
-                        voxelsToRemove.add(v);
-                    }
-                });
-                voxelsToRemove.forEach(v => voxels.delete(v));
-            }
-
-            // Add final voxels from set
-            voxels.forEach(v => {
-                const [x, y, z] = v.split(',').map(Number);
-                addVoxel(x, y, z);
-            });
             break;
         }
+
         
         case 'cone':
             width = depth = shape.radius * 2;
@@ -756,24 +732,23 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                                     shouldPlace = false;
                                 }
                             }
-
-                            // Carve out the outer corners if rounded
+                            
                             const outerCornerRadius = shape.outerCornerRadius ?? 0;
                             if (shouldPlace && shape.archType === 'rounded' && outerCornerRadius > 0) {
-                                // Top-left corner
+                               // Check top-left corner
                                 if (x < outerCornerRadius && y >= height - outerCornerRadius) {
-                                    const cornerDx = x - (outerCornerRadius - 0.5);
-                                    const cornerDy = y - (height - outerCornerRadius - 0.5);
-                                    if (cornerDx * cornerDx + cornerDy * cornerDy > outerCornerRadius * outerCornerRadius) {
-                                        shouldPlace = false;
+                                    const cornerDx = x - (outerCornerRadius - 1);
+                                    const cornerDy = y - (height - outerCornerRadius);
+                                    if (cornerDx * cornerDx + cornerDy * cornerDy > (outerCornerRadius-1) * (outerCornerRadius-1)) {
+                                         shouldPlace = false;
                                     }
                                 }
-                                // Top-right corner
-                                if (x > width - 1 - outerCornerRadius && y >= height - outerCornerRadius) {
-                                    const cornerDx = x - (width - outerCornerRadius - 0.5);
-                                    const cornerDy = y - (height - outerCornerRadius - 0.5);
-                                    if (cornerDx * cornerDx + cornerDy * cornerDy > outerCornerRadius * outerCornerRadius) {
-                                        shouldPlace = false;
+                                // Check top-right corner
+                                if (x >= width - outerCornerRadius && y >= height - outerCornerRadius) {
+                                    const cornerDx = x - (width - outerCornerRadius);
+                                    const cornerDy = y - (height - outerCornerRadius);
+                                     if (cornerDx * cornerDx + cornerDy * cornerDy > (outerCornerRadius-1) * (outerCornerRadius-1)) {
+                                         shouldPlace = false;
                                     }
                                 }
                             }
@@ -893,27 +868,37 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const { pixels, size, depth: qrDepth, backgroundDepth } = shape;
             width = size;
             height = size;
-            depth = qrDepth + backgroundDepth;
+            const isSticker = backgroundDepth === 0;
 
+            if (isSticker) {
+                depth = 16; // Force depth to 16 for sticker mode
+            } else {
+                depth = qrDepth + backgroundDepth;
+            }
+            
             for (let py = 0; py < height; py++) {
-              for (let px = 0; px < width; px++) {
-                const isQrPixel = pixels[py * width + px];
+                for (let px = 0; px < width; px++) {
+                    const isQrPixel = pixels[py * width + px];
 
-                // Create the background plate
-                if (backgroundDepth > 0) {
-                  for (let pz = 0; pz < backgroundDepth; pz++) {
-                    addVoxel(px, height - 1 - py, pz, 2); // Use color index 2 for background
-                  }
+                    if (isSticker) {
+                        // Sticker mode: only draw QR pixels at the very front
+                        if (isQrPixel) {
+                            for (let pz = 0; pz < qrDepth; pz++) {
+                                addVoxel(px, height - 1 - py, pz, 1);
+                            }
+                        }
+                    } else {
+                        // Plaque mode: draw background and QR code
+                        for (let pz = 0; pz < backgroundDepth; pz++) {
+                            addVoxel(px, height - 1 - py, pz, 2); // Background
+                        }
+                        if (isQrPixel) {
+                            for (let pz = backgroundDepth; pz < depth; pz++) {
+                                addVoxel(px, height - 1 - py, pz, 1); // QR code
+                            }
+                        }
+                    }
                 }
-                
-                // Create the QR code block on top of the background
-                if (isQrPixel) {
-                  for (let pz = backgroundDepth; pz < depth; pz++) {
-                      // We flip the y-axis to match the typical 2D canvas coordinates (top-left 0,0)
-                      addVoxel(px, height - 1 - py, pz, 1); // Use color index 1 for QR code
-                  }
-                }
-              }
             }
             break;
         }
@@ -982,5 +967,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
