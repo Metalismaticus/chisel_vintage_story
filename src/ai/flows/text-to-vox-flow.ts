@@ -21,6 +21,7 @@ const TextToVoxInputSchema = z.object({
   backgroundDepth: z.number().int().min(0),
   engraveDepth: z.number().int().min(0),
   orientation: z.enum(['horizontal', 'vertical-lr']),
+  stickerMode: z.boolean(),
 });
 
 export type TextToVoxInput = z.infer<typeof TextToVoxInputSchema>;
@@ -51,6 +52,7 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     backgroundDepth, 
     engraveDepth,
     orientation,
+    stickerMode,
   } = TextToVoxInputSchema.parse(input);
 
   let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
@@ -67,17 +69,21 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   let modelHeight = textHeight;
   let modelDepth = 0;
 
+  const STICKER_BLOCK_DEPTH = 16;
+  const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - letterDepth : 0;
+
   // Remap 2D pixel coordinates (px, py) from the rasterized text to 3D voxel coordinates (x, y, z)
   const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
+      const finalPz = pz + zOffset;
       if (orientation === 'vertical-lr') { // Text lays flat on the floor, reads left-to-right
-          return [px, pz, textHeight - 1 - py]; // x=text_x, y=depth, z=text_y
+          return [px, finalPz, textHeight - 1 - py]; // x=text_x, y=depth, z=text_y
       }
       // Horizontal text stands up on a wall
-      return [px, textHeight - 1 - py, pz]; // x=text_x, y=text_y, z=depth
+      return [px, textHeight - 1 - py, finalPz]; // x=text_x, y=text_y, z=depth
   };
 
   if (mode === 'extrude') {
-    modelDepth = letterDepth;
+    modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : letterDepth;
     for (let py = 0; py < textHeight; py++) {
       for (let px = 0; px < textWidth; px++) {
         if (pixels[py * textWidth + px]) {
@@ -89,7 +95,9 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
       }
     }
   } else if (mode === 'engrave') {
-    modelDepth = backgroundDepth;
+    modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : backgroundDepth;
+    const engraveZOffset = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
+    
     for (let py = 0; py < textHeight; py++) {
       for (let px = 0; px < textWidth; px++) {
         const isTextPixel = pixels[py * textWidth + px];
@@ -98,15 +106,21 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
         const endDepth = isTextPixel ? backgroundDepth - engraveDepth : backgroundDepth;
 
         for (let pz = 0; pz < endDepth; pz++) {
-            const [x, y, z] = mapCoords(px, py, pz);
-            addVoxel(x, y, z);
+            const finalPz = pz + engraveZOffset;
+            if (orientation === 'vertical-lr') {
+                 addVoxel(px, finalPz, textHeight - 1 - py);
+            } else {
+                 addVoxel(px, textHeight - 1 - py, finalPz);
+            }
         }
       }
     }
   }
 
   // Adjust final model dimensions based on orientation for the schematic info
-  let finalWidth = modelWidth, finalHeight = modelHeight, finalDepth = modelDepth;
+  let finalWidth = modelWidth;
+  let finalHeight = modelHeight;
+  let finalDepth = modelDepth;
   if (orientation === 'vertical-lr') {
     finalHeight = modelDepth; // New height is the depth
     finalDepth = modelHeight; // New depth is the text height

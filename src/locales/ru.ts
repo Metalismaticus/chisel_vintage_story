@@ -178,6 +178,7 @@ export default {
             extrude: 'Объёмный текст',
             engrave: 'Гравировка',
         },
+        stickerMode: 'Режим наклейки',
         letterDepth: 'Глубина букв',
         backgroundDepth: 'Глубина фона',
         engraveDepth: 'Глубина гравировки',

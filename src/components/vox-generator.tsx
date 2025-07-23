@@ -74,6 +74,7 @@ export function VoxGenerator() {
   const [fontFile, setFontFile] = useState<File | null>(null);
   const fontFileUrlRef = useRef<string | null>(null);
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
+  const [textStickerMode, setTextStickerMode] = useState(true);
   const [letterDepth, setLetterDepth] = useState([5]);
   const [backgroundDepth, setBackgroundDepth] = useState([16]);
   const [engraveDepth, setEngraveDepth] = useState([3]);
@@ -186,6 +187,7 @@ export function VoxGenerator() {
             backgroundDepth: textVoxMode === 'engrave' ? backgroundDepth[0] : 0,
             engraveDepth: textVoxMode === 'engrave' ? engraveDepth[0] : 0,
             orientation: textOrientation,
+            stickerMode: textStickerMode,
         };
 
         const result = await generateTextToVoxFlow(input);
@@ -215,20 +217,17 @@ export function VoxGenerator() {
     setSchematicOutput(null);
     
     try {
-      // We generate the QR data on the client. `qrcode` library gives us a representation of the QR code data.
       const qrData = QRCode.create(qrUrl, { errorCorrectionLevel: 'L' });
       const pixels: boolean[] = [];
-      // The module data is a Uint8Array where 1 is dark and 0 is light.
-      // We also add a 1-module white border around for better readability.
       const size = qrData.modules.size;
       const borderSize = size + 2;
       for (let y = 0; y < borderSize; y++) {
           for (let x = 0; x < borderSize; x++) {
               if (x === 0 || y === 0 || x === borderSize - 1 || y === borderSize - 1) {
-                  pixels.push(false); // white border
+                  pixels.push(false);
               } else {
                   const module = qrData.modules.get(y - 1, x - 1);
-                  pixels.push(module === 1); // black pixel
+                  pixels.push(module === 1);
               }
           }
       }
@@ -238,6 +237,7 @@ export function VoxGenerator() {
           pixels,
           size: borderSize,
           depth: qrCodeDepth[0],
+          stickerMode: true, // Always sticker mode now
           withBackdrop: withBackdrop,
           backdropDepth: withBackdrop ? backdropDepth[0] : 0,
       };
@@ -821,6 +821,11 @@ export function VoxGenerator() {
                 </div>
             </RadioGroup>
           </div>
+          
+           <div className="flex items-center space-x-2">
+                <Switch id="text-sticker-mode" checked={textStickerMode} onCheckedChange={setTextStickerMode} />
+                <Label htmlFor="text-sticker-mode">{t('voxGenerator.text.stickerMode')}</Label>
+           </div>
 
           {textVoxMode === 'extrude' && (
             <div className="space-y-2">

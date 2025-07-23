@@ -178,6 +178,7 @@ export default {
             extrude: 'Volumetric Text',
             engrave: 'Engraving',
         },
+        stickerMode: 'Sticker Mode',
         letterDepth: 'Letter Depth',
         backgroundDepth: 'Background Depth',
         engraveDepth: 'Engraving Depth',
