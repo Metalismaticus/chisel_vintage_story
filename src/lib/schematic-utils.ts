@@ -897,9 +897,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 // Add anchor pillar in the bottom-left-back corner
                 addVoxel(0, 0, 15, 2);
             } else {
-                addVoxel(0, 0, 0, 2); 
                 // Plaque mode: draw background and QR code
                 depth = qrDepth + backgroundDepth;
+                addVoxel(0, 0, depth -1, 2); // Anchor point at the back corner
                 for (let py = 0; py < height; py++) {
                     for (let px = 0; px < width; px++) {
                         const isQrPixel = pixels[py * width + px];
@@ -983,6 +983,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
