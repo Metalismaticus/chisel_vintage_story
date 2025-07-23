@@ -192,6 +192,7 @@ export default {
         urlPlaceholder: 'e.g., https://www.vintagestory.at/',
         codeDepth: 'QR Code Depth',
         backgroundDepth: 'Background Depth',
+        stickerMode: 'Sticker Mode',
     },
     button: 'Generate .vox File',
     errors: {

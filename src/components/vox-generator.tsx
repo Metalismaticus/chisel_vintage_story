@@ -83,6 +83,7 @@ export function VoxGenerator() {
   const [qrUrl, setQrUrl] = useState('https://www.vintagestory.at/');
   const [qrCodeDepth, setQrCodeDepth] = useState([2]);
   const [qrBackgroundDepth, setQrBackgroundDepth] = useState([5]);
+  const [stickerMode, setStickerMode] = useState(false);
   const [qrPreview, setQrPreview] = useState<string | null>(null);
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -238,6 +239,7 @@ export function VoxGenerator() {
           size: borderSize,
           depth: qrCodeDepth[0],
           backgroundDepth: qrBackgroundDepth[0],
+          stickerMode: stickerMode && qrBackgroundDepth[0] === 0,
       };
 
       const result = await generateVoxFlow(shapeParams);
@@ -889,6 +891,12 @@ export function VoxGenerator() {
                         onValueChange={setQrBackgroundDepth}
                     />
                 </div>
+                {qrBackgroundDepth[0] === 0 && (
+                   <div className="flex items-center space-x-2 pt-2">
+                     <Switch id="sticker-mode" checked={stickerMode} onCheckedChange={setStickerMode} />
+                     <Label htmlFor="sticker-mode">{t('voxGenerator.qr.stickerMode')}</Label>
+                   </div>
+                )}
             </div>
         </div>
     );

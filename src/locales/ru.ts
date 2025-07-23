@@ -47,7 +47,7 @@ export default {
   },
   textConstructor: {
     title: 'Конструктор текста',
-    description: 'Создавайте пиксельный текст для вашего мира.',
+    description: 'Создавайте пиксельный текст для ваших построек.',
     textLabel: 'Текст',
     textPlaceholder: 'Введите ваш текст',
     fontLabel: 'Шрифт',
@@ -192,6 +192,7 @@ export default {
         urlPlaceholder: 'например, https://www.vintagestory.at/',
         codeDepth: 'Глубина QR-кода',
         backgroundDepth: 'Глубина фона',
+        stickerMode: 'Режим наклейки',
     },
     button: 'Сгенерировать .vox файл',
     errors: {
