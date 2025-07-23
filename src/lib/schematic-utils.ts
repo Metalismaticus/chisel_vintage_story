@@ -294,7 +294,7 @@ export async function textToSchematic({
     const yOffset = Math.floor((finalHeight - croppedHeight) / 2);
     
     for(let y = 0; y < croppedHeight; y++) {
-        for(let x = 0; x < croppedWidth; x++) {
+        for(let x = 0; x < contentWidth; x++) {
             if (croppedPixels[y * croppedWidth + x]) {
                 finalPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
             }
@@ -884,7 +884,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             const STICKER_BLOCK_DEPTH = 16;
             // Total depth accounts for the sticker block and the optional backdrop block
-            depth = STICKER_BLOCK_DEPTH + (withBackdrop ? STICKER_BLOCK_DEPTH : 0);
+            depth = withBackdrop ? STICKER_BLOCK_DEPTH * 2 : STICKER_BLOCK_DEPTH;
             
             // --- Sticker Block (z: 0 to 15) ---
             addVoxel(0, 0, 0, 2); // Anchor for the sticker block at the front.
@@ -982,20 +982,3 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
