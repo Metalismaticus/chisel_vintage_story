@@ -637,26 +637,24 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const addBaseOrCapital = (yOffset: number, isCapital: boolean) => {
               if (!baseRadius || !baseHeight) return;
               for (let y = 0; y < baseHeight; y++) {
+                const finalY = isCapital ? yOffset + (baseHeight - 1 - y) : yOffset + y;
+                // This creates a mirrored curve for the capital
+                const progress = y / (baseHeight - 1);
+                let currentBaseRadius;
+                if (progress < 0.4) {
+                    currentBaseRadius = baseRadius;
+                } else if (progress < 0.7) {
+                    currentBaseRadius = baseRadius * 0.9;
+                } else {
+                    currentBaseRadius = baseRadius * 0.8;
+                }
+                
                 for (let z = 0; z < width; z++) {
                   for (let x = 0; x < width; x++) {
                     const dx = x - shaftCenter + 0.5;
                     const dz = z - shaftCenter + 0.5;
             
-                    // This creates a mirrored curve for the capital
-                    const progress = y / (baseHeight - 1);
-            
-                    let currentBaseRadius;
-                    if (progress < 0.4) {
-                      currentBaseRadius = baseRadius;
-                    } else if (progress < 0.7) {
-                      currentBaseRadius = baseRadius * 0.9;
-                    } else {
-                      currentBaseRadius = baseRadius * 0.8;
-                    }
-            
                     if (dx * dx + dz * dz <= currentBaseRadius * currentBaseRadius) {
-                      // For capital, we invert the y to make it a mirror image
-                      const finalY = isCapital ? yOffset + (baseHeight - 1 - y) : yOffset + y;
                       addVoxel(x, finalY, z);
                     }
                   }
@@ -906,11 +904,11 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const qrDepth = shape.depth ?? 1;
             width = size;
             height = size;
-            depth = 16 + (withBackdrop ? 16 : 0);
-
+            depth = withBackdrop ? 32 : 16;
+            
             // Block 1: QR Sticker (z: 0 to 15)
             addVoxel(0, 0, 0, 2); // Anchor for the sticker block
-            const qrZOffset = 15 - qrDepth;
+            const qrZOffset = 16 - qrDepth;
             for (let py = 0; py < height; py++) {
                for (let px = 0; px < width; px++) {
                    if (pixels[py * width + px]) {
@@ -1002,4 +1000,5 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
