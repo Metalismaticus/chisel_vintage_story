@@ -191,8 +191,6 @@ export default {
         urlLabel: 'URL или текст для QR-кода',
         urlPlaceholder: 'например, https://www.vintagestory.at/',
         codeDepth: 'Глубина QR-кода',
-        backgroundDepth: 'Глубина фона',
-        stickerMode: 'Режим наклейки',
         withBackdrop: 'Добавить монтажную плиту',
         backdropDepth: 'Глубина плиты',
     },
