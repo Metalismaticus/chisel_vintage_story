@@ -628,9 +628,6 @@ case 'column': {
         breakAngle = 45,
     } = shape;
 
-    // --- НАЧАЛО ПЕРЕПИСАННОГО КОДА V6 ---
-
-    // 1. Определяем параметры с учетом значений по умолчанию.
     const baseRadius = shape.baseRadius || Math.max(colRadius, Math.floor(colRadius * 1.5));
     const baseHeight = shape.baseHeight || Math.max(1, Math.floor(colRadius * 0.5));
     const capitalHeight = shape.capitalHeight || baseHeight;
@@ -639,12 +636,9 @@ case 'column': {
     let finalCapitalH = withCapital ? capitalHeight : 0;
     let finalShaftH = 0;
 
-    // 2. Надежный расчет высоты.
-    // Гарантирует, что сумма высот частей всегда равна totalHeight.
     if (totalHeight > 0) {
         const partsH = finalBaseH + finalCapitalH;
         if (partsH >= totalHeight) {
-            // Если основание и капитель не помещаются, пропорционально уменьшаем их.
             if (partsH > 0) {
                  const scale = totalHeight / partsH;
                  finalBaseH = Math.floor(finalBaseH * scale);
@@ -655,7 +649,6 @@ case 'column': {
             }
             finalShaftH = 0;
         } else {
-            // Ствол занимает всю оставшуюся высоту.
             finalShaftH = totalHeight - finalBaseH - finalCapitalH;
         }
     } else {
@@ -664,31 +657,24 @@ case 'column': {
         finalShaftH = 0;
     }
 
-    // 3. Вычисляем размеры bounding box ПОСЛЕ всех расчетов.
     const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
     width = depth = maxRadius * 2;
     height = totalHeight;
 
-    const centerX = width / 2.0 - 0.5;
-    const centerZ = depth / 2.0 - 0.5;
+    const centerX = width / 2.0;
+    const centerZ = depth / 2.0;
     const tanAngle = Math.tan(breakAngle * Math.PI / 180);
 
-    // --- Генерация геометрии ---
-
-    // Генерируем основание
+    // Generate base
     if (withBase && finalBaseH > 0) {
         for (let y = 0; y < finalBaseH; y++) {
             const progress = (finalBaseH > 1) ? y / (finalBaseH - 1) : 1;
             const easedProgress = 1 - (1 - progress) * (1 - progress); // ease-out
-
-            // ИСПРАВЛЕНО: Надежная линейная интерполяция (lerp) радиуса.
-            // Корректно работает, даже если baseRadius < colRadius.
             const currentRadius = baseRadius + (colRadius - baseRadius) * easedProgress;
-
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
+                    const dx = (x + 0.5) - centerX;
+                    const dz = (z + 0.5) - centerZ;
                     if (dx * dx + dz * dz < currentRadius * currentRadius) {
                         addVoxel(x, y, z);
                     }
@@ -697,15 +683,15 @@ case 'column': {
         }
     }
 
-    // Генерируем ствол
+    // Generate shaft
     const shaftYStart = finalBaseH;
     if (finalShaftH > 0) {
         for (let y = 0; y < finalShaftH; y++) {
             const actualY = shaftYStart + y;
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
+                    const dx = (x + 0.5) - centerX;
+                    const dz = (z + 0.5) - centerZ;
                     if (dx * dx + dz * dz < colRadius * colRadius) {
                         let isCutOff = false;
                         if (brokenTop && !withCapital) {
@@ -723,21 +709,18 @@ case 'column': {
         }
     }
 
-    // Генерируем капитель
+    // Generate capital
     if (withCapital && finalCapitalH > 0) {
         const capitalYStart = shaftYStart + finalShaftH;
         for (let y = 0; y < finalCapitalH; y++) {
             const actualY = capitalYStart + y;
             const progress = (finalCapitalH > 1) ? y / (finalCapitalH - 1) : 1;
             const easedProgress = progress * progress; // ease-in
-
-            // ИСПРАВЛЕНО: Надежная линейная интерполяция (lerp) радиуса.
             const currentRadius = colRadius + (baseRadius - colRadius) * easedProgress;
-
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
+                    const dx = (x + 0.5) - centerX;
+                    const dz = (z + 0.5) - centerZ;
                     if (dx * dx + dz * dz < currentRadius * currentRadius) {
                         addVoxel(x, actualY, z);
                     }
@@ -745,7 +728,6 @@ case 'column': {
             }
         }
     }
-    // --- КОНЕЦ ПЕРЕПИСАННОГО КОДА V6 ---
     break;
 }
         
@@ -1043,6 +1025,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
