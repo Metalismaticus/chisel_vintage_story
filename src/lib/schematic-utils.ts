@@ -618,40 +618,53 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
 case 'column': {
-    addVoxel(0, 0, 0, 2); 
-    const { 
-        radius: colRadius, 
-        height: colHeight, 
+    const {
+        radius: colRadius,
+        height: totalHeight,
         withBase = false,
         withCapital = false,
-        baseRadius = 0,
-        baseHeight = 0,
     } = shape;
 
-    const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
-    width = depth = Math.max(colRadius * 2, (withBase || withCapital) ? finalBaseRadius * 2 : 0);
-    height = (withBase ? baseHeight : 0) + colHeight + (withCapital ? baseHeight : 0);
-    
-    if (width <= 0 || height <= 0) {
-        xyziValues = [];
+    const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
+    const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
+    const capitalHeight = shape.capitalHeight || baseHeight;
+
+    let finalBaseH = withBase ? baseHeight : 0;
+    let finalCapitalH = withCapital ? capitalHeight : 0;
+    if (finalBaseH + finalCapitalH > totalHeight) {
+        const partsH = finalBaseH + finalCapitalH;
+        finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
+        finalCapitalH = totalHeight - finalBaseH;
+    }
+    const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
+
+    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
+    // Делаем ширину НЕЧЕТНОЙ для идеального центрирования на одном блоке
+    width = depth = maxRadius * 2 + 1;
+    height = totalHeight;
+
+    if (width <= 1 || height <= 0) {
         width = height = depth = 0;
         break;
     }
 
-    const shaftCenter = width / 2.0;
-
+    const centerX = Math.floor(width / 2);
+    const centerZ = Math.floor(depth / 2);
+    
     // --- Генерация ---
 
-    if (withBase) {
-        for (let y = 0; y < baseHeight; y++) {
-            const progress = (baseHeight > 1) ? y / (baseHeight - 1) : 1;
+    // Основание
+    if (withBase && finalBaseH > 0) {
+        for (let y = 0; y < finalBaseH; y++) {
+            const progress = (finalBaseH > 1) ? y / (finalBaseH - 1) : 1;
             const easedProgress = 1 - (1 - progress) * (1 - progress);
-            const currentRadius = finalBaseRadius + (colRadius - finalBaseRadius) * easedProgress;
+            const r = baseRadius + (colRadius - baseRadius) * easedProgress;
+            const rSq = r * r;
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = (x + 0.5) - shaftCenter;
-                    const dz = (z + 0.5) - shaftCenter;
-                    if (dx * dx + dz * dz < currentRadius * currentRadius) { // <-- ИСПРАВЛЕНО
+                    const dx = x - centerX;
+                    const dz = z - centerZ;
+                    if (dx * dx + dz * dz < rSq) {
                         addVoxel(x, y, z);
                     }
                 }
@@ -659,31 +672,37 @@ case 'column': {
         }
     }
 
-    const shaftYOffset = withBase ? baseHeight : 0;
-    for (let y = 0; y < colHeight; y++) {
-        for (let z = 0; z < depth; z++) {
-            for (let x = 0; x < width; x++) {
-                const dx = (x + 0.5) - shaftCenter;
-                const dz = (z + 0.5) - shaftCenter;
-                if (dx * dx + dz * dz < colRadius * colRadius) { // <-- ИСПРАВЛЕНО
-                    addVoxel(x, y + shaftYOffset, z);
+    // Ствол
+    if (finalShaftH > 0) {
+        const shaftYStart = finalBaseH;
+        const rSq = colRadius * colRadius;
+        for (let y = 0; y < finalShaftH; y++) {
+            for (let z = 0; z < depth; z++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = x - centerX;
+                    const dz = z - centerZ;
+                    if (dx * dx + dz * dz < rSq) {
+                        addVoxel(x, y + shaftYStart, z);
+                    }
                 }
             }
         }
     }
-    
-    if (withCapital) {
-        const capitalYOffset = shaftYOffset + colHeight;
-        for (let y = 0; y < baseHeight; y++) {
-            const progress = (baseHeight > 1) ? y / (baseHeight - 1) : 1;
+
+    // Капитель
+    if (withCapital && finalCapitalH > 0) {
+        const capitalYStart = finalBaseH + finalShaftH;
+        for (let y = 0; y < finalCapitalH; y++) {
+            const progress = (finalCapitalH > 1) ? y / (finalCapitalH - 1) : 1;
             const easedProgress = progress * progress;
-            const currentRadius = colRadius + (finalBaseRadius - colRadius) * easedProgress;
+            const r = colRadius + (baseRadius - colRadius) * easedProgress;
+            const rSq = r * r;
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = (x + 0.5) - shaftCenter;
-                    const dz = (z + 0.5) - shaftCenter;
-                    if (dx * dx + dz * dz < currentRadius * currentRadius) { // <-- ИСПРАВЛЕНО
-                        addVoxel(x, y + capitalYOffset, z);
+                    const dx = x - centerX;
+                    const dz = z - centerZ;
+                    if (dx * dx + dz * dz < rSq) {
+                        addVoxel(x, y + capitalYStart, z);
                     }
                 }
             }
@@ -986,6 +1005,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
