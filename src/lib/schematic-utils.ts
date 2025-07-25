@@ -618,7 +618,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
 case 'column': {
-    // Убираем якорный воксель для центрированных объектов, он здесь не нужен.
+    addVoxel(0, 0, 0, 2);
     const {
         radius: colRadius,
         height: totalHeight,
@@ -1010,6 +1010,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
