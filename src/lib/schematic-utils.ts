@@ -628,44 +628,48 @@ case 'column': {
         breakAngle = 45,
     } = shape;
 
-    // --- НАЧАЛО ИСПРАВЛЕНИЙ V2 ---
+    // --- НАЧАЛО ИСПРАВЛЕНИЙ V3 ---
 
-    // 1. Определяем параметры с учетом значений по умолчанию и гибкости
+    // 1. Определяем параметры с учетом значений по умолчанию.
     const baseRadius = shape.baseRadius || Math.max(colRadius, Math.floor(colRadius * 1.5));
     const baseHeight = shape.baseHeight || Math.max(1, Math.floor(colRadius * 0.5));
-    const capitalHeight = shape.capitalHeight || baseHeight; // Капитель равна базе, если не указано иное
+    const capitalHeight = shape.capitalHeight || baseHeight;
 
     let actualBaseHeight = withBase ? baseHeight : 0;
     let actualCapitalHeight = withCapital ? capitalHeight : 0;
 
-    // 2. Гарантируем, что ствол имеет минимальную высоту
-    let shaftHeight = totalHeight - actualBaseHeight - actualCapitalHeight;
-    if (shaftHeight < 1) {
-        actualCapitalHeight = Math.max(0, actualCapitalHeight + shaftHeight - 1);
-        shaftHeight = totalHeight - actualBaseHeight - actualCapitalHeight;
-        if (shaftHeight < 1) {
-            actualBaseHeight = Math.max(0, actualBaseHeight + shaftHeight - 1);
+    // 2. ИСПРАВЛЕНО: Корректный и единственный расчет высоты частей.
+    // Гарантируем, что для ствола останется хотя бы 1 воксель,
+    // пропорционально уменьшая высоту капители, а затем основания, если необходимо.
+    let shaftH = totalHeight - actualBaseHeight - actualCapitalHeight;
+    if (shaftH < 1) {
+        actualCapitalHeight += shaftH - 1; // Уменьшаем капитель на величину нехватки
+        actualCapitalHeight = Math.max(0, actualCapitalHeight); // Не даем уйти в минус
+        
+        // Пересчитываем нехватку, если капители не хватило
+        shaftH = totalHeight - actualBaseHeight - actualCapitalHeight;
+        if (shaftH < 1) {
+            actualBaseHeight += shaftH - 1; // Уменьшаем основание
+            actualBaseHeight = Math.max(0, actualBaseHeight);
         }
     }
-    const finalShaftHeight = Math.max(1, totalHeight - actualBaseHeight - actualCapitalHeight);
+    // Финальный расчет высоты ствола. Теперь сумма высот всегда равна totalHeight.
+    const finalShaftHeight = totalHeight - actualBaseHeight - actualCapitalHeight;
 
-    // 3. ИСПРАВЛЕНО: Сначала вычисляем maxRadius, потом размеры.
+    // 3. Сначала вычисляем maxRadius, потом размеры.
     const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
     width = depth = maxRadius * 2;
-    height = totalHeight; // Высота всегда соответствует запрошенной
+    height = totalHeight; // Высота bounding box всегда соответствует запрошенной.
 
     const centerX = width / 2.0 - 0.5;
     const centerZ = depth / 2.0 - 0.5;
     const tanAngle = Math.tan(breakAngle * Math.PI / 180);
 
-    // Генерируем основание (выпуклое)
-    if (withBase) {
+    // Генерируем основание (выпуклое, сужается кверху)
+    if (withBase && actualBaseHeight > 0) {
         for (let y = 0; y < actualBaseHeight; y++) {
-            const actualY = y;
             const progress = (actualBaseHeight > 1) ? y / (actualBaseHeight - 1) : 1;
-            // ИСПРАВЛЕНО: easing для выпуклой формы (быстро в начале, медленно в конце)
-            const easedProgress = 1 - (1 - progress) * (1 - progress); 
-            // ИСПРАВЛЕНО: радиус сужается от baseRadius к colRadius
+            const easedProgress = 1 - (1 - progress) * (1 - progress); // ease-out
             const currentRadius = baseRadius - (baseRadius - colRadius) * easedProgress;
 
             for (let z = 0; z < depth; z++) {
@@ -673,7 +677,7 @@ case 'column': {
                     const dx = x - centerX;
                     const dz = z - centerZ;
                     if (dx * dx + dz * dz < currentRadius * currentRadius) {
-                        addVoxel(x, actualY, z);
+                        addVoxel(x, y, z);
                     }
                 }
             }
@@ -682,39 +686,37 @@ case 'column': {
 
     // Генерируем ствол
     const shaftYStart = actualBaseHeight;
-    for (let y = 0; y < finalShaftHeight; y++) {
-        const actualY = shaftYStart + y;
-        for (let z = 0; z < depth; z++) {
-            for (let x = 0; x < width; x++) {
-                const dx = x - centerX;
-                const dz = z - centerZ;
-                if (dx * dx + dz * dz < colRadius * colRadius) {
-                    let isCutOff = false;
-                    // ИСПРАВЛЕНО: Улучшенная логика излома
-                    if (brokenTop && !withCapital) {
-                        // Плоскость среза проходит через центр колонны с заданным углом
-                        const breakPlaneHeight = (totalHeight - colRadius * tanAngle) + (dx * tanAngle);
-                        if (actualY > breakPlaneHeight) {
-                            isCutOff = true;
+    if (finalShaftHeight > 0) {
+        for (let y = 0; y < finalShaftHeight; y++) {
+            const actualY = shaftYStart + y;
+            for (let z = 0; z < depth; z++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = x - centerX;
+                    const dz = z - centerZ;
+                    if (dx * dx + dz * dz < colRadius * colRadius) {
+                        let isCutOff = false;
+                        if (brokenTop && !withCapital) {
+                            const breakPlaneHeight = (totalHeight - colRadius * tanAngle) + (dx * tanAngle);
+                            if (actualY > breakPlaneHeight) {
+                                isCutOff = true;
+                            }
                         }
-                    }
-                    if (!isCutOff) {
-                        addVoxel(x, actualY, z);
+                        if (!isCutOff) {
+                            addVoxel(x, actualY, z);
+                        }
                     }
                 }
             }
         }
     }
 
-    // Генерируем капитель (вогнутая)
-    if (withCapital) {
+    // Генерируем капитель (вогнутая, расширяется кверху)
+    if (withCapital && actualCapitalHeight > 0) {
         const capitalYStart = shaftYStart + finalShaftHeight;
         for (let y = 0; y < actualCapitalHeight; y++) {
             const actualY = capitalYStart + y;
             const progress = (actualCapitalHeight > 1) ? y / (actualCapitalHeight - 1) : 1;
-            // ИСПРАВЛЕНО: easing для вогнутой формы (медленно в начале, быстро в конце)
-            const easedProgress = progress * progress;
-            // Радиус расширяется от colRadius к baseRadius
+            const easedProgress = progress * progress; // ease-in
             const currentRadius = colRadius + (baseRadius - colRadius) * easedProgress;
 
             for (let z = 0; z < depth; z++) {
@@ -728,7 +730,7 @@ case 'column': {
             }
         }
     }
-    // --- КОНЕЦ ИСПРАВЛЕНИЙ V2 ---
+    // --- КОНЕЦ ИСПРАВЛЕНИЙ V3 ---
     break;
 }
         
@@ -1030,6 +1032,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
