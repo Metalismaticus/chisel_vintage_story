@@ -1011,8 +1011,6 @@ case 'column': {
         }
     }
     
-    // The color is our accent color, #C8A464 -> RGB(200, 164, 100)
-    // The library expects a full 256 color palette. We'll fill it with a default color.
     const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
     palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed, so 0 is empty
     palette[1] = { r: 10, g: 10, b: 10, a: 255 }; 
@@ -1020,15 +1018,9 @@ case 'column': {
     palette[3] = { r: 100, g: 100, b: 100, a: 255 };
     
     const voxObject = {
-        size: { x: width, y: depth, z: height }, // Z is up in .vox format, so we map our depth to Y and height to Z
-        xyzi: {
-            numVoxels: xyziValues.length,
-            // .vox format is Z-up, so we swap our y and z
-            values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
-        },
-        rgba: {
-            values: palette
-        }
+        size: { x: width, y: depth, z: height },
+        voxels: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i })),
+        palette: palette
     };
     
     const buffer = writeVox(voxObject);
@@ -1047,6 +1039,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
