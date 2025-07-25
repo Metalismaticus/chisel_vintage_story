@@ -665,8 +665,6 @@ case 'column': {
     const maxRadius = Math.max(colRadius, (withBase || withCapital) ? baseRadius : colRadius);
     width = depth = Math.ceil(maxRadius * 2);
     height = totalHeight; // <- ВСЕГДА возвращаем ту высоту что задал пользователь!
-
-    // Общие размеры - исправляем расчет
     
     // ИСПРАВЛЯЕМ: центр должен быть относительно размера, а не радиуса
     const shaftCenter = width / 2.0 - 0.5; // Центр для координат 0-based
@@ -1058,6 +1056,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
