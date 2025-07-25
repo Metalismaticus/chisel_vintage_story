@@ -618,6 +618,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
 case 'column': {
+    // Убираем якорный воксель для центрированных объектов, он здесь не нужен.
     const {
         radius: colRadius,
         height: totalHeight,
@@ -625,12 +626,11 @@ case 'column': {
         withCapital = false,
     } = shape;
 
-    // 1. Параметры по умолчанию
     const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
     const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
     const capitalHeight = shape.capitalHeight || baseHeight;
 
-    // 2. Распределение высоты (остается без изменений, оно работает правильно)
+    // Расчет высот (эта логика верна)
     let finalBaseH = withBase ? baseHeight : 0;
     let finalCapitalH = withCapital ? capitalHeight : 0;
     if (finalBaseH + finalCapitalH > totalHeight) {
@@ -640,24 +640,28 @@ case 'column': {
     }
     const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
 
-    // 3. ИСПРАВЛЕНИЕ ЦЕНТРИРОВАНИЯ: Создаем модель с НЕЧЕТНОЙ шириной
+    // --- ИСПРАВЛЕНИЕ №1: ПРАВИЛЬНЫЙ РАЗМЕР И ЦЕНТР ---
     const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
-    // Ширина/глубина теперь всегда нечетная, что дает нам идеальный центр
-    width = depth = maxRadius * 2 + 1; 
+    
+    // Вычисляем итоговый размер, кратный 16, чтобы он соответствовал блокам игры.
+    // Если радиус 8 (диаметр 16), то итоговая ширина будет 16.
+    // Если радиус 9 (диаметр 18), то итоговая ширина будет 32.
+    width = depth = Math.ceil(maxRadius * 2 / 16) * 16;
     height = totalHeight;
 
-    if (width <= 1 || height <= 0) { // Проверка на 1, а не 0, т.к. +1
+    if (width <= 0 || height <= 0) {
         width = height = depth = 0;
         break;
     }
 
-    // 4. ИСПРАВЛЕНИЕ ВИЗУАЛА: Возвращаемся к точной float-математике
+    // Находим истинный центр этой области (например, для ширины 16 это будет 8.0)
     const centerX = width / 2.0;
     const centerZ = depth / 2.0;
 
-    // --- Генерация геометрии ---
-
-    // Основание
+    // --- ИСПРАВЛЕНИЕ №2: ВОЗВРАЩАЕМ КРУГЛУЮ ФОРМУ ---
+    // Используем стандартную и визуально корректную формулу для ЗАПОЛНЕННОГО круга.
+    
+    // Генерация Основания
     if (withBase && finalBaseH > 0) {
         for (let y = 0; y < finalBaseH; y++) {
             const progress = (finalBaseH > 1) ? y / (finalBaseH - 1) : 1;
@@ -675,28 +679,26 @@ case 'column': {
         }
     }
 
-    // Ствол
+    // Генерация Ствола
     if (finalShaftH > 0) {
         const shaftYStart = finalBaseH;
         for (let y = 0; y < finalShaftH; y++) {
-            const actualY = shaftYStart + y;
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
                     const dx = (x + 0.5) - centerX;
                     const dz = (z + 0.5) - centerZ;
                     if (dx * dx + dz * dz < colRadius * colRadius) {
-                        addVoxel(x, actualY, z);
+                        addVoxel(x, y + shaftYStart, z);
                     }
                 }
             }
         }
     }
 
-    // Капитель
+    // Генерация Капители
     if (withCapital && finalCapitalH > 0) {
         const capitalYStart = finalBaseH + finalShaftH;
         for (let y = 0; y < finalCapitalH; y++) {
-            const actualY = capitalYStart + y;
             const progress = (finalCapitalH > 1) ? y / (finalCapitalH - 1) : 1;
             const easedProgress = progress * progress;
             const currentRadius = colRadius + (baseRadius - colRadius) * easedProgress;
@@ -705,7 +707,7 @@ case 'column': {
                     const dx = (x + 0.5) - centerX;
                     const dz = (z + 0.5) - centerZ;
                     if (dx * dx + dz * dz < currentRadius * currentRadius) {
-                        addVoxel(x, actualY, z);
+                        addVoxel(x, y + capitalYStart, z);
                     }
                 }
             }
@@ -1008,6 +1010,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
