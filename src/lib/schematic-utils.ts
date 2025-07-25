@@ -647,7 +647,7 @@ case 'column': {
     const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
 
     // 3. Вычисление размеров
-    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0);
+    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
     width = depth = maxRadius * 2;
     height = totalHeight;
 
@@ -997,7 +997,6 @@ case 'column': {
     const voxObject = {
         size: { x: width, y: depth, z: height },
         xyzi: {
-            numVoxels: xyziValues.length,
             values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
         },
         rgba: {
@@ -1021,6 +1020,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
