@@ -618,60 +618,40 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
 case 'column': {
-    addVoxel(0, 0, 0, 2);
-    const {
-        radius: colRadius,
-        height: totalHeight,
+    addVoxel(0, 0, 0, 2); 
+    const { 
+        radius: colRadius, 
+        height: colHeight, 
         withBase = false,
         withCapital = false,
+        baseRadius = 0,
+        baseHeight = 0,
     } = shape;
 
-    const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
-    const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-    const capitalHeight = shape.capitalHeight || baseHeight;
-
-    // Расчет высот (эта логика верна)
-    let finalBaseH = withBase ? baseHeight : 0;
-    let finalCapitalH = withCapital ? capitalHeight : 0;
-    if (finalBaseH + finalCapitalH > totalHeight) {
-        const partsH = finalBaseH + finalCapitalH;
-        finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
-        finalCapitalH = totalHeight - finalBaseH;
-    }
-    const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
-
-    // --- ИСПРАВЛЕНИЕ №1: ПРАВИЛЬНЫЙ РАЗМЕР И ЦЕНТР ---
-    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
+    const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
+    width = depth = Math.max(colRadius * 2, (withBase || withCapital) ? finalBaseRadius * 2 : 0);
+    height = (withBase ? baseHeight : 0) + colHeight + (withCapital ? baseHeight : 0);
     
-    // Вычисляем итоговый размер, кратный 16, чтобы он соответствовал блокам игры.
-    // Если радиус 8 (диаметр 16), то итоговая ширина будет 16.
-    // Если радиус 9 (диаметр 18), то итоговая ширина будет 32.
-    width = depth = Math.ceil(maxRadius * 2 / 16) * 16;
-    height = totalHeight;
-
     if (width <= 0 || height <= 0) {
+        xyziValues = [];
         width = height = depth = 0;
         break;
     }
 
-    // Находим истинный центр этой области (например, для ширины 16 это будет 8.0)
-    const centerX = width / 2.0;
-    const centerZ = depth / 2.0;
+    const shaftCenter = width / 2.0;
 
-    // --- ИСПРАВЛЕНИЕ №2: ВОЗВРАЩАЕМ КРУГЛУЮ ФОРМУ ---
-    // Используем стандартную и визуально корректную формулу для ЗАПОЛНЕННОГО круга.
-    
-    // Генерация Основания
-    if (withBase && finalBaseH > 0) {
-        for (let y = 0; y < finalBaseH; y++) {
-            const progress = (finalBaseH > 1) ? y / (finalBaseH - 1) : 1;
+    // --- Генерация ---
+
+    if (withBase) {
+        for (let y = 0; y < baseHeight; y++) {
+            const progress = (baseHeight > 1) ? y / (baseHeight - 1) : 1;
             const easedProgress = 1 - (1 - progress) * (1 - progress);
-            const currentRadius = baseRadius + (colRadius - baseRadius) * easedProgress;
+            const currentRadius = finalBaseRadius + (colRadius - finalBaseRadius) * easedProgress;
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = (x + 0.5) - centerX;
-                    const dz = (z + 0.5) - centerZ;
-                    if (dx * dx + dz * dz < currentRadius * currentRadius) {
+                    const dx = (x + 0.5) - shaftCenter;
+                    const dz = (z + 0.5) - shaftCenter;
+                    if (dx * dx + dz * dz < currentRadius * currentRadius) { // <-- ИСПРАВЛЕНО
                         addVoxel(x, y, z);
                     }
                 }
@@ -679,35 +659,31 @@ case 'column': {
         }
     }
 
-    // Генерация Ствола
-    if (finalShaftH > 0) {
-        const shaftYStart = finalBaseH;
-        for (let y = 0; y < finalShaftH; y++) {
-            for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = (x + 0.5) - centerX;
-                    const dz = (z + 0.5) - centerZ;
-                    if (dx * dx + dz * dz < colRadius * colRadius) {
-                        addVoxel(x, y + shaftYStart, z);
-                    }
+    const shaftYOffset = withBase ? baseHeight : 0;
+    for (let y = 0; y < colHeight; y++) {
+        for (let z = 0; z < depth; z++) {
+            for (let x = 0; x < width; x++) {
+                const dx = (x + 0.5) - shaftCenter;
+                const dz = (z + 0.5) - shaftCenter;
+                if (dx * dx + dz * dz < colRadius * colRadius) { // <-- ИСПРАВЛЕНО
+                    addVoxel(x, y + shaftYOffset, z);
                 }
             }
         }
     }
-
-    // Генерация Капители
-    if (withCapital && finalCapitalH > 0) {
-        const capitalYStart = finalBaseH + finalShaftH;
-        for (let y = 0; y < finalCapitalH; y++) {
-            const progress = (finalCapitalH > 1) ? y / (finalCapitalH - 1) : 1;
+    
+    if (withCapital) {
+        const capitalYOffset = shaftYOffset + colHeight;
+        for (let y = 0; y < baseHeight; y++) {
+            const progress = (baseHeight > 1) ? y / (baseHeight - 1) : 1;
             const easedProgress = progress * progress;
-            const currentRadius = colRadius + (baseRadius - colRadius) * easedProgress;
+            const currentRadius = colRadius + (finalBaseRadius - colRadius) * easedProgress;
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                    const dx = (x + 0.5) - centerX;
-                    const dz = (z + 0.5) - centerZ;
-                    if (dx * dx + dz * dz < currentRadius * currentRadius) {
-                        addVoxel(x, y + capitalYStart, z);
+                    const dx = (x + 0.5) - shaftCenter;
+                    const dz = (z + 0.5) - shaftCenter;
+                    if (dx * dx + dz * dz < currentRadius * currentRadius) { // <-- ИСПРАВЛЕНО
+                        addVoxel(x, y + capitalYOffset, z);
                     }
                 }
             }
@@ -1010,6 +986,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
