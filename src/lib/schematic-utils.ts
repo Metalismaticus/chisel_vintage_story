@@ -616,117 +616,149 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
         
-        case 'column': {
-            addVoxel(0, 0, 0, 2); 
-            const { 
-                radius: colRadius, 
-                height: totalHeight, // Это общая высота колонны
-                withBase = false,
-                withCapital = false,
-                baseRadius = Math.max(1, colRadius * 1.5), // Значение по умолчанию
-                baseHeight = Math.max(1, Math.floor(colRadius * 0.8)), // Значение по умолчанию
-                brokenTop = false,
-                breakAngle = 45,
-            } = shape;
-        
-            // Рассчитываем размеры частей
-            const actualBaseHeight = withBase ? Math.max(1, baseHeight) : 0;
-            const actualCapitalHeight = withCapital ? Math.max(1, baseHeight) : 0; 
-            const shaftHeight = totalHeight - actualBaseHeight - actualCapitalHeight;
-            
-            // Проверяем что высота ствола положительная
-            if (shaftHeight <= 0) {
-                throw new Error('Высота ствола должна быть больше 0. Уменьшите высоту основания/капители или увеличьте общую высоту.');
-            }
-        
-            // Общие размеры
-            const maxRadius = Math.max(colRadius, withBase || withCapital ? baseRadius : colRadius);
-            width = depth = maxRadius * 2;
-            height = totalHeight; // Используем общую высоту
-            
-            const shaftCenter = maxRadius; // Центр относительно максимального радиуса
-            const tanAngle = Math.tan(breakAngle * Math.PI / 180);
-           
-            const addBaseOrCapital = (yStart: number, partHeight: number, isCapital: boolean) => {
-                if (!baseRadius || partHeight <= 0) return;
-                
-                for (let y = 0; y < partHeight; y++) {
-                    const actualY = yStart + y;
-                    // Для капители инвертируем прогресс, избегаем деления на ноль
-                    const progress = partHeight > 1 ? 
-                        (isCapital ? (partHeight - 1 - y) / (partHeight - 1) : y / (partHeight - 1)) : 
-                        0;
-                    
-                    let currentBaseRadius;
-                    if (progress < 0.4) {
-                        currentBaseRadius = baseRadius;
-                    } else if (progress < 0.7) {
-                        currentBaseRadius = baseRadius * 0.9;
-                    } else {
-                        currentBaseRadius = baseRadius * 0.8;
-                    }
-                    
-                    for (let z = 0; z < depth; z++) {
-                        for (let x = 0; x < width; x++) {
-                            const dx = x - shaftCenter + 0.5;
-                            const dz = z - shaftCenter + 0.5;
-                    
-                            if (dx * dx + dz * dz <= currentBaseRadius * currentBaseRadius) {
-                                addVoxel(x, actualY, z);
-                            }
-                        }
-                    }
-                }
-            };
-            
-            // Генерируем основание
-            if (withBase && actualBaseHeight > 0) {
-                addBaseOrCapital(0, actualBaseHeight, false);
-            }
-        
-            // Генерируем ствол
-            const shaftYStart = actualBaseHeight;
-            for(let y = 0; y < shaftHeight; y++) {
-                const actualY = shaftYStart + y;
-                
-                for(let z = 0; z < depth; z++) {
-                    for(let x = 0; x < width; x++) {
-                        const dx = x - shaftCenter + 0.5;
-                        const dz = z - shaftCenter + 0.5;
-                        
-                        if (dx * dx + dz * dz <= colRadius * colRadius) {
-                            let isCutOff = false;
-                            
-                            // Применяем излом только если нет капители
-                            if (brokenTop && !withCapital) {
-                                const cutStartY = shaftYStart + shaftHeight - colRadius;
-                                if (actualY >= cutStartY) {
-                                    // Плоскость излома
-                                    const relativeY = actualY - cutStartY;
-                                    const relativeX = x - (shaftCenter - colRadius);
-                                    if (relativeY > tanAngle * relativeX) {
-                                        isCutOff = true;
-                                    }
-                                }
-                            }
-                            
-                            if (!isCutOff) {
-                                addVoxel(x, actualY, z);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Генерируем капитель
-            if (withCapital && actualCapitalHeight > 0) {
-                const capitalYStart = actualBaseHeight + shaftHeight;
-                addBaseOrCapital(capitalYStart, actualCapitalHeight, true);
-            }
-        
-            break;
-        }
+case 'column': {
+    addVoxel(0, 0, 0, 2); 
+    const { 
+        radius: colRadius, 
+        height: totalHeight,
+        withBase = false,
+        withCapital = false,
+        brokenTop = false,
+        breakAngle = 45,
+    } = shape;
+    
+    // Исправляем значения по умолчанию и проверяем входные данные
+    let { baseRadius, baseHeight } = shape;
+    if (!baseRadius || baseRadius <= 0) {
+        baseRadius = Math.max(colRadius, Math.floor(colRadius * 1.5));
+    }
+    if (!baseHeight || baseHeight <= 0) {
+        baseHeight = Math.max(2, Math.floor(colRadius * 0.8));
+    }
 
+    // Рассчитываем размеры частей
+    let actualBaseHeight = withBase ? baseHeight : 0;
+    let actualCapitalHeight = withCapital ? baseHeight : 0; 
+    const shaftHeight = totalHeight - actualBaseHeight - actualCapitalHeight;
+    
+    // Проверяем что высота ствола положительная
+    let finalShaftHeight;
+    if (shaftHeight <= 0) {
+        console.warn(`Недостаточно высоты для ствола. Общая: ${totalHeight}, Основание: ${actualBaseHeight}, Капитель: ${actualCapitalHeight}`);
+        
+        // Вместо изменения общей высоты, пропорционально уменьшаем части
+        const totalPartsHeight = actualBaseHeight + actualCapitalHeight;
+        if (totalPartsHeight >= totalHeight) {
+            // Если основание+капитель больше общей высоты, масштабируем их
+            const scale = (totalHeight - 2) / totalPartsHeight; // Оставляем минимум 2 для ствола
+            actualBaseHeight = Math.floor(actualBaseHeight * scale);
+            actualCapitalHeight = Math.floor(actualCapitalHeight * scale);
+            finalShaftHeight = totalHeight - actualBaseHeight - actualCapitalHeight;
+        } else {
+            finalShaftHeight = 2; // Минимальная высота ствола
+        }
+    } else {
+        finalShaftHeight = shaftHeight;
+    }
+    
+    // ВАЖНО: общие размеры ВСЕГДА соответствуют пользовательскому вводу
+    const maxRadius = Math.max(colRadius, (withBase || withCapital) ? baseRadius : colRadius);
+    width = depth = Math.ceil(maxRadius * 2);
+    height = totalHeight; // <- ВСЕГДА возвращаем ту высоту что задал пользователь!
+
+    // Общие размеры - исправляем расчет
+    
+    // ИСПРАВЛЯЕМ: центр должен быть относительно размера, а не радиуса
+    const shaftCenter = width / 2.0 - 0.5; // Центр для координат 0-based
+    const tanAngle = Math.tan(breakAngle * Math.PI / 180);
+   
+    const addBaseOrCapital = (yStart: number, partHeight: number, isCapital: boolean) => {
+        if (partHeight <= 0) return;
+        
+        for (let y = 0; y < partHeight; y++) {
+            const actualY = yStart + y;
+            
+            // ИСПРАВЛЯЕМ: избегаем деления на ноль и улучшаем расчет прогресса
+            let progress = 0;
+            if (partHeight > 1) {
+                progress = isCapital ? 
+                    (partHeight - 1 - y) / (partHeight - 1) : 
+                    y / (partHeight - 1);
+            }
+            
+            // Улучшаем профиль основания/капители
+            let currentRadius;
+            if (progress < 0.3) {
+                currentRadius = baseRadius;
+            } else if (progress < 0.6) {
+                currentRadius = baseRadius * 0.9;
+            } else if (progress < 0.8) {
+                currentRadius = baseRadius * 0.8;
+            } else {
+                currentRadius = Math.max(colRadius, baseRadius * 0.7);
+            }
+            
+            // ИСПРАВЛЯЕМ: используем правильный центр
+            for (let z = 0; z < depth; z++) {
+                for (let x = 0; x < width; x++) {
+                    const dx = x - shaftCenter;
+                    const dz = z - shaftCenter;
+            
+                    if (dx * dx + dz * dz <= currentRadius * currentRadius) {
+                        addVoxel(x, actualY, z);
+                    }
+                }
+            }
+        }
+    };
+    
+    // Генерируем основание
+    if (withBase && actualBaseHeight > 0) {
+        addBaseOrCapital(0, actualBaseHeight, false);
+    }
+
+    // Генерируем ствол - ИСПРАВЛЯЕМ расчеты
+    const shaftYStart = actualBaseHeight;
+    for(let y = 0; y < finalShaftHeight; y++) {
+        const actualY = shaftYStart + y;
+        
+        for(let z = 0; z < depth; z++) {
+            for(let x = 0; x < width; x++) {
+                const dx = x - shaftCenter;
+                const dz = z - shaftCenter;
+                
+                if (dx * dx + dz * dz <= colRadius * colRadius) {
+                    let isCutOff = false;
+                    
+                    // Применяем излом только если нет капители
+                    if (brokenTop && !withCapital && finalShaftHeight > colRadius) {
+                        const cutStartY = shaftYStart + finalShaftHeight - colRadius;
+                        if (actualY >= cutStartY) {
+                            // ИСПРАВЛЯЕМ: улучшаем расчет плоскости излома
+                            const relativeY = actualY - cutStartY;
+                            const relativeX = x - Math.max(0, shaftCenter - colRadius);
+                            if (relativeY > tanAngle * Math.max(0, relativeX)) {
+                                isCutOff = true;
+                            }
+                        }
+                    }
+                    
+                    if (!isCutOff) {
+                        addVoxel(x, actualY, z);
+                    }
+                }
+            }
+        }
+    }
+    
+    // Генерируем капитель
+    if (withCapital && actualCapitalHeight > 0) {
+        const capitalYStart = actualBaseHeight + finalShaftHeight;
+        addBaseOrCapital(capitalYStart, actualCapitalHeight, true);
+    }
+
+    break;
+}
         
         case 'cone':
             addVoxel(0, 0, 0, 2); 
@@ -1026,6 +1058,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
