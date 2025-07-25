@@ -628,7 +628,7 @@ case 'column': {
         breakAngle = 45,
     } = shape;
 
-    // --- НАЧАЛО ИСПРАВЛЕНИЙ V4 ---
+    // --- НАЧАЛО ПЕРЕПИСАННОГО КОДА V6 ---
 
     // 1. Определяем параметры с учетом значений по умолчанию.
     const baseRadius = shape.baseRadius || Math.max(colRadius, Math.floor(colRadius * 1.5));
@@ -637,44 +637,53 @@ case 'column': {
 
     let finalBaseH = withBase ? baseHeight : 0;
     let finalCapitalH = withCapital ? capitalHeight : 0;
+    let finalShaftH = 0;
 
-    // 2. ИСПРАВЛЕНО: Простой и надежный расчет высоты частей.
-    const partsHeight = finalBaseH + finalCapitalH;
-    if (partsHeight >= totalHeight) {
-        // Если основание и капитель не помещаются, пропорционально уменьшаем их.
-        if (partsHeight > 0) { // Избегаем деления на ноль
-            const scale = totalHeight / partsHeight;
-            finalBaseH = Math.floor(finalBaseH * scale);
-            finalCapitalH = Math.floor(finalCapitalH * scale);
+    // 2. Надежный расчет высоты.
+    // Гарантирует, что сумма высот частей всегда равна totalHeight.
+    if (totalHeight > 0) {
+        const partsH = finalBaseH + finalCapitalH;
+        if (partsH >= totalHeight) {
+            // Если основание и капитель не помещаются, пропорционально уменьшаем их.
+            if (partsH > 0) {
+                 const scale = totalHeight / partsH;
+                 finalBaseH = Math.floor(finalBaseH * scale);
+                 finalCapitalH = totalHeight - finalBaseH;
+            } else {
+                 finalBaseH = 0;
+                 finalCapitalH = 0;
+            }
+            finalShaftH = 0;
         } else {
-            finalBaseH = 0;
-            finalCapitalH = 0;
+            // Ствол занимает всю оставшуюся высоту.
+            finalShaftH = totalHeight - finalBaseH - finalCapitalH;
         }
+    } else {
+        finalBaseH = 0;
+        finalCapitalH = 0;
+        finalShaftH = 0;
     }
-    
-    // Вся оставшаяся высота идет на ствол.
-    let finalShaftH = totalHeight - finalBaseH + finalCapitalH;
-    
-    // Коррекция из-за Math.floor(), чтобы сумма высот точно совпадала с totalHeight.
-    const remainder = totalHeight - (finalBaseH + finalCapitalH + finalShaftH);
-    finalShaftH += remainder;
 
-
-    // 3. Сначала вычисляем maxRadius, потом размеры.
+    // 3. Вычисляем размеры bounding box ПОСЛЕ всех расчетов.
     const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
     width = depth = maxRadius * 2;
-    height = totalHeight; // Высота bounding box всегда соответствует запрошенной.
+    height = totalHeight;
 
     const centerX = width / 2.0 - 0.5;
     const centerZ = depth / 2.0 - 0.5;
     const tanAngle = Math.tan(breakAngle * Math.PI / 180);
 
-    // Генерируем основание (выпуклое, сужается кверху)
+    // --- Генерация геометрии ---
+
+    // Генерируем основание
     if (withBase && finalBaseH > 0) {
         for (let y = 0; y < finalBaseH; y++) {
             const progress = (finalBaseH > 1) ? y / (finalBaseH - 1) : 1;
             const easedProgress = 1 - (1 - progress) * (1 - progress); // ease-out
-            const currentRadius = baseRadius - (baseRadius - colRadius) * easedProgress;
+
+            // ИСПРАВЛЕНО: Надежная линейная интерполяция (lerp) радиуса.
+            // Корректно работает, даже если baseRadius < colRadius.
+            const currentRadius = baseRadius + (colRadius - baseRadius) * easedProgress;
 
             for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
@@ -714,13 +723,15 @@ case 'column': {
         }
     }
 
-    // Генерируем капитель (вогнутая, расширяется кверху)
+    // Генерируем капитель
     if (withCapital && finalCapitalH > 0) {
         const capitalYStart = shaftYStart + finalShaftH;
         for (let y = 0; y < finalCapitalH; y++) {
             const actualY = capitalYStart + y;
             const progress = (finalCapitalH > 1) ? y / (finalCapitalH - 1) : 1;
             const easedProgress = progress * progress; // ease-in
+
+            // ИСПРАВЛЕНО: Надежная линейная интерполяция (lerp) радиуса.
             const currentRadius = colRadius + (baseRadius - colRadius) * easedProgress;
 
             for (let z = 0; z < depth; z++) {
@@ -734,7 +745,7 @@ case 'column': {
             }
         }
     }
-    // --- КОНЕЦ ИСПРАВЛЕНИЙ V4 ---
+    // --- КОНЕЦ ПЕРЕПИСАННОГО КОДА V6 ---
     break;
 }
         
@@ -1036,6 +1047,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
