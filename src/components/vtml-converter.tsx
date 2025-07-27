@@ -114,7 +114,7 @@ export function VtmlConverter() {
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(1);
   const [maxLineLength, setMaxLineLength] = useState(80);
-  const [isColor, setIsColor] = useState(false);
+  const [isColor, setIsColor] = useState(true);
   const [vtmlCode, setVtmlCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDirty, setIsDirty] = useState(true);
@@ -304,10 +304,10 @@ export function VtmlConverter() {
             <CardDescription>{t('vtmlConverter.step2.description')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
                 <Switch id="color-mode" checked={isColor} onCheckedChange={handleSettingsChange(setIsColor)} disabled={isLoading} />
                 <Label htmlFor="color-mode">{t('vtmlConverter.step2.colorMode')}</Label>
-            </div>
+            </div> */}
             <div className="grid gap-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="font-size">{t('vtmlConverter.step2.fontSize')}</Label>
