@@ -6,6 +6,7 @@ export default {
     image: 'Image Converter',
     shape: '2D Shape Generator',
     vox: 'VOX Generator',
+    vtml: 'VTML Converter',
   },
   common: {
     copy: 'Copy',
@@ -231,6 +232,40 @@ export default {
       canvasContextFailed: 'Failed to create image context.',
       blobFailed: 'Failed to create image blob.',
       genericDownloadError: 'An error occurred while creating the image file.',
+    },
+  },
+  vtmlConverter: {
+    previewPlaceholder: 'Preview will appear here...',
+    step1: {
+      title: '1. Upload Image',
+      description: 'Click to browse or drag and drop an image file.',
+      clickToUpload: 'Click to upload',
+      orDragAndDrop: 'or drag and drop',
+      fileTypes: 'PNG, JPG, GIF',
+    },
+    step2: {
+      title: '2. Configure',
+      description: 'Adjust the output parameters for the generated code.',
+      colorMode: 'Color Mode',
+      fontSize: 'Font Size (VTML `size` attribute)',
+      maxLineLength: 'Max Line Length',
+      button: 'Generate',
+      buttonUpToDate: 'Up to date',
+    },
+    step3: {
+      title: '3. Your VTML Code',
+      description: 'The generated VTML code and a live preview.',
+      placeholder: 'Your generated code will appear here...',
+    },
+    errors: {
+      invalidFileType: 'Invalid File Type',
+      invalidFileTypeDesc: 'Please upload an image file (e.g., PNG, JPG, GIF).',
+      fileReadError: 'File Read Error',
+      fileReadErrorDesc: 'Could not read the selected file.',
+      imageNotReady: 'Image not ready',
+      imageNotReadyDesc: 'Please wait for the image to load completely before generating.',
+      nothingToDownload: 'Nothing to Download',
+      nothingToDownloadDesc: 'Please generate some VTML code first.',
     },
   },
 } as const;

@@ -4,6 +4,7 @@ import { TextConstructor } from "@/components/text-constructor";
 import { ImageConverter } from "@/components/image-converter";
 import { ShapeGenerator } from "@/components/shape-generator";
 import { VoxGenerator } from "@/components/vox-generator";
+import { VtmlConverter } from "@/components/vtml-converter";
 import { useI18n } from "@/locales/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -21,11 +22,12 @@ export default function Home() {
       </header>
       <main className="w-full max-w-6xl p-4 border border-foreground/30 bg-background/50 rounded-lg shadow-2xl">
         <Tabs defaultValue="image" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="text">{t('tabs.text')}</TabsTrigger>
             <TabsTrigger value="image">{t('tabs.image')}</TabsTrigger>
             <TabsTrigger value="shape">{t('tabs.shape')}</TabsTrigger>
             <TabsTrigger value="vox">{t('tabs.vox')}</TabsTrigger>
+            <TabsTrigger value="vtml">{t('tabs.vtml')}</TabsTrigger>
           </TabsList>
           <TabsContent value="text" className="mt-6">
             <TextConstructor />
@@ -38,6 +40,9 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="vox" className="mt-6">
             <VoxGenerator />
+          </TabsContent>
+           <TabsContent value="vtml" className="mt-6">
+            <VtmlConverter />
           </TabsContent>
         </Tabs>
       </main>

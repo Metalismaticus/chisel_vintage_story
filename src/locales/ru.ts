@@ -6,6 +6,7 @@ export default {
     image: 'Конвертер изображений',
     shape: 'Генератор 2D-фигур',
     vox: 'Генератор VOX',
+    vtml: 'VTML Конвертер',
   },
   common: {
     copy: 'Копировать',
@@ -231,6 +232,40 @@ export default {
       canvasContextFailed: 'Ошибка создания контекста изображения.',
       blobFailed: 'Ошибка создания blob-объекта изображения.',
       genericDownloadError: 'Произошла ошибка при создании файла изображения.',
+    },
+  },
+  vtmlConverter: {
+    previewPlaceholder: 'Предпросмотр появится здесь...',
+    step1: {
+      title: '1. Загрузите изображение',
+      description: 'Нажмите, чтобы выбрать, или перетащите файл изображения.',
+      clickToUpload: 'Нажмите для загрузки',
+      orDragAndDrop: 'или перетащите',
+      fileTypes: 'PNG, JPG, GIF',
+    },
+    step2: {
+      title: '2. Настройте параметры',
+      description: 'Отрегулируйте параметры для сгенерированного кода.',
+      colorMode: 'Цветной режим',
+      fontSize: 'Размер шрифта (атрибут `size` в VTML)',
+      maxLineLength: 'Максимальная длина строки',
+      button: 'Сгенерировать',
+      buttonUpToDate: 'Код актуален',
+    },
+    step3: {
+      title: '3. Ваш VTML-код',
+      description: 'Сгенерированный VTML-код и его предпросмотр.',
+      placeholder: 'Ваш сгенерированный код появится здесь...',
+    },
+    errors: {
+      invalidFileType: 'Неверный тип файла',
+      invalidFileTypeDesc: 'Пожалуйста, загрузите файл изображения (например, PNG, JPG, GIF).',
+      fileReadError: 'Ошибка чтения файла',
+      fileReadErrorDesc: 'Не удалось прочитать выбранный файл.',
+      imageNotReady: 'Изображение не готово',
+      imageNotReadyDesc: 'Пожалуйста, подождите полной загрузки изображения перед генерацией.',
+      nothingToDownload: 'Нечего скачивать',
+      nothingToDownloadDesc: 'Пожалуйста, сначала сгенерируйте VTML-код.',
     },
   },
 } as const;
