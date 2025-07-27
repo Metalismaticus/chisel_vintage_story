@@ -618,49 +618,71 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
 case 'column': {
-    // Якорь в (0,0,0) обязателен, как мы выяснили.
+    // Якорь обязателен
     addVoxel(0, 0, 0, 2); 
 
     const { 
         radius: colRadius, 
-        height: colHeight, // Работаем с высотой ствола, как в оригинальной версии
+        height: totalHeight,
         withBase = false,
         withCapital = false,
-        baseRadius = 0,
-        baseHeight = 0,
     } = shape;
 
-    // Используем вашу оригинальную, рабочую логику расчета размеров
-    const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
-    width = depth = Math.max(colRadius * 2, (withBase || withCapital) ? finalBaseRadius * 2 : 0);
-    height = (withBase ? baseHeight : 0) + colHeight + (withCapital ? baseHeight : 0);
+    const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
+    const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
+    const capitalHeight = shape.capitalHeight || baseHeight;
+
+    // Расчет высот
+    let finalBaseH = withBase ? baseHeight : 0;
+    let finalCapitalH = withCapital ? capitalHeight : 0;
+    if (finalBaseH + finalCapitalH > totalHeight) {
+        const partsH = finalBaseH + finalCapitalH;
+        finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
+        finalCapitalH = totalHeight - finalBaseH;
+    }
+    const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
     
-    // Защита от нулевых размеров
+    // Итоговый размер модели
+    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
+    width = depth = maxRadius * 2;
+    height = totalHeight;
+
     if (width <= 0 || height <= 0) {
-        xyziValues = []; // Очищаем и якорь тоже
+        xyziValues = [];
         width = height = depth = 0;
         break;
     }
 
     /**
-     * Стабильная функция, которая генерирует ЗАПОЛНЕННЫЙ цилиндр от угла (0,0),
-     * используя целочисленную математику, чтобы избежать сбоев.
+     * Исправленный целочисленный алгоритм для генерации ЗАПОЛНЕННОГО круга.
+     * Не использует float, стабилен и рисует правильную форму.
      */
-    const generateCornerCylinder = (radius: number, cylinderHeight: number) => {
+    const generateFilledCylinder = (radius: number, cylinderHeight: number) => {
         const voxels = [];
-        const rSq = radius * radius;
-        const diameter = radius * 2;
-        const center = radius; // Центр относительно локальных координат 0..diameter
-
         for (let y = 0; y < cylinderHeight; y++) {
-            for (let z = 0; z < diameter; z++) {
-                for (let x = 0; x < diameter; x++) {
-                    const dx = x - center;
-                    const dz = z - center;
-                    // Используем строгое < для стабильности краев
-                    if (dx * dx + dz * dz < rSq) {
-                        voxels.push({ x, y, z });
-                    }
+            let x0 = radius;
+            let z0 = radius;
+            let x = radius;
+            let z = 0;
+            let decisionOver2 = 1 - x;
+
+            while (z <= x) {
+                // Рисуем горизонтальные линии (сканлайн) для заполнения
+                for (let i = x0 - x; i <= x0 + x; i++) {
+                    voxels.push({ x: i, y: y, z: z0 + z });
+                    voxels.push({ x: i, y: y, z: z0 - z });
+                }
+                for (let i = x0 - z; i <= x0 + z; i++) {
+                    voxels.push({ x: i, y: y, z: z0 + x });
+                    voxels.push({ x: i, y: y, z: z0 - x });
+                }
+                
+                z++;
+                if (decisionOver2 <= 0) {
+                    decisionOver2 += 2 * z + 1;
+                } else {
+                    x--;
+                    decisionOver2 += 2 * (z - x) + 1;
                 }
             }
         }
@@ -669,10 +691,9 @@ case 'column': {
 
     // --- Генерация ---
 
-    // Основание
-    if (withBase && baseHeight > 0) {
-        const baseVoxels = generateCornerCylinder(finalBaseRadius, baseHeight);
-        // Смещаем основание так, чтобы оно было в центре всей модели
+    if (withBase && finalBaseH > 0) {
+        const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
+        const baseVoxels = generateFilledCylinder(finalBaseRadius, finalBaseH);
         const offsetX = Math.floor((width / 2) - finalBaseRadius);
         const offsetZ = Math.floor((depth / 2) - finalBaseRadius);
         baseVoxels.forEach(v => {
@@ -680,27 +701,22 @@ case 'column': {
         });
     }
 
-    // Ствол
-    const shaftYOffset = withBase ? baseHeight : 0;
-    if (colHeight > 0) {
-        const shaftVoxels = generateCornerCylinder(colRadius, colHeight);
-        // Смещаем ствол, чтобы он был в центре
+    if (finalShaftH > 0) {
+        const shaftVoxels = generateFilledCylinder(colRadius, finalShaftH);
         const offsetX = Math.floor((width / 2) - colRadius);
         const offsetZ = Math.floor((depth / 2) - colRadius);
         shaftVoxels.forEach(v => {
-            addVoxel(v.x + offsetX, v.y + shaftYOffset, v.z + offsetZ);
+            addVoxel(v.x + offsetX, v.y + finalBaseH, v.z + offsetZ);
         });
     }
-    
-    // Капитель
-    if (withCapital && baseHeight > 0) {
-        const capitalVoxels = generateCornerCylinder(finalBaseRadius, baseHeight);
-        const capitalYOffset = shaftYOffset + colHeight;
-        // Смещаем капитель
+
+    if (withCapital && finalCapitalH > 0) {
+        const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
+        const capitalVoxels = generateFilledCylinder(finalBaseRadius, finalCapitalH);
         const offsetX = Math.floor((width / 2) - finalBaseRadius);
         const offsetZ = Math.floor((depth / 2) - finalBaseRadius);
         capitalVoxels.forEach(v => {
-            addVoxel(v.x + offsetX, v.y + capitalYOffset, v.z + offsetZ);
+            addVoxel(v.x + offsetX, v.y + finalBaseH + finalShaftH, v.z + offsetZ);
         });
     }
     break;
@@ -1000,6 +1016,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
