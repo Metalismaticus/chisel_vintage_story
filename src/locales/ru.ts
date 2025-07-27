@@ -266,6 +266,8 @@ export default {
       imageNotReadyDesc: 'Пожалуйста, подождите полной загрузки изображения перед генерацией.',
       nothingToDownload: 'Нечего скачивать',
       nothingToDownloadDesc: 'Пожалуйста, сначала сгенерируйте VTML-код.',
+      nothingToCopy: 'Нечего копировать',
+      nothingToCopyDesc: 'Пожалуйста, сначала сгенерируйте VTML-код.',
     },
   },
 } as const;

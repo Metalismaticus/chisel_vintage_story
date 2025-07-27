@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
 import { useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { Upload, Download, Loader2, Palette, RefreshCw, X } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { Upload, Download, Loader2, RefreshCw, X, Copy } from 'lucide-react';
 import { VtmlRenderer } from './vtml-renderer';
 import { useI18n } from '@/locales/client';
 import { cn } from '@/lib/utils';
@@ -206,6 +206,21 @@ export function VtmlConverter() {
     URL.revokeObjectURL(url);
   };
   
+   const handleCopy = () => {
+    if (!vtmlCode) {
+      toast({
+        variant: 'destructive',
+        title: t('vtmlConverter.errors.nothingToCopy'),
+        description: t('vtmlConverter.errors.nothingToCopyDesc'),
+      });
+      return;
+    }
+    navigator.clipboard.writeText(vtmlCode);
+    toast({
+      title: t('schematicPreview.copied'),
+    });
+  };
+  
    const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -319,10 +334,16 @@ export function VtmlConverter() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{t('vtmlConverter.step3.title')}</CardTitle>
-            <Button variant="outline" size="sm" onClick={handleDownload} disabled={!vtmlCode || isLoading}>
-              <Download className="mr-2 h-4 w-4" />
-              {t('common.download')}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy} disabled={!vtmlCode || isLoading}>
+                <Copy className="mr-2 h-4 w-4" />
+                {t('common.copy')}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleDownload} disabled={!vtmlCode || isLoading}>
+                <Download className="mr-2 h-4 w-4" />
+                {t('common.download')}
+              </Button>
+            </div>
           </div>
            <CardDescription>{t('vtmlConverter.step3.description')}</CardDescription>
         </CardHeader>

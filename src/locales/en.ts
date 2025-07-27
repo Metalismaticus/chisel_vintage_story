@@ -266,6 +266,8 @@ export default {
       imageNotReadyDesc: 'Please wait for the image to load completely before generating.',
       nothingToDownload: 'Nothing to Download',
       nothingToDownloadDesc: 'Please generate some VTML code first.',
+      nothingToCopy: 'Nothing to Copy',
+      nothingToCopyDesc: 'Please generate some VTML code first.',
     },
   },
 } as const;
