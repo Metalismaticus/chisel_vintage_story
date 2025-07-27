@@ -618,95 +618,90 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
 case 'column': {
-    const {
-        radius: colRadius,
-        height: totalHeight,
+    // Якорь в (0,0,0) обязателен, как мы выяснили.
+    addVoxel(0, 0, 0, 2); 
+
+    const { 
+        radius: colRadius, 
+        height: colHeight, // Работаем с высотой ствола, как в оригинальной версии
         withBase = false,
         withCapital = false,
+        baseRadius = 0,
+        baseHeight = 0,
     } = shape;
 
-    const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
-    const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-    const capitalHeight = shape.capitalHeight || baseHeight;
-
-    let finalBaseH = withBase ? baseHeight : 0;
-    let finalCapitalH = withCapital ? capitalHeight : 0;
-    if (finalBaseH + finalCapitalH > totalHeight) {
-        const partsH = finalBaseH + finalCapitalH;
-        finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
-        finalCapitalH = totalHeight - finalBaseH;
-    }
-    const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
-
-    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
-    // Делаем ширину НЕЧЕТНОЙ для идеального центрирования на одном блоке
-    width = depth = maxRadius * 2 + 1;
-    height = totalHeight;
-
-    if (width <= 1 || height <= 0) {
+    // Используем вашу оригинальную, рабочую логику расчета размеров
+    const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
+    width = depth = Math.max(colRadius * 2, (withBase || withCapital) ? finalBaseRadius * 2 : 0);
+    height = (withBase ? baseHeight : 0) + colHeight + (withCapital ? baseHeight : 0);
+    
+    // Защита от нулевых размеров
+    if (width <= 0 || height <= 0) {
+        xyziValues = []; // Очищаем и якорь тоже
         width = height = depth = 0;
         break;
     }
 
-    const centerX = Math.floor(width / 2);
-    const centerZ = Math.floor(depth / 2);
-    
+    /**
+     * Стабильная функция, которая генерирует ЗАПОЛНЕННЫЙ цилиндр от угла (0,0),
+     * используя целочисленную математику, чтобы избежать сбоев.
+     */
+    const generateCornerCylinder = (radius: number, cylinderHeight: number) => {
+        const voxels = [];
+        const rSq = radius * radius;
+        const diameter = radius * 2;
+        const center = radius; // Центр относительно локальных координат 0..diameter
+
+        for (let y = 0; y < cylinderHeight; y++) {
+            for (let z = 0; z < diameter; z++) {
+                for (let x = 0; x < diameter; x++) {
+                    const dx = x - center;
+                    const dz = z - center;
+                    // Используем строгое < для стабильности краев
+                    if (dx * dx + dz * dz < rSq) {
+                        voxels.push({ x, y, z });
+                    }
+                }
+            }
+        }
+        return voxels;
+    };
+
     // --- Генерация ---
 
     // Основание
-    if (withBase && finalBaseH > 0) {
-        for (let y = 0; y < finalBaseH; y++) {
-            const progress = (finalBaseH > 1) ? y / (finalBaseH - 1) : 1;
-            const easedProgress = 1 - (1 - progress) * (1 - progress);
-            const r = baseRadius + (colRadius - baseRadius) * easedProgress;
-            const rSq = r * r;
-            for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
-                    if (dx * dx + dz * dz < rSq) {
-                        addVoxel(x, y, z);
-                    }
-                }
-            }
-        }
+    if (withBase && baseHeight > 0) {
+        const baseVoxels = generateCornerCylinder(finalBaseRadius, baseHeight);
+        // Смещаем основание так, чтобы оно было в центре всей модели
+        const offsetX = Math.floor((width / 2) - finalBaseRadius);
+        const offsetZ = Math.floor((depth / 2) - finalBaseRadius);
+        baseVoxels.forEach(v => {
+            addVoxel(v.x + offsetX, v.y, v.z + offsetZ);
+        });
     }
 
     // Ствол
-    if (finalShaftH > 0) {
-        const shaftYStart = finalBaseH;
-        const rSq = colRadius * colRadius;
-        for (let y = 0; y < finalShaftH; y++) {
-            for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
-                    if (dx * dx + dz * dz < rSq) {
-                        addVoxel(x, y + shaftYStart, z);
-                    }
-                }
-            }
-        }
+    const shaftYOffset = withBase ? baseHeight : 0;
+    if (colHeight > 0) {
+        const shaftVoxels = generateCornerCylinder(colRadius, colHeight);
+        // Смещаем ствол, чтобы он был в центре
+        const offsetX = Math.floor((width / 2) - colRadius);
+        const offsetZ = Math.floor((depth / 2) - colRadius);
+        shaftVoxels.forEach(v => {
+            addVoxel(v.x + offsetX, v.y + shaftYOffset, v.z + offsetZ);
+        });
     }
-
+    
     // Капитель
-    if (withCapital && finalCapitalH > 0) {
-        const capitalYStart = finalBaseH + finalShaftH;
-        for (let y = 0; y < finalCapitalH; y++) {
-            const progress = (finalCapitalH > 1) ? y / (finalCapitalH - 1) : 1;
-            const easedProgress = progress * progress;
-            const r = colRadius + (baseRadius - colRadius) * easedProgress;
-            const rSq = r * r;
-            for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                    const dx = x - centerX;
-                    const dz = z - centerZ;
-                    if (dx * dx + dz * dz < rSq) {
-                        addVoxel(x, y + capitalYStart, z);
-                    }
-                }
-            }
-        }
+    if (withCapital && baseHeight > 0) {
+        const capitalVoxels = generateCornerCylinder(finalBaseRadius, baseHeight);
+        const capitalYOffset = shaftYOffset + colHeight;
+        // Смещаем капитель
+        const offsetX = Math.floor((width / 2) - finalBaseRadius);
+        const offsetZ = Math.floor((depth / 2) - finalBaseRadius);
+        capitalVoxels.forEach(v => {
+            addVoxel(v.x + offsetX, v.y + capitalYOffset, v.z + offsetZ);
+        });
     }
     break;
 }
@@ -1005,6 +1000,7 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
+
 
 
 
