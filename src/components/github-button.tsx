@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function GithubButton() {
   return (
-    <Button asChild variant="outline" size="lg">
+    <Button asChild variant="outline" size="icon">
       <Link href="https://github.com/Metalismaticus/chisel_vintage_story" target="_blank" rel="noopener noreferrer">
         <Github className="h-5 w-5" />
         <span className="sr-only">GitHub</span>
