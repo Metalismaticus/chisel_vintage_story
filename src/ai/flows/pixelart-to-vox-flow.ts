@@ -67,23 +67,23 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
   let modelDepth = 0;
 
   const STICKER_BLOCK_DEPTH = 16;
-  const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - (mode === 'extrude' ? extrudeDepth : engraveBackgroundDepth) : 0;
   
-   const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
-      const finalPz = pz + (mode === 'extrude' ? zOffset : (stickerMode ? STICKER_BLOCK_DEPTH - engraveBackgroundDepth : 0));
+  const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
       if (orientation === 'vertical-lr') {
-          return [px, finalPz, imageHeight - 1 - py];
+          return [px, pz, imageHeight - 1 - py];
       }
-      return [px, imageHeight - 1 - py, finalPz];
+      return [px, imageHeight - 1 - py, pz];
   };
 
   if (mode === 'extrude') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : extrudeDepth;
+    const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - extrudeDepth : 0;
+    
     for (let py = 0; py < imageHeight; py++) {
       for (let px = 0; px < imageWidth; px++) {
         if (pixels[py * imageWidth + px]) {
           for (let pz = 0; pz < extrudeDepth; pz++) {
-             const [x, y, z] = mapCoords(px, py, pz);
+             const [x, y, z] = mapCoords(px, py, pz + zOffset);
              addVoxel(x, y, z);
           }
         }
@@ -91,6 +91,7 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
     }
   } else if (mode === 'engrave') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : engraveBackgroundDepth;
+    const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - engraveBackgroundDepth : 0;
     
     for (let py = 0; py < imageHeight; py++) {
       for (let px = 0; px < imageWidth; px++) {
@@ -98,7 +99,7 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
         const endDepth = isPixelSet ? engraveBackgroundDepth - engraveDepth : engraveBackgroundDepth;
 
         for (let pz = 0; pz < endDepth; pz++) {
-            const [x, y, z] = mapCoords(px, py, pz);
+            const [x, y, z] = mapCoords(px, py, pz + zOffset);
             addVoxel(x, y, z);
         }
       }
@@ -120,9 +121,9 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
 
   let voxSize;
   if (orientation === 'vertical-lr') {
-    voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
-  } else {
     voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
+  } else {
+    voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
   }
 
   const voxObject = {
