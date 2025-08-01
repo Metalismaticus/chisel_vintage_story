@@ -43,7 +43,7 @@ const CHAR_COLOR_MAP: { [key: string]: string } = {
   '┴': '#766D7C', '·': '#000000',
 };
 
-const BW_CHAR_RAMP = ['█', '▓', '▒', '░', '·'];
+const BW_CHAR_RAMP = [' ', '░', '▒', '▓', '█'];
 const BW_CHAR_MAP: {[key: string]: string} = {
     '█': '#D7D6C0',
     '▓': '#B2B1B9',
@@ -91,13 +91,15 @@ const findClosestChar = (r: number, g: number, b: number): string => {
 };
 
 const getGrayscaleChar = (gray: number): string => {
-    const rampIndex = Math.floor(gray / 256 * BW_CHAR_RAMP.length);
+    const rampIndex = Math.round((gray / 255) * (BW_CHAR_RAMP.length - 1));
     return BW_CHAR_RAMP[rampIndex] || '·';
 };
 
 interface GenerateVtmlOptions {
     mode: ConversionMode;
-    maxLineLength: number;
+    outputWidth: number;
+    outputHeight: number;
+    preserveAspectRatio: boolean;
     fontSize: number;
     dithering: boolean;
     brightness: number;
@@ -111,14 +113,18 @@ const generateVtml = (
   options: GenerateVtmlOptions
 ): Promise<string> => {
   return new Promise((resolve) => {
-    const { mode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio } = options;
+    const { mode, outputWidth, outputHeight, preserveAspectRatio, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio } = options;
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return resolve('');
 
-    const aspectRatio = img.height / img.width;
-    const width = maxLineLength;
-    const height = Math.round(width * aspectRatio / charAspectRatio);
+    const imageAspectRatio = img.height / img.width;
+    let width = outputWidth;
+    let height = outputHeight;
+
+    if (preserveAspectRatio) {
+      height = Math.round(width * imageAspectRatio / charAspectRatio);
+    }
 
     canvas.width = width;
     canvas.height = height;
@@ -227,7 +233,9 @@ export function VtmlConverter() {
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [conversionMode, setConversionMode] = useState<ConversionMode>('color');
   const [fontSize, setFontSize] = useState(1);
-  const [maxLineLength, setMaxLineLength] = useState(80);
+  const [outputWidth, setOutputWidth] = useState(80);
+  const [outputHeight, setOutputHeight] = useState(80);
+  const [preserveAspectRatio, setPreserveAspectRatio] = useState(true);
   const [dithering, setDithering] = useState(true);
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
@@ -280,7 +288,18 @@ export function VtmlConverter() {
     }
     setIsGenerating(true);
     try {
-      const code = await generateVtml(imageRef.current, { mode: conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio });
+      const code = await generateVtml(imageRef.current, { 
+        mode: conversionMode, 
+        outputWidth,
+        outputHeight,
+        preserveAspectRatio,
+        fontSize, 
+        dithering, 
+        brightness, 
+        contrast, 
+        posterizeLevels, 
+        charAspectRatio 
+      });
       setVtmlCode(code);
       setIsDirty(false); 
     } catch (error) {
@@ -293,7 +312,7 @@ export function VtmlConverter() {
     } finally {
       setIsGenerating(false);
     }
-  }, [photoDataUri, conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio, toast, t]);
+  }, [photoDataUri, conversionMode, outputWidth, outputHeight, preserveAspectRatio, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio, toast, t]);
   
   const handleSettingsChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: any) => {
     setter(value);
@@ -511,26 +530,39 @@ export function VtmlConverter() {
                 </div>
                 <Slider id="posterize-slider" min={2} max={32} step={1} value={[posterizeLevels]} onValueChange={handleSliderChange(setPosterizeLevels)} disabled={isLoading} />
             </div>
-             <div className="grid gap-2">
+            <div className="grid gap-2">
                 <div className="flex justify-between items-center">
                   <Label htmlFor="char-aspect-ratio-slider">{t('vtmlConverter.step2.charAspectRatio')}</Label>
                   <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{charAspectRatio.toFixed(1)}</span>
                 </div>
                 <Slider id="char-aspect-ratio-slider" min={1.0} max={3.0} step={0.1} value={[charAspectRatio]} onValueChange={handleDecimalSliderChange(setCharAspectRatio)} disabled={isLoading} />
             </div>
+             <div className="flex items-center space-x-2">
+                <Switch id="preserve-aspect-ratio-mode" checked={preserveAspectRatio} onCheckedChange={handleSettingsChange(setPreserveAspectRatio)} disabled={isLoading} />
+                <Label htmlFor="preserve-aspect-ratio-mode">{t('vtmlConverter.step2.preserveAspectRatio')}</Label>
+            </div>
+            <div className="grid gap-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor="width-slider">{t('vtmlConverter.step2.outputWidth')}</Label>
+                <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{outputWidth}</span>
+              </div>
+              <Slider id="width-slider" min={20} max={400} step={1} value={[outputWidth]} onValueChange={handleSliderChange(setOutputWidth)} disabled={isLoading} />
+            </div>
+            {!preserveAspectRatio && (
+              <div className="grid gap-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="height-slider">{t('vtmlConverter.step2.outputHeight')}</Label>
+                  <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{outputHeight}</span>
+                </div>
+                <Slider id="height-slider" min={20} max={400} step={1} value={[outputHeight]} onValueChange={handleSliderChange(setOutputHeight)} disabled={isLoading} />
+              </div>
+            )}
             <div className="grid gap-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="font-size">{t('vtmlConverter.step2.fontSize')}</Label>
                 <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{fontSize}</span>
               </div>
               <Slider id="font-size" min={1} max={24} step={1} value={[fontSize]} onValueChange={handleSliderChange(setFontSize)} disabled={isLoading} />
-            </div>
-            <div className="grid gap-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor="line-length">{t('vtmlConverter.step2.maxLineLength')}</Label>
-                <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{maxLineLength}</span>
-              </div>
-              <Slider id="line-length" min={20} max={400} step={1} value={[maxLineLength]} onValueChange={handleSliderChange(setMaxLineLength)} disabled={isLoading} />
             </div>
              <Button onClick={handleGenerateClick} disabled={isLoading || !isDirty || !photoDataUri} className="w-full uppercase font-bold tracking-wider">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
