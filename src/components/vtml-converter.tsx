@@ -172,7 +172,7 @@ const generateVtml = (
 
                 const distributeError = (dx: number, dy: number, factor: number) => {
                     const ni = ((y + dy) * width + (x + dx)) * 4;
-                    if (x + dx > 0 && x + dx < width && y + dy > 0 && y + dy < height) {
+                    if (x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height) {
                         f32Pixels[ni]     = Math.max(0, Math.min(255, f32Pixels[ni]     + errR * factor));
                         f32Pixels[ni + 1] = Math.max(0, Math.min(255, f32Pixels[ni + 1] + errG * factor));
                         f32Pixels[ni + 2] = Math.max(0, Math.min(255, f32Pixels[ni + 2] + errB * factor));
@@ -184,7 +184,7 @@ const generateVtml = (
                 distributeError(1, 1, 1 / 16);
             }
         } else { // 'bw' mode
-            const gray = (oldR + oldG + oldB) / 3;
+            const gray = (oldR * 0.299 + oldG * 0.587 + oldB * 0.114);
             char = getGrayscaleChar(gray);
             const newGray = BW_CHAR_RAMP.indexOf(char) * (255 / (BW_CHAR_RAMP.length -1));
             
@@ -192,7 +192,7 @@ const generateVtml = (
                 const err = gray - newGray;
                 const distributeError = (dx: number, dy: number, factor: number) => {
                     const ni = ((y + dy) * width + (x + dx)) * 4;
-                    if (x + dx > 0 && x + dx < width && y + dy > 0 && y + dy < height) {
+                    if (x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height) {
                         const r = Math.max(0, Math.min(255, f32Pixels[ni] + err * factor));
                         const g = Math.max(0, Math.min(255, f32Pixels[ni+1] + err * factor));
                         const b = Math.max(0, Math.min(255, f32Pixels[ni+2] + err * factor));
