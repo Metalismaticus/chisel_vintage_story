@@ -23,14 +23,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 
 
 // Game-tested palette
@@ -229,7 +221,6 @@ const generateVtml = (
 
 export function VtmlConverter() {
   const t = useI18n();
-  const paletteEntries = Object.entries(t('vtmlConverter.help.palette')).map(([key, value]) => [key, value] as [string, {hex: string, name: string}]);
 
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [conversionMode, setConversionMode] = useState<ConversionMode>('color');
@@ -412,31 +403,9 @@ export function VtmlConverter() {
                     <DialogTitle>{t('vtmlConverter.help.title')}</DialogTitle>
                     <DialogDescription>{t('vtmlConverter.help.intro')}</DialogDescription>
                   </DialogHeader>
-                  <div className="prose prose-invert max-w-none text-foreground">
+                  <div className="prose prose-invert max-w-none text-foreground space-y-4">
                       <p>{t('vtmlConverter.help.main_desc')}</p>
                       <h3 className="font-headline text-xl text-primary">{t('vtmlConverter.help.palette_title')}</h3>
-                       <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>{t('vtmlConverter.help.table.char')}</TableHead>
-                            <TableHead>{t('vtmlConverter.help.table.hex')}</TableHead>
-                            <TableHead>{t('vtmlConverter.help.table.real_color')}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {paletteEntries.map(([char, details]) => (
-                             <TableRow key={char}>
-                                <TableCell className="font-mono font-bold text-base" style={{color: details && details.hex && details.hex.startsWith('#') ? details.hex : undefined }}>
-                                  {char === '---' ? '---' : char}
-                                  {char === '♥' && '️'}
-                                </TableCell>
-                                <TableCell className="font-mono">{details.hex}</TableCell>
-                                <TableCell>{details.name}</TableCell>
-                              </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      <p>{t('vtmlConverter.help.palette_info')}</p>
                       <pre className="bg-black/50 p-2 rounded-md font-code text-sm overflow-x-auto">
                           <code>
                               {`<font size="1" family="Lucida Console" align="center">YOUR_CHAR_HERE</font>`}

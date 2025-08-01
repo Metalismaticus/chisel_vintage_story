@@ -114,7 +114,15 @@ export function TextConstructor() {
               <DialogTrigger asChild>
                  <Button variant="ghost" size="icon"><HelpCircle className="h-6 w-6 text-primary" /></Button>
               </DialogTrigger>
-               <DialogContent><DialogHeader><DialogTitle>Help</DialogTitle></DialogHeader><p>Здесь будет справка</p></DialogContent>
+               <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t('textConstructor.help.title')}</DialogTitle>
+                </DialogHeader>
+                <div className="prose prose-invert max-w-none text-foreground text-sm">
+                  <p>{t('textConstructor.help.p1')}</p>
+                  <p className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: t('textConstructor.help.p2') }}></p>
+                </div>
+              </DialogContent>
             </Dialog>
         </CardHeader>
         <CardContent className="space-y-6">
