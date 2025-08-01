@@ -969,18 +969,18 @@ export function VoxGenerator() {
                             <RadioGroupItem value="cuboid" id="r-cuboid" />
                             <Label htmlFor="r-cuboid">{t('voxGenerator.shapes.cuboid')}</Label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        {/* <div className="flex items-center space-x-2">
                             <RadioGroupItem value="sphere" id="r-sphere" />
                             <Label htmlFor="r-sphere">{t('voxGenerator.shapes.sphere')}</Label>
-                        </div>
+                        </div> */}
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="pyramid" id="r-pyramid" />
                             <Label htmlFor="r-pyramid">{t('voxGenerator.shapes.pyramid')}</Label>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        {/* <div className="flex items-center space-x-2">
                             <RadioGroupItem value="column" id="r-column" />
                             <Label htmlFor="r-column">{t('voxGenerator.shapes.column')}</Label>
-                        </div>
+                        </div> */}
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="cone" id="r-cone" />
                             <Label htmlFor="r-cone">{t('voxGenerator.shapes.cone')}</Label>
