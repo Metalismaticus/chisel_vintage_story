@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -39,7 +40,7 @@ const CHAR_COLOR_MAP: { [key: string]: string } = {
   'ó': '#678063', '¥': '#8C869F', 'σ': '#8D879E', '♥': '#C7A5BE',
   'Ẅ': '#AF87A0', '≥': '#5B464E', '•': '#62574A', 'ю': '#9DBDB4',
   'ζ': '#606C6E', 'È': '#82636D', '◊': '#62575A', '┐': '#55494B',
-  '┴': '#766D7C',
+  '┴': '#766D7C', '·': '#000000', // Transparent placeholder
 };
 
 // --- Helper Functions ---
@@ -75,7 +76,7 @@ const findClosestRgb = (r: number, g: number, b: number): [number, number, numbe
 const findClosestChar = (r: number, g: number, b: number): string => {
   const closestRgb = findClosestRgb(r, g, b);
   const index = PALETTE_RGB.findIndex(color => color[0] === closestRgb[0] && color[1] === closestRgb[1] && color[2] === closestRgb[2]);
-  return PALETTE_CHARS[index] || ' ';
+  return PALETTE_CHARS[index] || '·';
 };
 
 interface GenerateVtmlOptions {
@@ -134,7 +135,7 @@ const generateVtml = (
         const i = (y * width + x) * 4;
         
         if (f32Pixels[i+3] < 128) {
-            line += ' ';
+            line += '·'; // Use a placeholder character instead of a space
             continue;
         }
 
