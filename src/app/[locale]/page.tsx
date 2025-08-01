@@ -19,6 +19,28 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 
+const DiscordIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        {...props}
+    >
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+        <path d="M8.5 14.5s-1.5-1.5-1.5-3c0-1.5 1.5-3 1.5-3" />
+        <path d="M15.5 14.5s1.5-1.5 1.5-3c0-1.5-1.5-3-1.5-3" />
+        <path d="M9 10h6" />
+        <path d="M12 14c-2 0-3-1-3-1" />
+    </svg>
+);
+
+
 export default function Home() {
   const t = useI18n();
   return (
@@ -61,7 +83,24 @@ export default function Home() {
             русский гайд для игры на TOPS
           </Link>
         </Button>
-        <span>by Metalismatic</span>
+        <div className="flex items-center gap-4">
+             <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-transparent transition-colors">
+                <Link href="https://discord.com/users/698122435266084975" target="_blank" rel="noopener noreferrer">
+                   <svg
+                      role="img"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      fill="currentColor"
+                   >
+                    <title>Discord</title>
+                    <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8852-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4463.8163-.5797 1.2534-1.8447-.2762-3.68-.2762-5.4868 0-.1334-.437-several content-.8163-.5797-1.2534a.0741.0741 0 00-.0785-.0371 19.7913 19.7913 0 00-4.8852 1.5152.069.069 0 00-.0321.0232c-1.8447 3.17-2.6182 6.6186-2.6182 10.1557a.069.069 0 00.0465.069c1.6212.4863 3.2282.8728 4.8107 1.139a.0741.0741 0 00.083-.0321c.4463-.63 1.139-1.5152 1.139-1.5152s-.4463-.211-.792-.3753c-.314-.1334-.5797-.244-.792-.314a.0741.0741 0 01-.0321-.083c.0465-.0465.0785-.0785.1152-.1152a.0741.0741 0 01.069-.0156l.0156.0078c.0785.0371.1448.0785.211.123a10.5932 10.5932 0 003.343.8385.0741.0741 0 00.069-.0156l.0156-.0078c.0785-.0371.1448-.0785.211-.123a10.5932 10.5932 0 003.343-.8385.0741.0741 0 00.083.0156c.0371.0232.069.0547.1152.1074a.0741.0741 0 01-.0321.083c-.211.069-.4766.1804-.792.314-.314.1648-.792.3753-.792.3753s.6927.8852 1.139 1.5152a.0741.0741 0 00.083.0321c1.5825-.2684 3.1895-.655 4.8107-1.139a.069.069 0 00.0465-.069c0-3.537-.7735-6.9856-2.6182-10.1557a.069.069 0 00-.0321-.0232zM8.02 15.3312c-.7735 0-1.4015-.629-1.4015-1.4015s.628-1.4015 1.4015-1.4015c.7735 0 1.4015.629 1.4015 1.4015.0078.7725-.628 1.4015-1.4015 1.4015zm7.9548 0c-.7735 0-1.4015-.629-1.4015-1.4015s.628-1.4015 1.4015-1.4015c.7735 0 1.4015.629 1.4015 1.4015s-.628 1.4015-1.4015 1.4015z" />
+                   </svg>
+                   <span className="sr-only">Discord</span>
+                </Link>
+             </Button>
+            <span>by Metalismatic</span>
+        </div>
       </footer>
     </div>
   );
