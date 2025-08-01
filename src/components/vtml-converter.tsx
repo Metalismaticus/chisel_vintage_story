@@ -78,14 +78,21 @@ const findClosestChar = (r: number, g: number, b: number): string => {
   return PALETTE_CHARS[index] || ' ';
 };
 
+interface GenerateVtmlOptions {
+    maxLineLength: number;
+    fontSize: number;
+    dithering: boolean;
+    brightness: number;
+    contrast: number;
+    posterizeLevels: number;
+}
 
 const generateVtml = (
   img: HTMLImageElement,
-  maxLineLength: number,
-  fontSize: number,
-  dithering: boolean
+  options: GenerateVtmlOptions
 ): Promise<string> => {
   return new Promise((resolve) => {
+    const { maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels } = options;
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return resolve('');
@@ -97,13 +104,27 @@ const generateVtml = (
 
     canvas.width = width;
     canvas.height = height;
+
+    // Apply brightness and contrast filters
+    const filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+    context.filter = filter;
+    
     context.drawImage(img, 0, 0, width, height);
+    context.filter = 'none'; // Reset filter to not affect subsequent operations
+
     const imageData = context.getImageData(0, 0, width, height);
     const pixels = imageData.data;
     const f32Pixels = new Float32Array(pixels.length);
-    for (let i=0; i < pixels.length; i++) {
-        f32Pixels[i] = pixels[i];
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      // Posterization
+      const factor = 255 / (posterizeLevels - 1);
+      f32Pixels[i] = Math.round(Math.round(pixels[i] / factor) * factor);
+      f32Pixels[i+1] = Math.round(Math.round(pixels[i+1] / factor) * factor);
+      f32Pixels[i+2] = Math.round(Math.round(pixels[i+2] / factor) * factor);
+      f32Pixels[i+3] = pixels[i+3];
     }
+
 
     let finalLines: string[] = [];
 
@@ -163,6 +184,10 @@ export function VtmlConverter() {
   const [fontSize, setFontSize] = useState(1);
   const [maxLineLength, setMaxLineLength] = useState(80);
   const [dithering, setDithering] = useState(true);
+  const [brightness, setBrightness] = useState(100);
+  const [contrast, setContrast] = useState(100);
+  const [posterizeLevels, setPosterizeLevels] = useState(8);
+
   const [vtmlCode, setVtmlCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDirty, setIsDirty] = useState(true);
@@ -209,7 +234,7 @@ export function VtmlConverter() {
     }
     setIsGenerating(true);
     try {
-      const code = await generateVtml(imageRef.current, maxLineLength, fontSize, dithering);
+      const code = await generateVtml(imageRef.current, { maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels });
       setVtmlCode(code);
       setIsDirty(false); 
     } catch (error) {
@@ -222,7 +247,7 @@ export function VtmlConverter() {
     } finally {
       setIsGenerating(false);
     }
-  }, [photoDataUri, maxLineLength, fontSize, dithering, toast, t]);
+  }, [photoDataUri, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, toast, t]);
   
   const handleSettingsChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: any) => {
     setter(value);
@@ -331,7 +356,7 @@ export function VtmlConverter() {
                         <TableBody>
                           {paletteEntries.map(([char, details]) => (
                              <TableRow key={char}>
-                                <TableCell className="font-mono font-bold text-base" style={{color: details.hex && details.hex.startsWith('#') ? details.hex : undefined }}>
+                                <TableCell className="font-mono font-bold text-base" style={{color: details && details.hex && details.hex.startsWith('#') ? details.hex : undefined }}>
                                   {char === '---' ? '---' : char}
                                   {char === '♥' && '️'}
                                 </TableCell>
@@ -392,22 +417,35 @@ export function VtmlConverter() {
         </Card>
 
         <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>{t('vtmlConverter.step2.title')}</CardTitle>
-                <CardDescription>{t('vtmlConverter.step2.description')}</CardDescription>
-            </div>
-             <Dialog>
-              <DialogTrigger asChild>
-                 <Button variant="ghost" size="icon"><HelpCircle className="h-6 w-6 text-primary" /></Button>
-              </DialogTrigger>
-               <DialogContent><DialogHeader><DialogTitle>Help</DialogTitle></DialogHeader><p>Здесь будет справка</p></DialogContent>
-            </Dialog>
+          <CardHeader>
+            <CardTitle>{t('vtmlConverter.step2.title')}</CardTitle>
+            <CardDescription>{t('vtmlConverter.step2.description')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
              <div className="flex items-center space-x-2">
                 <Switch id="dithering-mode" checked={dithering} onCheckedChange={handleSettingsChange(setDithering)} disabled={isLoading} />
                 <Label htmlFor="dithering-mode">{t('vtmlConverter.step2.dithering')}</Label>
+            </div>
+            <div className="grid gap-2">
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="brightness-slider">{t('vtmlConverter.step2.brightness')}</Label>
+                    <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{brightness}%</span>
+                </div>
+                <Slider id="brightness-slider" min={0} max={200} step={1} value={[brightness]} onValueChange={handleSliderChange(setBrightness)} disabled={isLoading} />
+            </div>
+             <div className="grid gap-2">
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="contrast-slider">{t('vtmlConverter.step2.contrast')}</Label>
+                    <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{contrast}%</span>
+                </div>
+                <Slider id="contrast-slider" min={0} max={200} step={1} value={[contrast]} onValueChange={handleSliderChange(setContrast)} disabled={isLoading} />
+            </div>
+            <div className="grid gap-2">
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="posterize-slider">{t('vtmlConverter.step2.posterization')}</Label>
+                    <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{posterizeLevels}</span>
+                </div>
+                <Slider id="posterize-slider" min={2} max={32} step={1} value={[posterizeLevels]} onValueChange={handleSliderChange(setPosterizeLevels)} disabled={isLoading} />
             </div>
             <div className="grid gap-2">
               <div className="flex justify-between items-center">
