@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -14,6 +13,7 @@ import { Upload, Download, Loader2, RefreshCw, X, Copy, HelpCircle } from 'lucid
 import { VtmlRenderer } from './vtml-renderer';
 import { useI18n } from '@/locales/client';
 import { cn } from '@/lib/utils';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -40,8 +40,19 @@ const CHAR_COLOR_MAP: { [key: string]: string } = {
   'ó': '#678063', '¥': '#8C869F', 'σ': '#8D879E', '♥': '#C7A5BE',
   'Ẅ': '#AF87A0', '≥': '#5B464E', '•': '#62574A', 'ю': '#9DBDB4',
   'ζ': '#606C6E', 'È': '#82636D', '◊': '#62575A', '┐': '#55494B',
-  '┴': '#766D7C', '·': '#000000', // Transparent placeholder
+  '┴': '#766D7C', '·': '#000000',
 };
+
+const BW_CHAR_RAMP = ['█', '▓', '▒', '░', '·'];
+const BW_CHAR_MAP: {[key: string]: string} = {
+    '█': '#D7D6C0',
+    '▓': '#B2B1B9',
+    '▒': '#8F888F',
+    '░': '#736A5F',
+    '·': '#000000',
+};
+
+type ConversionMode = 'color' | 'bw';
 
 // --- Helper Functions ---
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -79,7 +90,13 @@ const findClosestChar = (r: number, g: number, b: number): string => {
   return PALETTE_CHARS[index] || '·';
 };
 
+const getGrayscaleChar = (gray: number): string => {
+    const rampIndex = Math.floor(gray / 256 * BW_CHAR_RAMP.length);
+    return BW_CHAR_RAMP[rampIndex] || '·';
+};
+
 interface GenerateVtmlOptions {
+    mode: ConversionMode;
     maxLineLength: number;
     fontSize: number;
     dithering: boolean;
@@ -93,7 +110,7 @@ const generateVtml = (
   options: GenerateVtmlOptions
 ): Promise<string> => {
   return new Promise((resolve) => {
-    const { maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels } = options;
+    const { mode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels } = options;
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return resolve('');
@@ -135,7 +152,7 @@ const generateVtml = (
         const i = (y * width + x) * 4;
         
         if (f32Pixels[i+3] < 128) {
-            line += '·'; // Use a placeholder character instead of a space
+            line += '·';
             continue;
         }
 
@@ -143,30 +160,56 @@ const generateVtml = (
         const oldG = f32Pixels[i + 1];
         const oldB = f32Pixels[i + 2];
         
-        const [newR, newG, newB] = findClosestRgb(oldR, oldG, oldB);
-        const char = findClosestChar(newR, newG, newB);
+        let char = '·';
+        
+        if (mode === 'color') {
+            const [newR, newG, newB] = findClosestRgb(oldR, oldG, oldB);
+            char = findClosestChar(newR, newG, newB);
+            if (dithering) {
+                const errR = oldR - newR;
+                const errG = oldG - newG;
+                const errB = oldB - newB;
+
+                const distributeError = (dx: number, dy: number, factor: number) => {
+                    const ni = ((y + dy) * width + (x + dx)) * 4;
+                    if (x + dx > 0 && x + dx < width && y + dy > 0 && y + dy < height) {
+                        f32Pixels[ni]     = Math.max(0, Math.min(255, f32Pixels[ni]     + errR * factor));
+                        f32Pixels[ni + 1] = Math.max(0, Math.min(255, f32Pixels[ni + 1] + errG * factor));
+                        f32Pixels[ni + 2] = Math.max(0, Math.min(255, f32Pixels[ni + 2] + errB * factor));
+                    }
+                };
+                distributeError(1, 0, 7 / 16);
+                distributeError(-1, 1, 3 / 16);
+                distributeError(0, 1, 5 / 16);
+                distributeError(1, 1, 1 / 16);
+            }
+        } else { // 'bw' mode
+            const gray = (oldR + oldG + oldB) / 3;
+            char = getGrayscaleChar(gray);
+            const newGray = BW_CHAR_RAMP.indexOf(char) * (255 / (BW_CHAR_RAMP.length -1));
+            
+            if (dithering) {
+                const err = gray - newGray;
+                const distributeError = (dx: number, dy: number, factor: number) => {
+                    const ni = ((y + dy) * width + (x + dx)) * 4;
+                    if (x + dx > 0 && x + dx < width && y + dy > 0 && y + dy < height) {
+                        const r = Math.max(0, Math.min(255, f32Pixels[ni] + err * factor));
+                        const g = Math.max(0, Math.min(255, f32Pixels[ni+1] + err * factor));
+                        const b = Math.max(0, Math.min(255, f32Pixels[ni+2] + err * factor));
+                        f32Pixels[ni] = r;
+                        f32Pixels[ni+1] = g;
+                        f32Pixels[ni+2] = b;
+                    }
+                };
+                distributeError(1, 0, 7 / 16);
+                distributeError(-1, 1, 3 / 16);
+                distributeError(0, 1, 5 / 16);
+                distributeError(1, 1, 1 / 16);
+            }
+        }
+        
         line += char;
 
-        if (dithering) {
-            const errR = oldR - newR;
-            const errG = oldG - newG;
-            const errB = oldB - newB;
-
-            const distributeError = (dx: number, dy: number, factor: number) => {
-                const ni = ((y + dy) * width + (x + dx)) * 4;
-                if (x + dx > 0 && x + dx < width && y + dy > 0 && y + dy < height) {
-                    f32Pixels[ni]     = Math.max(0, Math.min(255, f32Pixels[ni]     + errR * factor));
-                    f32Pixels[ni + 1] = Math.max(0, Math.min(255, f32Pixels[ni + 1] + errG * factor));
-                    f32Pixels[ni + 2] = Math.max(0, Math.min(255, f32Pixels[ni + 2] + errB * factor));
-                }
-            };
-            
-            // Floyd-Steinberg dithering matrix
-            distributeError(1, 0, 7 / 16);
-            distributeError(-1, 1, 3 / 16);
-            distributeError(0, 1, 5 / 16);
-            distributeError(1, 1, 1 / 16);
-        }
       }
       finalLines.push(line);
     }
@@ -182,6 +225,7 @@ export function VtmlConverter() {
   const paletteEntries = Object.entries(t('vtmlConverter.help.palette')).map(([key, value]) => [key, value] as [string, {hex: string, name: string}]);
 
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
+  const [conversionMode, setConversionMode] = useState<ConversionMode>('color');
   const [fontSize, setFontSize] = useState(1);
   const [maxLineLength, setMaxLineLength] = useState(80);
   const [dithering, setDithering] = useState(true);
@@ -235,7 +279,7 @@ export function VtmlConverter() {
     }
     setIsGenerating(true);
     try {
-      const code = await generateVtml(imageRef.current, { maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels });
+      const code = await generateVtml(imageRef.current, { mode: conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels });
       setVtmlCode(code);
       setIsDirty(false); 
     } catch (error) {
@@ -248,7 +292,7 @@ export function VtmlConverter() {
     } finally {
       setIsGenerating(false);
     }
-  }, [photoDataUri, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, toast, t]);
+  }, [photoDataUri, conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, toast, t]);
   
   const handleSettingsChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: any) => {
     setter(value);
@@ -423,6 +467,20 @@ export function VtmlConverter() {
             <CardDescription>{t('vtmlConverter.step2.description')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
+             <div className="grid gap-2">
+                <Label>{t('imageConverter.modeLabel')}</Label>
+                <RadioGroup value={conversionMode} onValueChange={handleSettingsChange(setConversionMode)} className="flex pt-2 space-x-4">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="color" id="mode-color" />
+                        <Label htmlFor="mode-color">{t('imageConverter.modes.color')}</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="bw" id="mode-bw" />
+                        <Label htmlFor="mode-bw">{t('imageConverter.modes.bw')}</Label>
+                    </div>
+                </RadioGroup>
+              </div>
+
              <div className="flex items-center space-x-2">
                 <Switch id="dithering-mode" checked={dithering} onCheckedChange={handleSettingsChange(setDithering)} disabled={isLoading} />
                 <Label htmlFor="dithering-mode">{t('vtmlConverter.step2.dithering')}</Label>

@@ -275,7 +275,7 @@ export default {
         '▓': { hex: '#B2B1B9', name: 'Lilac Gray'},
         '▒': { hex: '#8F888F', name: 'Dusty Lilac'},
         '░': { hex: '#736A5F', name: 'Grayish Brown'},
-        '·': { hex: 'N/A', name: 'Transparent'},
+        '·': { hex: '#000000', name: 'Transparent'},
         '---': { hex: '---', name: '---'},
         'Σ': { hex: '#9C7063', name: 'Terracotta / Dusty Red'},
         'Ω': { hex: '#B1877E', name: 'Dusty Rose Brown'},
