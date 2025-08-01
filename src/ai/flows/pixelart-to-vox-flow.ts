@@ -68,29 +68,31 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
 
   const STICKER_BLOCK_DEPTH = 16;
   
-  const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
+  const mapCoords = (px: number, py: number, pz: number, zOffset: number): [number, number, number] => {
       if (orientation === 'vertical-lr') {
-          return [px, pz, imageHeight - 1 - py];
+          return [px, pz + zOffset, imageHeight - 1 - py];
       }
-      return [px, imageHeight - 1 - py, pz];
+      return [px, imageHeight - 1 - py, pz + zOffset];
   };
 
   if (mode === 'extrude') {
-    modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : extrudeDepth;
+    modelDepth = extrudeDepth;
     const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - extrudeDepth : 0;
     
     for (let py = 0; py < imageHeight; py++) {
       for (let px = 0; px < imageWidth; px++) {
         if (pixels[py * imageWidth + px]) {
           for (let pz = 0; pz < extrudeDepth; pz++) {
-             const [x, y, z] = mapCoords(px, py, pz + zOffset);
+             const [x, y, z] = mapCoords(px, py, pz, zOffset);
              addVoxel(x, y, z);
           }
         }
       }
     }
+     if (stickerMode) modelDepth = STICKER_BLOCK_DEPTH;
+
   } else if (mode === 'engrave') {
-    modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : engraveBackgroundDepth;
+    modelDepth = engraveBackgroundDepth;
     const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - engraveBackgroundDepth : 0;
     
     for (let py = 0; py < imageHeight; py++) {
@@ -99,17 +101,18 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
         const endDepth = isPixelSet ? engraveBackgroundDepth - engraveDepth : engraveBackgroundDepth;
 
         for (let pz = 0; pz < endDepth; pz++) {
-            const [x, y, z] = mapCoords(px, py, pz + zOffset);
+            const [x, y, z] = mapCoords(px, py, pz, zOffset);
             addVoxel(x, y, z);
         }
       }
     }
+     if (stickerMode) modelDepth = STICKER_BLOCK_DEPTH;
   }
 
   let finalWidth = modelWidth;
   let finalHeight = modelHeight;
   let finalDepth = modelDepth;
-   if (orientation === 'vertical-lr') {
+  if (orientation === 'vertical-lr') {
     finalHeight = modelDepth;
     finalDepth = modelHeight;
   }
@@ -119,7 +122,12 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
   palette[1] = { r: 200, g: 164, b: 100, a: 255 }; // Main color
   palette[2] = { r: 10, g: 10, b: 10, a: 255 }; // Anchor color
 
-  const voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
+  let voxSize;
+  if (orientation === 'vertical-lr') {
+     voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
+  } else {
+     voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
+  }
 
   const voxObject = {
       size: voxSize,
