@@ -9,6 +9,15 @@ import { useI18n } from "@/locales/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { VintageVisionsLogo } from "@/components/vintage-visions-logo";
+import { HelpCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function Home() {
   const t = useI18n();
@@ -21,7 +30,7 @@ export default function Home() {
         </h1>
       </header>
       <main className="w-full max-w-6xl p-4 border border-foreground/30 bg-background/50 rounded-lg shadow-2xl">
-        <Tabs defaultValue="image" className="w-full">
+        <Tabs defaultValue="vtml" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="text">{t('tabs.text')}</TabsTrigger>
             <TabsTrigger value="image">{t('tabs.image')}</TabsTrigger>

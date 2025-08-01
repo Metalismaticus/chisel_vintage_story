@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,27 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Download, Loader2, RefreshCw, X, Copy } from 'lucide-react';
+import { Upload, Download, Loader2, RefreshCw, X, Copy, HelpCircle } from 'lucide-react';
 import { VtmlRenderer } from './vtml-renderer';
 import { useI18n } from '@/locales/client';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+
 
 // Game-tested palette
 const CHAR_COLOR_MAP: { [key: string]: string } = {
@@ -41,26 +58,32 @@ const colorDistance = (c1: [number, number, number], c2: [number, number, number
 // Cache palette for quick access
 const PALETTE_CHARS = Object.keys(CHAR_COLOR_MAP);
 const PALETTE_RGB = PALETTE_CHARS.map(char => hexToRgb(CHAR_COLOR_MAP[char]));
-const BW_CHARS = [' ', '░', '▒', '▓', '█'];
 
-const getClosestChar = (r: number, g: number, b: number): string => {
+const findClosestRgb = (r: number, g: number, b: number): [number, number, number] => {
   let minDistance = Infinity;
-  let closestChar = ' ';
+  let closestColor: [number, number, number] = [0, 0, 0];
   for (let i = 0; i < PALETTE_RGB.length; i++) {
     const distance = colorDistance([r, g, b], PALETTE_RGB[i]);
     if (distance < minDistance) {
       minDistance = distance;
-      closestChar = PALETTE_CHARS[i];
+      closestColor = PALETTE_RGB[i];
     }
   }
-  return closestChar;
+  return closestColor;
 };
+
+const findClosestChar = (r: number, g: number, b: number): string => {
+  const closestRgb = findClosestRgb(r, g, b);
+  const index = PALETTE_RGB.findIndex(color => color[0] === closestRgb[0] && color[1] === closestRgb[1] && color[2] === closestRgb[2]);
+  return PALETTE_CHARS[index] || ' ';
+};
+
 
 const generateVtml = (
   img: HTMLImageElement,
   maxLineLength: number,
   fontSize: number,
-  isColor: boolean
+  dithering: boolean
 ): Promise<string> => {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
@@ -76,28 +99,51 @@ const generateVtml = (
     canvas.height = height;
     context.drawImage(img, 0, 0, width, height);
     const imageData = context.getImageData(0, 0, width, height);
-    const { data } = imageData;
+    const pixels = imageData.data;
+    const f32Pixels = new Float32Array(pixels.length);
+    for (let i=0; i < pixels.length; i++) {
+        f32Pixels[i] = pixels[i];
+    }
 
     let finalLines: string[] = [];
+
     for (let y = 0; y < height; y++) {
       let line = '';
       for (let x = 0; x < width; x++) {
         const i = (y * width + x) * 4;
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const a = data[i + 3];
-
-        if (a < 128) {
+        
+        if (f32Pixels[i+3] < 128) {
             line += ' ';
             continue;
         }
-        if (isColor) {
-          line += getClosestChar(r, g, b);
-        } else {
-          const gray = (r * 0.299 + g * 0.587 + b * 0.114);
-          const charIndex = Math.round((gray / 255) * (BW_CHARS.length - 1));
-          line += BW_CHARS[charIndex];
+
+        const oldR = f32Pixels[i];
+        const oldG = f32Pixels[i + 1];
+        const oldB = f32Pixels[i + 2];
+        
+        const [newR, newG, newB] = findClosestRgb(oldR, oldG, oldB);
+        const char = findClosestChar(newR, newG, newB);
+        line += char;
+
+        if (dithering) {
+            const errR = oldR - newR;
+            const errG = oldG - newG;
+            const errB = oldB - newB;
+
+            const distributeError = (dx: number, dy: number, factor: number) => {
+                const ni = ((y + dy) * width + (x + dx)) * 4;
+                if (x + dx > 0 && x + dx < width && y + dy > 0 && y + dy < height) {
+                    f32Pixels[ni]     = Math.max(0, Math.min(255, f32Pixels[ni]     + errR * factor));
+                    f32Pixels[ni + 1] = Math.max(0, Math.min(255, f32Pixels[ni + 1] + errG * factor));
+                    f32Pixels[ni + 2] = Math.max(0, Math.min(255, f32Pixels[ni + 2] + errB * factor));
+                }
+            };
+            
+            // Floyd-Steinberg dithering matrix
+            distributeError(1, 0, 7 / 16);
+            distributeError(-1, 1, 3 / 16);
+            distributeError(0, 1, 5 / 16);
+            distributeError(1, 1, 1 / 16);
         }
       }
       finalLines.push(line);
@@ -111,10 +157,12 @@ const generateVtml = (
 
 export function VtmlConverter() {
   const t = useI18n();
+  const paletteEntries = Object.entries(t('vtmlConverter.help.palette')).map(([key, value]) => [key, value] as [string, {hex: string, name: string}]);
+
   const [photoDataUri, setPhotoDataUri] = useState<string | null>(null);
   const [fontSize, setFontSize] = useState(1);
   const [maxLineLength, setMaxLineLength] = useState(80);
-  const [isColor, setIsColor] = useState(true);
+  const [dithering, setDithering] = useState(true);
   const [vtmlCode, setVtmlCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDirty, setIsDirty] = useState(true);
@@ -161,7 +209,7 @@ export function VtmlConverter() {
     }
     setIsGenerating(true);
     try {
-      const code = await generateVtml(imageRef.current, maxLineLength, fontSize, isColor);
+      const code = await generateVtml(imageRef.current, maxLineLength, fontSize, dithering);
       setVtmlCode(code);
       setIsDirty(false); 
     } catch (error) {
@@ -174,7 +222,7 @@ export function VtmlConverter() {
     } finally {
       setIsGenerating(false);
     }
-  }, [photoDataUri, maxLineLength, fontSize, isColor, toast, t]);
+  }, [photoDataUri, maxLineLength, fontSize, dithering, toast, t]);
   
   const handleSettingsChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: any) => {
     setter(value);
@@ -251,14 +299,59 @@ export function VtmlConverter() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {photoDataUri && <img ref={imageRef} src={photoDataUri} alt="Hidden source for canvas" className="hidden" />}
+      {photoDataUri && <img ref={imageRef} src={photoDataUri} alt="Hidden source for canvas" className="hidden" onLoad={() => setIsDirty(true)} />}
       
       <div className="space-y-6">
         <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>{t('vtmlConverter.step1.title')}</CardTitle>
-            <CardDescription>{t('vtmlConverter.step1.description')}</CardDescription>
-          </CardHeader>
+           <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>{t('vtmlConverter.step1.title')}</CardTitle>
+                <CardDescription>{t('vtmlConverter.step1.description')}</CardDescription>
+              </div>
+               <Dialog>
+                <DialogTrigger asChild>
+                   <Button variant="ghost" size="icon"><HelpCircle className="h-6 w-6 text-primary" /></Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[80vw] w-full max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>{t('vtmlConverter.help.title')}</DialogTitle>
+                    <DialogDescription>{t('vtmlConverter.help.intro')}</DialogDescription>
+                  </DialogHeader>
+                  <div className="prose prose-invert max-w-none text-foreground">
+                      <p>{t('vtmlConverter.help.main_desc')}</p>
+                      <h3 className="font-headline text-xl text-primary">{t('vtmlConverter.help.palette_title')}</h3>
+                       <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('vtmlConverter.help.table.char')}</TableHead>
+                            <TableHead>{t('vtmlConverter.help.table.hex')}</TableHead>
+                            <TableHead>{t('vtmlConverter.help.table.real_color')}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paletteEntries.map(([char, details]) => (
+                             <TableRow key={char}>
+                                <TableCell className="font-mono font-bold text-base" style={{color: details.hex && details.hex.startsWith('#') ? details.hex : undefined }}>
+                                  {char === '---' ? '---' : char}
+                                  {char === '♥' && '️'}
+                                </TableCell>
+                                <TableCell className="font-mono">{details.hex}</TableCell>
+                                <TableCell>{details.name}</TableCell>
+                              </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      <p>{t('vtmlConverter.help.palette_info')}</p>
+                      <pre className="bg-black/50 p-2 rounded-md font-code text-sm overflow-x-auto">
+                          <code>
+                              {`<font size="1" family="Lucida Console" align="center">YOUR_CHAR_HERE</font>`}
+                          </code>
+                      </pre>
+                       <p>{t('vtmlConverter.help.palette_footer')}</p>
+                  </div>
+                </DialogContent>
+              </Dialog>
+           </CardHeader>
           <CardContent>
             <input
               type="file"
@@ -299,15 +392,23 @@ export function VtmlConverter() {
         </Card>
 
         <Card className="bg-card/70 border-primary/20 backdrop-blur-sm">
-          <CardHeader>
-            <CardTitle>{t('vtmlConverter.step2.title')}</CardTitle>
-            <CardDescription>{t('vtmlConverter.step2.description')}</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle>{t('vtmlConverter.step2.title')}</CardTitle>
+                <CardDescription>{t('vtmlConverter.step2.description')}</CardDescription>
+            </div>
+             <Dialog>
+              <DialogTrigger asChild>
+                 <Button variant="ghost" size="icon"><HelpCircle className="h-6 w-6 text-primary" /></Button>
+              </DialogTrigger>
+               <DialogContent><DialogHeader><DialogTitle>Help</DialogTitle></DialogHeader><p>Здесь будет справка</p></DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
-            {/* <div className="flex items-center space-x-2">
-                <Switch id="color-mode" checked={isColor} onCheckedChange={handleSettingsChange(setIsColor)} disabled={isLoading} />
-                <Label htmlFor="color-mode">{t('vtmlConverter.step2.colorMode')}</Label>
-            </div> */}
+             <div className="flex items-center space-x-2">
+                <Switch id="dithering-mode" checked={dithering} onCheckedChange={handleSettingsChange(setDithering)} disabled={isLoading} />
+                <Label htmlFor="dithering-mode">{t('vtmlConverter.step2.dithering')}</Label>
+            </div>
             <div className="grid gap-2">
               <div className="flex justify-between items-center">
                 <Label htmlFor="font-size">{t('vtmlConverter.step2.fontSize')}</Label>
@@ -331,9 +432,11 @@ export function VtmlConverter() {
       </div>
 
       <Card className="bg-card/70 border-primary/20 backdrop-blur-sm h-full min-h-[500px] flex flex-col">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
             <CardTitle>{t('vtmlConverter.step3.title')}</CardTitle>
+            <CardDescription>{t('vtmlConverter.step3.description')}</CardDescription>
+           </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleCopy} disabled={!vtmlCode || isLoading}>
                 <Copy className="mr-2 h-4 w-4" />
@@ -344,8 +447,6 @@ export function VtmlConverter() {
                 {t('common.download')}
               </Button>
             </div>
-          </div>
-           <CardDescription>{t('vtmlConverter.step3.description')}</CardDescription>
         </CardHeader>
         <CardContent className="flex-grow flex flex-col gap-4">
             <div className="flex-1 border rounded-md bg-black/50 p-2 overflow-auto relative">
