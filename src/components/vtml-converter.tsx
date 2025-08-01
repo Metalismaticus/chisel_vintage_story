@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
@@ -43,7 +44,7 @@ const CHAR_COLOR_MAP: { [key: string]: string } = {
   '┴': '#766D7C', '·': '#000000',
 };
 
-const BW_CHAR_RAMP = [' ', '░', '▒', '▓', '█'];
+const BW_CHAR_RAMP = ['·', '░', '▒', '▓', '█'];
 const BW_CHAR_MAP: {[key: string]: string} = {
     '█': '#D7D6C0',
     '▓': '#B2B1B9',
