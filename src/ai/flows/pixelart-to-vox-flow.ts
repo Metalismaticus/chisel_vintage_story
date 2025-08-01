@@ -119,12 +119,7 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
   palette[1] = { r: 200, g: 164, b: 100, a: 255 }; // Main color
   palette[2] = { r: 10, g: 10, b: 10, a: 255 }; // Anchor color
 
-  let voxSize;
-  if (orientation === 'vertical-lr') {
-    voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
-  } else {
-    voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
-  }
+  const voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
 
   const voxObject = {
       size: voxSize,
