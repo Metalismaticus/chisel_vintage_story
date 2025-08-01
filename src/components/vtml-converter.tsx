@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { VtmlPalette } from './vtml-palette';
 
 
 // Game-tested palette
@@ -83,7 +84,8 @@ const findClosestChar = (r: number, g: number, b: number): string => {
   return PALETTE_CHARS[index] || '·';
 };
 
-const getGrayscaleChar = (gray: number): string => {
+const getGrayscaleChar = (r: number, g: number, b: number): string => {
+    const gray = 0.299 * r + 0.587 * g + 0.114 * b;
     const rampIndex = Math.round((gray / 255) * (BW_CHAR_RAMP.length - 1));
     return BW_CHAR_RAMP[rampIndex] || '·';
 };
@@ -183,11 +185,12 @@ const generateVtml = (
                 distributeError(1, 1, 1 / 16);
             }
         } else { // 'bw' mode
-            const gray = (oldR * 0.299 + oldG * 0.587 + oldB * 0.114);
-            char = getGrayscaleChar(gray);
-            const newGray = BW_CHAR_RAMP.indexOf(char) * (255 / (BW_CHAR_RAMP.length -1));
+            const newChar = getGrayscaleChar(oldR, oldG, oldB);
+            char = newChar;
             
             if (dithering) {
+                const gray = 0.299 * oldR + 0.587 * oldG + 0.114 * oldB;
+                const newGray = BW_CHAR_RAMP.indexOf(newChar) * (255 / (BW_CHAR_RAMP.length -1));
                 const err = gray - newGray;
                 const distributeError = (dx: number, dy: number, factor: number) => {
                     const ni = ((y + dy) * width + (x + dx)) * 4;
@@ -406,12 +409,14 @@ export function VtmlConverter() {
                   <div className="prose prose-invert max-w-none text-foreground space-y-4">
                       <p>{t('vtmlConverter.help.main_desc')}</p>
                       <h3 className="font-headline text-xl text-primary">{t('vtmlConverter.help.palette_title')}</h3>
-                      <pre className="bg-black/50 p-2 rounded-md font-code text-sm overflow-x-auto">
-                          <code>
-                              {`<font size="1" family="Lucida Console" align="center">YOUR_CHAR_HERE</font>`}
-                          </code>
-                      </pre>
-                       <p>{t('vtmlConverter.help.palette_footer')}</p>
+                       <p>{t('vtmlConverter.help.palette_info')}</p>
+                       <VtmlPalette />
+                       <h3 className="font-headline text-xl text-primary">{t('vtmlConverter.help.example_title')}</h3>
+                       <p className="text-muted-foreground">{t('vtmlConverter.help.example_intro')}</p>
+                       <div className="bg-black/50 p-2 rounded-md font-code text-sm overflow-x-auto">
+                         <VtmlRenderer code={t('vtmlConverter.help.example_code')} />
+                       </div>
+                       <p className="text-muted-foreground">{t('vtmlConverter.help.palette_footer')}</p>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -579,3 +584,5 @@ export function VtmlConverter() {
     </div>
   );
 }
+
+    

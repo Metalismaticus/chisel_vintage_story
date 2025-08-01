@@ -101,7 +101,7 @@ export default {
     button: 'Generate Schematic',
     help: {
       title: 'About the 2D Shape Generator',
-      p1: 'This is a 2D schematic generator for chiseling using preset shapes.',
+      p1: 'This is a 2D schematic generator for chiseling, using preset shapes. If you are interested in a ready-made model for the <code class="font-bold text-primary/80">Automatic Chiselling</code> mod, I recommend checking out the <code class="font-bold text-primary/80">VOX GENERATOR</code> section.',
       p2: 'If you are interested in a ready-made model for the <code class="font-bold text-primary/80">Automatic Chiselling</code> mod, I recommend checking out the <code class="font-bold text-primary/80">VOX GENERATOR</code> section.',
     },
     errors: {
@@ -289,7 +289,10 @@ export default {
       intro: 'This tool converts images into text using a special character palette for display in Vintage Story.',
       main_desc: 'ASCII art for inserting into books, parchments, or signs. Generate, copy, and paste!',
       palette_title: 'Available Colors',
-      palette_info: 'The palette is currently a work in progress. It is based on VGA/Code Page 437 (CP437) - the original IBM PC (DOS) character set. To find the color of a character not in the palette, type it into a book in-game:',
+      palette_info: 'The palette is currently a work in progress. It is based on VGA/Code Page 437 (CP437) - the original IBM PC (DOS) character set.',
+      example_title: 'Example',
+      example_intro: 'To check the color of a character not in the palette, you can use this test code in the game:',
+      example_code: '<font size="1" family="Lucida Console" align="center">»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»<br>»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»<br>»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»<br>»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»<br>»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»»</font>',
       palette_footer: 'Then, use a color picker (like in Photoshop) to determine its color, record it, and send it to me. I will be sure to add your edits!',
     },
     errors: {
@@ -306,3 +309,5 @@ export default {
     },
   },
 } as const;
+
+    
