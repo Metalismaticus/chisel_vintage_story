@@ -21,6 +21,7 @@ const PixelArtToVoxInputSchema = z.object({
   engraveBackgroundDepth: z.number().int().min(0),
   engraveDepth: z.number().int().min(0),
   stickerMode: z.boolean(),
+  orientation: z.enum(['horizontal', 'vertical-lr']),
 });
 
 export type PixelArtToVoxInput = z.infer<typeof PixelArtToVoxInputSchema>;
@@ -51,16 +52,15 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
     engraveBackgroundDepth, 
     engraveDepth,
     stickerMode,
+    orientation,
   } = PixelArtToVoxInputSchema.parse(input);
 
   let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
   
-  // Helper to add a voxel, consistently handling Y-up to Z-up conversion for vox-saver
-  // Our internal logic is X-Right, Y-Up, Z-Forward
   const addVoxel = (px: number, py: number, pz: number, colorIndex = 1) => {
     xyziValues.push({ x: Math.round(px), y: Math.round(py), z: Math.round(pz), i: colorIndex });
   };
-  addVoxel(0,0,0,2); // Add anchor point
+  addVoxel(0,0,0,2);
   
   let modelWidth = imageWidth;
   let modelHeight = imageHeight;
@@ -68,6 +68,14 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
 
   const STICKER_BLOCK_DEPTH = 16;
   const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - (mode === 'extrude' ? extrudeDepth : engraveBackgroundDepth) : 0;
+  
+   const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
+      const finalPz = pz + (mode === 'extrude' ? zOffset : (stickerMode ? STICKER_BLOCK_DEPTH - engraveBackgroundDepth : 0));
+      if (orientation === 'vertical-lr') {
+          return [px, finalPz, imageHeight - 1 - py];
+      }
+      return [px, imageHeight - 1 - py, finalPz];
+  };
 
   if (mode === 'extrude') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : extrudeDepth;
@@ -75,8 +83,8 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
       for (let px = 0; px < imageWidth; px++) {
         if (pixels[py * imageWidth + px]) {
           for (let pz = 0; pz < extrudeDepth; pz++) {
-            const finalPz = pz + zOffset;
-            addVoxel(px, imageHeight - 1 - py, finalPz);
+             const [x, y, z] = mapCoords(px, py, pz);
+             addVoxel(x, y, z);
           }
         }
       }
@@ -87,35 +95,40 @@ export async function generatePixelArtToVoxFlow(input: PixelArtToVoxInput): Prom
     for (let py = 0; py < imageHeight; py++) {
       for (let px = 0; px < imageWidth; px++) {
         const isPixelSet = pixels[py * imageWidth + px];
-        
-        // If it's a pixel from the drawing, we don't dig as deep
         const endDepth = isPixelSet ? engraveBackgroundDepth - engraveDepth : engraveBackgroundDepth;
 
         for (let pz = 0; pz < endDepth; pz++) {
-            const finalPz = pz + zOffset;
-            addVoxel(px, imageHeight - 1 - py, finalPz);
+            const [x, y, z] = mapCoords(px, py, pz);
+            addVoxel(x, y, z);
         }
       }
     }
   }
 
-  const finalWidth = modelWidth;
-  const finalHeight = modelHeight;
-  const finalDepth = modelDepth;
+  let finalWidth = modelWidth;
+  let finalHeight = modelHeight;
+  let finalDepth = modelDepth;
+   if (orientation === 'vertical-lr') {
+    finalHeight = modelDepth;
+    finalDepth = modelHeight;
+  }
  
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
   palette[0] = { r: 0, g: 0, b: 0, a: 0 };
   palette[1] = { r: 200, g: 164, b: 100, a: 255 }; // Main color
   palette[2] = { r: 10, g: 10, b: 10, a: 255 }; // Anchor color
 
-  // Determine the final size for the .vox file, swapping Y and Z for Z-up format
-  const voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
+  let voxSize;
+  if (orientation === 'vertical-lr') {
+    voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
+  } else {
+    voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
+  }
 
   const voxObject = {
       size: voxSize,
       xyzi: {
           numVoxels: xyziValues.length,
-          // Note: vox-saver expects Z-up, so we swap Y and Z from our internal coord system in the final object.
           values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
       },
       rgba: { values: palette }

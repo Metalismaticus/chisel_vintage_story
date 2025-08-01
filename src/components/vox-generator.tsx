@@ -114,6 +114,7 @@ export function VoxGenerator() {
   const [isDragging, setIsDragging] = useState(false);
   const paFileInputRef = useRef<HTMLInputElement>(null);
   const paWorkerRef = useRef<Worker>();
+  const [paOrientation, setPaOrientation] = useState<TextOrientation>('horizontal');
 
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -491,6 +492,7 @@ export function VoxGenerator() {
                 engraveBackgroundDepth: paEngraveBgDepth[0],
                 engraveDepth: paEngraveDepth[0],
                 stickerMode: paStickerMode,
+                orientation: paOrientation,
             };
 
             try {
@@ -1136,6 +1138,32 @@ export function VoxGenerator() {
                 value={paThreshold}
                 onValueChange={setPaThreshold}
               />
+            </div>
+
+            <div className="space-y-2">
+                <Label>{t('voxGenerator.text.orientation.label')}</Label>
+                <RadioGroup value={paOrientation} onValueChange={(v) => setPaOrientation(v as TextOrientation)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
+                    <RadioGroupItem value="horizontal" id="pa-horizontal" className="sr-only" />
+                    <Label 
+                        htmlFor="pa-horizontal"
+                        className={cn(
+                            "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
+                            paOrientation === 'horizontal' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+                        )}
+                    >
+                        {t('voxGenerator.text.orientation.horizontal')}
+                    </Label>
+                    <RadioGroupItem value="vertical-lr" id="pa-vertical" className="sr-only" />
+                    <Label 
+                        htmlFor="pa-vertical"
+                        className={cn(
+                            "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
+                            paOrientation === 'vertical-lr' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+                        )}
+                    >
+                        {t('voxGenerator.text.orientation.vertical')}
+                    </Label>
+                </RadioGroup>
             </div>
             
             <div className="space-y-2">
