@@ -252,6 +252,7 @@ export default {
       posterization: 'Posterization',
       fontSize: 'Font Size (VTML `size` attribute)',
       maxLineLength: 'Max Line Length',
+      charAspectRatio: 'Character Aspect Ratio',
       button: 'Generate',
       buttonUpToDate: 'Up to date',
     },

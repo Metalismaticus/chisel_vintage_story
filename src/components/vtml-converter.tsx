@@ -103,6 +103,7 @@ interface GenerateVtmlOptions {
     brightness: number;
     contrast: number;
     posterizeLevels: number;
+    charAspectRatio: number;
 }
 
 const generateVtml = (
@@ -110,13 +111,12 @@ const generateVtml = (
   options: GenerateVtmlOptions
 ): Promise<string> => {
   return new Promise((resolve) => {
-    const { mode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels } = options;
+    const { mode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio } = options;
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d', { willReadFrequently: true });
     if (!context) return resolve('');
 
     const aspectRatio = img.height / img.width;
-    const charAspectRatio = 2; // Approximation for monospace characters
     const width = maxLineLength;
     const height = Math.round(width * aspectRatio / charAspectRatio);
 
@@ -232,6 +232,7 @@ export function VtmlConverter() {
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [posterizeLevels, setPosterizeLevels] = useState(8);
+  const [charAspectRatio, setCharAspectRatio] = useState(2);
 
   const [vtmlCode, setVtmlCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -279,7 +280,7 @@ export function VtmlConverter() {
     }
     setIsGenerating(true);
     try {
-      const code = await generateVtml(imageRef.current, { mode: conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels });
+      const code = await generateVtml(imageRef.current, { mode: conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio });
       setVtmlCode(code);
       setIsDirty(false); 
     } catch (error) {
@@ -292,7 +293,7 @@ export function VtmlConverter() {
     } finally {
       setIsGenerating(false);
     }
-  }, [photoDataUri, conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, toast, t]);
+  }, [photoDataUri, conversionMode, maxLineLength, fontSize, dithering, brightness, contrast, posterizeLevels, charAspectRatio, toast, t]);
   
   const handleSettingsChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: any) => {
     setter(value);
@@ -300,6 +301,10 @@ export function VtmlConverter() {
   };
 
   const handleSliderChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: number[]) => {
+      setter(value[0]);
+      setIsDirty(true);
+  };
+   const handleDecimalSliderChange = (setter: React.Dispatch<React.SetStateAction<any>>) => (value: number[]) => {
       setter(value[0]);
       setIsDirty(true);
   };
@@ -505,6 +510,13 @@ export function VtmlConverter() {
                     <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{posterizeLevels}</span>
                 </div>
                 <Slider id="posterize-slider" min={2} max={32} step={1} value={[posterizeLevels]} onValueChange={handleSliderChange(setPosterizeLevels)} disabled={isLoading} />
+            </div>
+             <div className="grid gap-2">
+                <div className="flex justify-between items-center">
+                  <Label htmlFor="char-aspect-ratio-slider">{t('vtmlConverter.step2.charAspectRatio')}</Label>
+                  <span className="text-sm font-mono px-2 py-1 rounded-md bg-muted">{charAspectRatio.toFixed(1)}</span>
+                </div>
+                <Slider id="char-aspect-ratio-slider" min={1.0} max={3.0} step={0.1} value={[charAspectRatio]} onValueChange={handleDecimalSliderChange(setCharAspectRatio)} disabled={isLoading} />
             </div>
             <div className="grid gap-2">
               <div className="flex justify-between items-center">

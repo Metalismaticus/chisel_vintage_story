@@ -252,6 +252,7 @@ export default {
       posterization: 'Постеризация',
       fontSize: 'Размер шрифта (атрибут `size` в VTML)',
       maxLineLength: 'Максимальная длина строки',
+      charAspectRatio: 'Соотношение сторон символа',
       button: 'Сгенерировать',
       buttonUpToDate: 'Код актуален',
     },
