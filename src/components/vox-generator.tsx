@@ -58,7 +58,6 @@ export function VoxGenerator() {
     columnHeight: '64',
     baseRadius: '10',
     baseHeight: '4',
-    breakAngle: '45',
     archWidth: '16',
     archHeight: '16',
     archDepth: '8',
@@ -377,10 +376,7 @@ export function VoxGenerator() {
                 return;
            }
 
-           const breakAngle = brokenTop ? validateAndParse(dimensions.breakAngle, t('voxGenerator.column.breakAngle')) : undefined;
-           if(brokenTop && breakAngle === null) return;
-
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, breakAngle };
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop };
           break;
         }
         case 'cone': {
@@ -735,19 +731,6 @@ export function VoxGenerator() {
                         <Switch id="broken-top" checked={brokenTop} onCheckedChange={(checked) => { setBrokenTop(checked); if (checked) setWithCapital(false); }} disabled={withCapital}/>
                         <Label htmlFor="broken-top" className={cn(withCapital && "text-muted-foreground")}>{t('voxGenerator.column.brokenTop')}</Label>
                     </div>
-                    {brokenTop && (
-                         <div className="space-y-2 pt-2 pl-1">
-                            <Label htmlFor="break-angle">{t('voxGenerator.column.breakAngle')}: {dimensions.breakAngle}°</Label>
-                            <Slider 
-                                id="break-angle"
-                                min={15}
-                                max={60}
-                                step={1}
-                                value={[parseInt(dimensions.breakAngle, 10)]}
-                                onValueChange={(val) => handleSliderChange('breakAngle', val)}
-                            />
-                        </div>
-                    )}
                </div>
             </div>
           </div>

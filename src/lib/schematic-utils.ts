@@ -56,7 +56,6 @@ export type VoxShape =
         baseStyle?: ColumnStyle,
         capitalStyle?: ColumnStyle,
         brokenTop?: boolean,
-        breakAngle?: number,
       }
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
@@ -623,7 +622,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
                 baseStyle = 'simple',
                 capitalStyle = 'simple',
                 brokenTop = false,
-                breakAngle = 45,
             } = shape;
 
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
@@ -650,26 +648,26 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
                 break;
             }
             
-            const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle) => {
+             const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle) => {
                 const voxels: {x: number, y: number, z: number}[] = [];
+                const r2 = radius * radius;
+                const center = radius; 
                 
                 for (let y = 0; y < cylinderHeight; y++) {
                     let currentRadius = radius;
-                    if (style === 'decorative' && radius > 1) {
-                         // Create a repeating 4-pixel pattern: 2px normal, 2px inset
-                        const patternStep = y % 4;
+                     if (style === 'decorative' && radius > 1) {
+                        const patternStep = y % 4; // Repeating 4-voxel high pattern
                         if (patternStep === 2 || patternStep === 3) {
                             currentRadius = radius - 1;
                         }
                     }
-                    const r2 = currentRadius * currentRadius;
-                    const center = radius; 
-                    
+                    const currentR2 = currentRadius * currentRadius;
+
                     for (let z = 0; z < radius * 2; z++) {
                         for (let x = 0; x < radius * 2; x++) {
                             const dx = x - center + 0.5;
                             const dz = z - center + 0.5;
-                            if (dx * dx + dz * dz <= r2) {
+                            if (dx * dx + dz * dz <= currentR2) {
                                 voxels.push({ x, y, z });
                             }
                         }
@@ -692,13 +690,19 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
                  const shaftStartY = finalBaseH;
 
                  if (brokenTop) {
-                    const tanAngle = Math.tan(breakAngle * Math.PI / 180);
-                    shaftVoxels.forEach(v => {
-                        const yFromShaftTop = (finalShaftH - 1) - v.y;
-                        const xFromCenter = (v.x) - (colRadius - 0.5);
-                        const breakPlaneY = yFromShaftTop * tanAngle;
+                    const angleX = (Math.random() * 40 + 20) * (Math.random() < 0.5 ? 1 : -1); // Random angle between -60 and 60
+                    const angleZ = (Math.random() * 40 + 20) * (Math.random() < 0.5 ? 1 : -1);
+                    const tanX = Math.tan(angleX * Math.PI / 180);
+                    const tanZ = Math.tan(angleZ * Math.PI / 180);
 
-                        if (xFromCenter < breakPlaneY) {
+                    shaftVoxels.forEach(v => {
+                        const xFromCenter = v.x - colRadius + 0.5;
+                        const zFromCenter = v.z - colRadius + 0.5;
+                        const yFromShaftTop = (finalShaftH - 1) - v.y;
+                        
+                        const breakPlaneY = yFromShaftTop - (xFromCenter * tanX + zFromCenter * tanZ);
+
+                        if (v.y < breakPlaneY) {
                            addVoxel(v.x + offsetX, v.y + shaftStartY, v.z + offsetZ);
                         }
                     });
