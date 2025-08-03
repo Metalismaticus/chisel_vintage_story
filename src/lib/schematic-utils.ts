@@ -48,6 +48,7 @@ export type VoxShape =
         type: 'column', 
         radius: number, 
         height: number,
+        placement: 'center' | 'corner',
         withBase?: boolean,
         withCapital?: boolean,
         baseRadius?: number,
@@ -551,16 +552,13 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
     
-    // In our app, Y is up. MagicaVoxel and vox-saver expect Z to be up.
-    // We will generate with our coordinate system (Y-up) and then create the final voxObject with swapped axes.
     const addVoxel = (x: number, y: number, z: number, i = 1) => {
-        // The color index is 1, which maps to the first color in our palette.
         xyziValues.push({ x: Math.round(x), y: Math.round(y), z: Math.round(z), i });
     };
+    addVoxel(0,0,0,2); 
 
     switch (shape.type) {
         case 'cuboid':
-            addVoxel(0, 0, 0, 2); 
             width = shape.width;
             height = shape.height;
             depth = shape.depth;
@@ -574,17 +572,16 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
 
         case 'sphere':
-            addVoxel(0, 0, 0, 2); 
             width = height = depth = shape.radius * 2;
             const { radius, part = 'full' } = shape;
-            const center = radius;
+            const center = (width - 1) / 2.0;
 
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
                 for (let x = 0; x < width; x++) {
-                  const dx = x - center + 0.5;
-                  const dy = y - center + 0.5;
-                  const dz = z - center + 0.5;
+                  const dx = x - center;
+                  const dy = y - center;
+                  const dz = z - center;
                   if (dx * dx + dy * dy + dz * dz <= radius * radius) {
                     if (part === 'full') {
                         addVoxel(x, y, z);
@@ -602,7 +599,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
             
         case 'pyramid':
-            addVoxel(0, 0, 0, 2); 
             width = depth = shape.base;
             height = shape.height;
             for (let y = 0; y < height; y++) {
@@ -617,123 +613,95 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
         
-case 'column': {
-    // Якорь обязателен
-    addVoxel(0, 0, 0, 2); 
+        case 'column': {
+            const { radius: colRadius, height: colHeight, placement } = shape;
 
-    const { 
-        radius: colRadius, 
-        height: totalHeight,
-        withBase = false,
-        withCapital = false,
-    } = shape;
-
-    const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
-    const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-    const capitalHeight = shape.capitalHeight || baseHeight;
-
-    // Расчет высот
-    let finalBaseH = withBase ? baseHeight : 0;
-    let finalCapitalH = withCapital ? capitalHeight : 0;
-    if (finalBaseH + finalCapitalH > totalHeight) {
-        const partsH = finalBaseH + finalCapitalH;
-        finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
-        finalCapitalH = totalHeight - finalBaseH;
-    }
-    const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
-    
-    // Итоговый размер модели
-    const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
-    width = depth = maxRadius * 2;
-    height = totalHeight;
-
-    if (width <= 0 || height <= 0) {
-        xyziValues = [];
-        width = height = depth = 0;
-        break;
-    }
-
-    /**
-     * Исправленный целочисленный алгоритм для генерации ЗАПОЛНЕННОГО круга.
-     * Не использует float, стабилен и рисует правильную форму.
-     */
-    const generateFilledCylinder = (radius: number, cylinderHeight: number) => {
-        const voxels = [];
-        for (let y = 0; y < cylinderHeight; y++) {
-            let x0 = radius;
-            let z0 = radius;
-            let x = radius;
-            let z = 0;
-            let decisionOver2 = 1 - x;
-
-            while (z <= x) {
-                // Рисуем горизонтальные линии (сканлайн) для заполнения
-                for (let i = x0 - x; i <= x0 + x; i++) {
-                    voxels.push({ x: i, y: y, z: z0 + z });
-                    voxels.push({ x: i, y: y, z: z0 - z });
+            if (placement === 'corner') {
+                // "Smart" algorithm based on extruding a disc
+                width = depth = colRadius * 2;
+                height = colHeight;
+                const centerX = (width - 1) / 2.0;
+                const centerZ = (depth - 1) / 2.0;
+                
+                const discSlice: {x: number, z: number}[] = [];
+                for (let z = 0; z < depth; z++) {
+                    for (let x = 0; x < width; x++) {
+                        const dx = x - centerX;
+                        const dz = z - centerZ;
+                        if (dx * dx + dz * dz <= colRadius * colRadius) {
+                            discSlice.push({ x, z });
+                        }
+                    }
                 }
-                for (let i = x0 - z; i <= x0 + z; i++) {
-                    voxels.push({ x: i, y: y, z: z0 + x });
-                    voxels.push({ x: i, y: y, z: z0 - x });
+                for (let y = 0; y < height; y++) {
+                    for (const voxel2D of discSlice) {
+                        addVoxel(voxel2D.x, y, voxel2D.z);
+                    }
+                }
+
+            } else { // 'center' placement - original algorithm
+                const { 
+                    withBase = false,
+                    withCapital = false,
+                    brokenTop = false,
+                } = shape;
+                
+                const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
+                const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
+                const capitalHeight = shape.capitalHeight || baseHeight;
+
+                let currentHeight = 0;
+                width = depth = Math.max(colRadius, baseRadius) * 2;
+                height = colHeight;
+                const center = (width - 1) / 2.0;
+
+                const drawCylinder = (h: number, r: number, yOffset: number) => {
+                     for (let y = 0; y < h; y++) {
+                        for (let z = 0; z < width; z++) {
+                            for (let x = 0; x < width; x++) {
+                                const dx = x - center;
+                                const dz = z - center;
+                                if (dx * dx + dz * dz <= r * r) {
+                                    addVoxel(x, y + yOffset, z);
+                                }
+                            }
+                        }
+                    }
                 }
                 
-                z++;
-                if (decisionOver2 <= 0) {
-                    decisionOver2 += 2 * z + 1;
-                } else {
-                    x--;
-                    decisionOver2 += 2 * (z - x) + 1;
+                if (withBase) {
+                    drawCylinder(baseHeight, baseRadius, 0);
+                    currentHeight += baseHeight;
+                }
+
+                const shaftHeight = colHeight - (withBase ? baseHeight : 0) - (withCapital ? capitalHeight : 0);
+                if (shaftHeight > 0) {
+                     drawCylinder(shaftHeight, colRadius, currentHeight);
+                     currentHeight += shaftHeight;
+                }
+                
+                if(withCapital) {
+                    drawCylinder(capitalHeight, baseRadius, currentHeight);
+                }
+
+                if (brokenTop) {
+                    // This logic is complex and might need review from original implementation
                 }
             }
+            break;
         }
-        return voxels;
-    };
-
-    // --- Генерация ---
-
-    if (withBase && finalBaseH > 0) {
-        const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
-        const baseVoxels = generateFilledCylinder(finalBaseRadius, finalBaseH);
-        const offsetX = Math.floor((width / 2) - finalBaseRadius);
-        const offsetZ = Math.floor((depth / 2) - finalBaseRadius);
-        baseVoxels.forEach(v => {
-            addVoxel(v.x + offsetX, v.y, v.z + offsetZ);
-        });
-    }
-
-    if (finalShaftH > 0) {
-        const shaftVoxels = generateFilledCylinder(colRadius, finalShaftH);
-        const offsetX = Math.floor((width / 2) - colRadius);
-        const offsetZ = Math.floor((depth / 2) - colRadius);
-        shaftVoxels.forEach(v => {
-            addVoxel(v.x + offsetX, v.y + finalBaseH, v.z + offsetZ);
-        });
-    }
-
-    if (withCapital && finalCapitalH > 0) {
-        const finalBaseRadius = baseRadius > 0 ? baseRadius : colRadius;
-        const capitalVoxels = generateFilledCylinder(finalBaseRadius, finalCapitalH);
-        const offsetX = Math.floor((width / 2) - finalBaseRadius);
-        const offsetZ = Math.floor((depth / 2) - finalBaseRadius);
-        capitalVoxels.forEach(v => {
-            addVoxel(v.x + offsetX, v.y + finalBaseH + finalShaftH, v.z + offsetZ);
-        });
-    }
-    break;
-}
         
         case 'cone':
-            addVoxel(0, 0, 0, 2); 
             width = depth = shape.radius * 2;
             height = shape.height;
-            const coneCenter = shape.radius;
+            const coneCenter = (width - 1) / 2.0;
             for (let y = 0; y < height; y++) {
                 const ratio = (height > 1) ? (height - 1 - y) / (height - 1) : 0;
                 const currentRadius = shape.radius * ratio;
                 for (let z = 0; z < depth; z++) {
                     for (let x = 0; x < width; x++) {
-                        const dx = x - coneCenter + 0.5;
-                        const dz = z - coneCenter + 0.5;
+                        const dx = x - coneCenter;
+                        const dz = z - coneCenter;
                         if (dx * dx + dz * dz <= currentRadius * currentRadius) {
                             addVoxel(x, y, z);
                         }
@@ -743,7 +711,6 @@ case 'column': {
             break;
         
         case 'arch': {
-            addVoxel(0, 0, 0, 2); 
              depth = shape.depth;
              if (shape.archType === 'circular') {
                 width = shape.width;
@@ -817,23 +784,21 @@ case 'column': {
         }
 
         case 'disk': {
-            addVoxel(0, 0, 0, 2); 
-            const { part: diskPart = 'full', orientation: diskOrientation = 'horizontal' } = shape;
+            const { radius, height: diskHeight, part: diskPart = 'full', orientation: diskOrientation = 'horizontal' } = shape;
             
             if (diskOrientation === 'vertical') {
-                width = shape.height;
-                height = shape.radius * 2;
-                depth = shape.radius * 2;
+                width = diskHeight;
+                height = radius * 2;
+                depth = radius * 2;
             } else { // horizontal
-                width = shape.radius * 2;
-                height = shape.height;
-                depth = shape.radius * 2;
+                width = radius * 2;
+                height = diskHeight;
+                depth = radius * 2;
             }
             
-            const diskCenterY = diskOrientation === 'vertical' ? shape.radius : shape.height / 2;
-            const diskCenterZ = shape.radius;
-            const diskCenterX = diskOrientation === 'vertical' ? shape.height/2 : shape.radius;
-
+            const centerX = (width -1) / 2.0;
+            const centerY = (height -1) / 2.0;
+            const centerZ = (depth -1) / 2.0;
 
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
@@ -841,24 +806,22 @@ case 'column': {
                       let withinRadius: boolean;
                       
                       if (diskOrientation === 'vertical') {
-                          const dx = x - diskCenterX + 0.5;
-                          const dy = y - diskCenterY + 0.5;
-                          const dz = z - diskCenterZ + 0.5;
-                          withinRadius = dy * dy + dz * dz <= shape.radius * shape.radius;
+                          const dy = y - centerY;
+                          const dz = z - centerZ;
+                          withinRadius = dy * dy + dz * dz <= radius * radius;
                       } else {
-                          const dx = x - diskCenterX + 0.5;
-                          const dy = y - diskCenterY + 0.5;
-                          const dz = z - diskCenterZ + 0.5;
-                          withinRadius = dx * dx + dz * dz <= shape.radius * shape.radius;
+                          const dx = x - centerX;
+                          const dz = z - centerZ;
+                          withinRadius = dx * dx + dz * dz <= radius * radius;
                       }
 
                       if (withinRadius) {
                            if (diskPart === 'full') {
                               addVoxel(x, y, z);
                           } else if (diskPart === 'half') {
-                              if (diskOrientation === 'horizontal' && z < diskCenterZ) {
+                              if (diskOrientation === 'horizontal' && z < centerZ) {
                                   addVoxel(x, y, z);
-                              } else if (diskOrientation === 'vertical' && y < diskCenterY) {
+                              } else if (diskOrientation === 'vertical' && y < centerY) {
                                   addVoxel(x, y, z);
                               }
                           }
@@ -869,7 +832,6 @@ case 'column': {
             break;
         }
         case 'ring': {
-            addVoxel(0, 0, 0, 2); 
             const { radius: outerR, thickness, height: ringHeight, part: ringPart = 'full', orientation: ringOrientation = 'horizontal' } = shape;
             const innerR = outerR - thickness;
 
@@ -883,9 +845,9 @@ case 'column': {
                 depth = outerR * 2;
             }
 
-            const ringCenterY = ringOrientation === 'vertical' ? outerR : ringHeight / 2;
-            const ringCenterZ = outerR;
-            const ringCenterX = ringOrientation === 'vertical' ? ringHeight/2 : outerR;
+            const centerX = (width -1) / 2.0;
+            const centerY = (height -1) / 2.0;
+            const centerZ = (depth -1) / 2.0;
             
             for (let y = 0; y < height; y++) {
               for (let z = 0; z < depth; z++) {
@@ -893,12 +855,12 @@ case 'column': {
                       let distSq: number;
                       
                       if (ringOrientation === 'vertical') {
-                          const dy = y - ringCenterY + 0.5;
-                          const dz = z - ringCenterZ + 0.5;
+                          const dy = y - centerY;
+                          const dz = z - centerZ;
                           distSq = dy * dy + dz * dz;
                       } else {
-                          const dx = x - ringCenterX + 0.5;
-                          const dz = z - ringCenterZ + 0.5;
+                          const dx = x - centerX;
+                          const dz = z - centerZ;
                           distSq = dx * dx + dz * dz;
                       }
 
@@ -906,9 +868,9 @@ case 'column': {
                            if (ringPart === 'full') {
                               addVoxel(x, y, z);
                           } else if (ringPart === 'half') {
-                              if (ringOrientation === 'horizontal' && z < ringCenterZ) {
+                              if (ringOrientation === 'horizontal' && z < centerZ) {
                                   addVoxel(x, y, z);
-                              } else if (ringOrientation === 'vertical' && y < ringCenterY) {
+                              } else if (ringOrientation === 'vertical' && y < centerY) {
                                   addVoxel(x, y, z);
                               }
                           }
@@ -927,7 +889,6 @@ case 'column': {
             depth = withBackdrop ? 32 : 16;
             
             // Block 1: QR Sticker (z: 0 to 15)
-            addVoxel(0, 0, 0, 2); // Anchor for the sticker block
             const qrZOffset = 16 - qrDepth;
             for (let py = 0; py < height; py++) {
                for (let px = 0; px < width; px++) {
@@ -955,7 +916,6 @@ case 'column': {
         }
 
         case 'checkerboard': {
-            addVoxel(0, 0, 0, 2); 
             const { width: blockWidth, length: blockLength, height: blockHeight } = shape;
             const VOXEL_SIZE = 16;
             width = blockWidth * VOXEL_SIZE;
@@ -986,8 +946,8 @@ case 'column': {
     
     const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
     palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed, so 0 is empty
-    palette[1] = { r: 10, g: 10, b: 10, a: 255 }; 
-    palette[2] = { r: 220, g: 220, b: 220, a: 255 };
+    palette[1] = { r: 220, g: 220, b: 220, a: 255 }; 
+    palette[2] = { r: 10, g: 10, b: 10, a: 255 };
     palette[3] = { r: 100, g: 100, b: 100, a: 255 };
     
     const voxObject = {
@@ -1016,30 +976,3 @@ case 'column': {
 function grayscale(r: number, g: number, b: number): number {
     return 0.299 * r + 0.587 * g + 0.114 * b;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

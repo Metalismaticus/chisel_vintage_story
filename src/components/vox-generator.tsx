@@ -35,13 +35,14 @@ import Link from 'next/link';
 type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart';
 type TextVoxMode = 'extrude' | 'engrave';
 type PixelArtVoxMode = 'extrude' | 'engrave';
+type ColumnPlacement = 'center' | 'corner';
 
 export function VoxGenerator() {
   const t = useI18n();
   const [mode, setMode] = useState<GeneratorMode>('shape');
   
   // Shape state
-  const [shape, setShape] = useState<VoxShape['type']>('cuboid');
+  const [shape, setShape] = useState<VoxShape['type']>('column');
   const [dimensions, setDimensions] = useState({ 
     width: '16', 
     height: '16', 
@@ -76,6 +77,7 @@ export function VoxGenerator() {
   const [ringOrientation, setRingOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
   const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
+  const [columnPlacement, setColumnPlacement] = useState<ColumnPlacement>('center');
   const [withBase, setWithBase] = useState(false);
   const [withCapital, setWithCapital] = useState(false);
   const [brokenTop, setBrokenTop] = useState(false);
@@ -357,7 +359,7 @@ export function VoxGenerator() {
            const breakAngle = brokenTop ? validateAndParse(dimensions.breakAngle, t('voxGenerator.column.breakAngle')) : undefined;
            if(brokenTop && breakAngle === null) return;
 
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, brokenTop, breakAngle };
+           shapeParams = { type: 'column', radius, height, placement: columnPlacement, withBase, withCapital, baseRadius, baseHeight, brokenTop, breakAngle };
           break;
         }
         case 'cone': {
@@ -647,6 +649,31 @@ export function VoxGenerator() {
       case 'column':
         return (
            <div className="space-y-4">
+            <div className="space-y-2">
+                <Label>{t('voxGenerator.column.placement.label')}</Label>
+                <RadioGroup value={columnPlacement} onValueChange={(v) => setColumnPlacement(v as ColumnPlacement)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
+                    <RadioGroupItem value="center" id="place-center" className="sr-only" />
+                    <Label 
+                        htmlFor="place-center"
+                        className={cn(
+                            "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
+                            columnPlacement === 'center' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+                        )}
+                    >
+                        {t('voxGenerator.column.placement.center')}
+                    </Label>
+                    <RadioGroupItem value="corner" id="place-corner" className="sr-only" />
+                    <Label 
+                        htmlFor="place-corner"
+                        className={cn(
+                            "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
+                            columnPlacement === 'corner' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
+                        )}
+                    >
+                        {t('voxGenerator.column.placement.corner')}
+                    </Label>
+                </RadioGroup>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="columnRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
@@ -657,49 +684,51 @@ export function VoxGenerator() {
                 <Input id="columnHeight" type="number" value={dimensions.columnHeight} onChange={e => handleDimensionChange('columnHeight', e.target.value)} placeholder="e.g. 16" />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-               <div className="space-y-2">
-                    <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="with-base" checked={withBase} onCheckedChange={setWithBase} />
-                        <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
-                    </div>
-                     <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); if (checked) setBrokenTop(false); }} disabled={brokenTop} />
-                        <Label htmlFor="with-capital" className={cn(brokenTop && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
-                    </div>
-                    {(withBase || withCapital) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 pl-1">
-                            <div className="space-y-2">
-                                <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>
-                                <Input id="baseRadius" type="number" value={dimensions.baseRadius} onChange={e => handleDimensionChange('baseRadius', e.target.value)} placeholder="e.g. 10" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="baseHeight">{t('voxGenerator.column.baseHeight')}</Label>
-                                <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 4" />
-                            </div>
+            {columnPlacement === 'center' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                   <div className="space-y-2">
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Switch id="with-base" checked={withBase} onCheckedChange={setWithBase} />
+                            <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
                         </div>
-                    )}
-               </div>
-                <div className="space-y-2">
-                    <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="broken-top" checked={brokenTop} onCheckedChange={(checked) => { setBrokenTop(checked); if (checked) setWithCapital(false); }} disabled={withCapital}/>
-                        <Label htmlFor="broken-top" className={cn(withCapital && "text-muted-foreground")}>{t('voxGenerator.column.brokenTop')}</Label>
-                    </div>
-                    {brokenTop && (
-                         <div className="space-y-2 pt-2 pl-1">
-                            <Label htmlFor="break-angle">{t('voxGenerator.column.breakAngle')}: {dimensions.breakAngle}°</Label>
-                            <Slider 
-                                id="break-angle"
-                                min={15}
-                                max={60}
-                                step={1}
-                                value={[parseInt(dimensions.breakAngle, 10)]}
-                                onValueChange={(val) => handleSliderChange('breakAngle', val)}
-                            />
+                         <div className="flex items-center space-x-2 pt-2">
+                            <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); if (checked) setBrokenTop(false); }} disabled={brokenTop} />
+                            <Label htmlFor="with-capital" className={cn(brokenTop && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
                         </div>
-                    )}
-               </div>
-            </div>
+                        {(withBase || withCapital) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 pl-1">
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>
+                                    <Input id="baseRadius" type="number" value={dimensions.baseRadius} onChange={e => handleDimensionChange('baseRadius', e.target.value)} placeholder="e.g. 10" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseHeight">{t('voxGenerator.column.baseHeight')}</Label>
+                                    <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 4" />
+                                </div>
+                            </div>
+                        )}
+                   </div>
+                    <div className="space-y-2">
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Switch id="broken-top" checked={brokenTop} onCheckedChange={(checked) => { setBrokenTop(checked); if (checked) setWithCapital(false); }} disabled={withCapital}/>
+                            <Label htmlFor="broken-top" className={cn(withCapital && "text-muted-foreground")}>{t('voxGenerator.column.brokenTop')}</Label>
+                        </div>
+                        {brokenTop && (
+                             <div className="space-y-2 pt-2 pl-1">
+                                <Label htmlFor="break-angle">{t('voxGenerator.column.breakAngle')}: {dimensions.breakAngle}°</Label>
+                                <Slider 
+                                    id="break-angle"
+                                    min={15}
+                                    max={60}
+                                    step={1}
+                                    value={[parseInt(dimensions.breakAngle, 10)]}
+                                    onValueChange={(val) => handleSliderChange('breakAngle', val)}
+                                />
+                            </div>
+                        )}
+                   </div>
+                </div>
+            )}
           </div>
         );
       case 'cone':
@@ -1272,23 +1301,23 @@ export function VoxGenerator() {
                     <div className="space-y-2">
                         <Label>{t('voxGenerator.shapeLabel')}</Label>
                         <RadioGroup value={shape} onValueChange={(value) => setShape(value as VoxShape['type'])} className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 pt-2">
-                        <div className="flex items-center space-x-2">
+                        {/* <div className="flex items-center space-x-2">
                             <RadioGroupItem value="cuboid" id="r-cuboid" />
                             <Label htmlFor="r-cuboid">{t('voxGenerator.shapes.cuboid')}</Label>
                         </div>
-                        {/* <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2">
                             <RadioGroupItem value="sphere" id="r-sphere" />
                             <Label htmlFor="r-sphere">{t('voxGenerator.shapes.sphere')}</Label>
-                        </div> */}
+                        </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="pyramid" id="r-pyramid" />
                             <Label htmlFor="r-pyramid">{t('voxGenerator.shapes.pyramid')}</Label>
-                        </div>
-                        {/* <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="column" id="r-column" />
-                            <Label htmlFor="r-column">{t('voxGenerator.shapes.column')}</Label>
                         </div> */}
                         <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="column" id="r-column" />
+                            <Label htmlFor="r-column">{t('voxGenerator.shapes.column')}</Label>
+                        </div>
+                        {/* <div className="flex items-center space-x-2">
                             <RadioGroupItem value="cone" id="r-cone" />
                             <Label htmlFor="r-cone">{t('voxGenerator.shapes.cone')}</Label>
                         </div>
@@ -1303,7 +1332,7 @@ export function VoxGenerator() {
                          <div className="flex items-center space-x-2">
                             <RadioGroupItem value="ring" id="r-ring" />
                             <Label htmlFor="r-ring">{t('voxGenerator.shapes.ring')}</Label>
-                        </div>
+                        </div> */}
                         </RadioGroup>
                     </div>
                     {renderShapeInputs()}

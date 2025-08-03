@@ -174,6 +174,11 @@ export default {
         baseRadius: 'Base/Capital Radius',
         baseHeight: 'Base/Capital Height',
         breakAngle: 'Slice angle',
+        placement: {
+            label: 'Placement',
+            center: 'Center of a block',
+            corner: 'On the corner of 4 blocks',
+        }
     },
     arch: {
         archType: 'Arch Type',
@@ -314,5 +319,3 @@ export default {
     },
   },
 } as const;
-
-    

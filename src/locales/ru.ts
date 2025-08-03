@@ -174,6 +174,11 @@ export default {
         baseRadius: 'Радиус осн./капители',
         baseHeight: 'Высота осн./капители',
         breakAngle: 'Угол среза',
+        placement: {
+            label: 'Размещение',
+            center: 'По центру блока',
+            corner: 'На стыке 4 блоков',
+        }
     },
     arch: {
         archType: 'Тип арки',
@@ -314,5 +319,3 @@ export default {
     },
   },
 } as const;
-
-    
