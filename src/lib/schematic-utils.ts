@@ -611,116 +611,98 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
             }
             break;
         
-        case 'column': {
+        case 'column': { 
             const { 
                 radius: colRadius, 
-                height: colHeight, 
-                withBase,
-                withCapital,
-                brokenTop,
-                baseRadius: initialBaseRadius = Math.round(colRadius * 1.25),
-                baseHeight: initialBaseHeight = Math.max(1, Math.round(colRadius * 0.5)),
+                height: totalHeight,
+                withBase = false,
+                withCapital = false,
+                brokenTop = false,
                 breakAngle = 45,
             } = shape;
+
+            const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
+            const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
+            const capitalHeight = baseHeight; // Capital uses same dimensions as base
+
+            let finalBaseH = withBase ? baseHeight : 0;
+            let finalCapitalH = withCapital ? capitalHeight : 0;
+
+            if (finalBaseH + finalCapitalH > totalHeight) {
+                const partsH = finalBaseH + finalCapitalH;
+                finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
+                finalCapitalH = totalHeight - finalBaseH;
+            }
+            const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
             
-            const baseRadius = withBase || withCapital ? initialBaseRadius : colRadius;
-            const baseHeight = withBase || withCapital ? initialBaseHeight : 0;
-            const capitalHeight = withCapital ? baseHeight : 0;
+            const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
+            width = depth = maxRadius * 2;
+            height = totalHeight;
 
-            width = depth = Math.max(colRadius, baseRadius) * 2;
-            height = colHeight;
-            let currentHeight = 0;
-
-            const drawCylinder = (h: number, r: number, yOffset: number) => {
-                const center = (width - 1) / 2.0;
-                for (let y = 0; y < h; y++) {
-                    for (let z = 0; z < width; z++) {
-                        for (let x = 0; x < width; x++) {
-                            const dx = x - center;
-                            const dz = z - center;
-                            if (dx * dx + dz * dz <= r * r) {
-                                addVoxel(x, y + yOffset, z);
+            if (width <= 0 || height <= 0) {
+                xyziValues = [{x:0, y:0, z:0, i:2}];
+                width = height = depth = 0;
+                break;
+            }
+            
+            const generateFilledCylinder = (radius: number, cylinderHeight: number, yOffset: number) => {
+                const r2 = radius * radius;
+                const offsetX = Math.floor((width / 2) - radius);
+                const offsetZ = Math.floor((depth / 2) - radius);
+                
+                for (let y = 0; y < cylinderHeight; y++) {
+                    for (let z = 0; z < radius * 2; z++) {
+                        for (let x = 0; x < radius * 2; x++) {
+                            const dx = x - radius + 0.5;
+                            const dz = z - radius + 0.5;
+                            if (dx * dx + dz * dz <= r2) {
+                                addVoxel(x + offsetX, y + yOffset, z + offsetZ);
                             }
                         }
                     }
                 }
             };
-            
-            const drawDecorativeBase = (h: number, r: number, yOffset: number) => {
-                const center = (width - 1) / 2.0;
-                const step1H = Math.max(1, Math.floor(h * 0.4));
-                const step2H = Math.max(1, Math.floor(h * 0.6));
-                const step1R = r;
-                const step2R = r * 0.85;
 
-                // Bottom wider step
-                for (let y = 0; y < step1H; y++) {
-                    for (let x = 0; x < width; x++) {
-                         for (let z = 0; z < width; z++) {
-                            const dx = x - center;
-                            const dz = z - center;
-                            if (dx*dx + dz*dz <= step1R*step1R) addVoxel(x, y + yOffset, z);
-                        }
-                    }
-                }
-                 // Top narrower step
-                for (let y = 0; y < step2H; y++) {
-                     for (let x = 0; x < width; x++) {
-                         for (let z = 0; z < width; z++) {
-                            const dx = x - center;
-                            const dz = z - center;
-                            if (dx*dx + dz*dz <= step2R*step2R) addVoxel(x, y + yOffset + step1H, z);
-                        }
-                    }
-                }
-            };
-            
-            if (withBase) {
-                drawDecorativeBase(baseHeight, baseRadius, 0);
-                currentHeight += baseHeight;
+            if (withBase && finalBaseH > 0) {
+                generateFilledCylinder(baseRadius, finalBaseH, 0);
             }
 
-            const shaftHeight = colHeight - (withBase ? baseHeight : 0) - (withCapital ? capitalHeight : 0);
-            if (shaftHeight > 0) {
-                 const shaftCenter = (width - 1) / 2.0;
-                 for (let y = 0; y < shaftHeight; y++) {
-                     let sliceBroken = false;
-                     if (brokenTop) {
-                         const yFromTop = shaftHeight - y;
-                         const breakHeightStart = colRadius / Math.tan(breakAngle * Math.PI / 180);
-                         if (yFromTop <= breakHeightStart) {
-                             sliceBroken = true;
-                             const breakPlaneX = (yFromTop -1) * Math.tan(breakAngle * Math.PI / 180);
-                              for (let z = 0; z < width; z++) {
-                                 for (let x = 0; x < width; x++) {
-                                     const dx = x - shaftCenter;
-                                     const dz = z - shaftCenter;
-                                     if (dx * dx + dz * dz <= colRadius * colRadius) {
-                                         if(x > breakPlaneX) {
-                                             addVoxel(x, y + currentHeight, z);
-                                         }
-                                     }
-                                 }
+            if (finalShaftH > 0) {
+                 const shaftVoxels: {x:number, y:number, z:number}[] = [];
+                 const r2 = colRadius * colRadius;
+                 const offsetX = Math.floor((width / 2) - colRadius);
+                 const offsetZ = Math.floor((depth / 2) - colRadius);
+
+                 for (let y = 0; y < finalShaftH; y++) {
+                    for (let z = 0; z < colRadius * 2; z++) {
+                        for (let x = 0; x < colRadius * 2; x++) {
+                             const dx = x - colRadius + 0.5;
+                             const dz = z - colRadius + 0.5;
+                             if (dx * dx + dz * dz <= r2) {
+                                 shaftVoxels.push({ x: x + offsetX, y: y + finalBaseH, z: z + offsetZ });
                              }
-                         }
-                     }
-                     if (!sliceBroken) {
-                         for (let z = 0; z < width; z++) {
-                             for (let x = 0; x < width; x++) {
-                                 const dx = x - shaftCenter;
-                                 const dz = z - shaftCenter;
-                                 if (dx * dx + dz * dz <= colRadius * colRadius) {
-                                     addVoxel(x, y + currentHeight, z);
-                                 }
-                             }
-                         }
-                     }
+                        }
+                    }
                  }
-                 currentHeight += shaftHeight;
+                
+                if (brokenTop && !withCapital) {
+                    const tanAngle = Math.tan(breakAngle * Math.PI / 180);
+                    shaftVoxels.forEach(v => {
+                        const yFromShaftTop = (finalBaseH + finalShaftH - 1) - v.y;
+                        const xFromCenter = v.x - (width / 2);
+                        const breakPlane = yFromShaftTop * tanAngle;
+                        if (xFromCenter < breakPlane) {
+                           addVoxel(v.x, v.y, v.z);
+                        }
+                    });
+
+                } else {
+                     shaftVoxels.forEach(v => addVoxel(v.x, v.y, v.z));
+                }
             }
 
-            if(withCapital) {
-                 drawDecorativeBase(capitalHeight, baseRadius, currentHeight);
+            if (withCapital && finalCapitalH > 0) {
+                generateFilledCylinder(baseRadius, finalCapitalH, finalBaseH + finalShaftH);
             }
             break;
         }
@@ -990,6 +972,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
     const voxObject = {
         size: voxSize,
         xyzi: {
+            numVoxels: xyziValues.length,
             values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
         },
         rgba: {

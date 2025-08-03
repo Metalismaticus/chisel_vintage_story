@@ -54,7 +54,7 @@ export function VoxGenerator() {
     coneRadius: '16',
     coneHeight: '16',
     columnRadius: '8',
-    columnHeight: '16',
+    columnHeight: '64',
     baseRadius: '10',
     baseHeight: '4',
     breakAngle: '45',
