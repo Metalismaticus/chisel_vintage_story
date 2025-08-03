@@ -32,6 +32,7 @@ type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
 type CircularArchOrientation = 'top' | 'bottom';
+type ColumnStyle = 'simple' | 'decorative';
 
 
 type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
@@ -52,6 +53,8 @@ export type VoxShape =
         withCapital?: boolean,
         baseRadius?: number,
         baseHeight?: number,
+        baseStyle?: ColumnStyle,
+        capitalStyle?: ColumnStyle,
         brokenTop?: boolean,
         breakAngle?: number,
       }
@@ -617,13 +620,15 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
                 height: totalHeight,
                 withBase = false,
                 withCapital = false,
+                baseStyle = 'simple',
+                capitalStyle = 'simple',
                 brokenTop = false,
                 breakAngle = 45,
             } = shape;
 
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
             const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-            const capitalHeight = baseHeight; // Capital uses same dimensions as base
+            const capitalHeight = baseHeight; 
 
             let finalBaseH = withBase ? baseHeight : 0;
             let finalCapitalH = withCapital ? capitalHeight : 0;
@@ -640,73 +645,110 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
             height = totalHeight;
 
             if (width <= 0 || height <= 0) {
-                xyziValues = [{x:0, y:0, z:0, i:2}];
+                xyziValues = [];
                 width = height = depth = 0;
                 break;
             }
             
-            const generateFilledCylinder = (radius: number, cylinderHeight: number, yOffset: number) => {
+            const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle) => {
+                const voxels = [];
                 const r2 = radius * radius;
-                const offsetX = Math.floor((width / 2) - radius);
-                const offsetZ = Math.floor((depth / 2) - radius);
-                
-                for (let y = 0; y < cylinderHeight; y++) {
-                    for (let z = 0; z < radius * 2; z++) {
-                        for (let x = 0; x < radius * 2; x++) {
-                            const dx = x - radius + 0.5;
-                            const dz = z - radius + 0.5;
-                            if (dx * dx + dz * dz <= r2) {
-                                addVoxel(x + offsetX, y + yOffset, z + offsetZ);
+                 if (style === 'decorative' && cylinderHeight >= 4) {
+                    // Layer 1
+                    for (let y = 0; y < 2; y++) {
+                        for (let z = 0; z < radius * 2; z++) {
+                            for (let x = 0; x < radius * 2; x++) {
+                                const dx = x - radius + 0.5;
+                                const dz = z - radius + 0.5;
+                                if (dx * dx + dz * dz <= r2) {
+                                    voxels.push({ x, y, z });
+                                }
+                            }
+                        }
+                    }
+                     // Layer 2 (groove)
+                    const innerRadius = radius - 1;
+                    const innerR2 = innerRadius * innerRadius;
+                    for (let y = 2; y < 4; y++) {
+                        for (let z = 0; z < radius * 2; z++) {
+                            for (let x = 0; x < radius * 2; x++) {
+                                const dx = x - radius + 0.5;
+                                const dz = z - radius + 0.5;
+                                if (dx * dx + dz * dz <= innerR2) {
+                                    voxels.push({ x, y, z });
+                                }
+                            }
+                        }
+                    }
+                    // Layer 3 (rest)
+                     for (let y = 4; y < cylinderHeight; y++) {
+                        for (let z = 0; z < radius * 2; z++) {
+                            for (let x = 0; x < radius * 2; x++) {
+                                const dx = x - radius + 0.5;
+                                const dz = z - radius + 0.5;
+                                if (dx * dx + dz * dz <= r2) {
+                                    voxels.push({ x, y, z });
+                                }
+                            }
+                        }
+                    }
+                } else { // simple or not high enough for decoration
+                    for (let y = 0; y < cylinderHeight; y++) {
+                        for (let z = 0; z < radius * 2; z++) {
+                            for (let x = 0; x < radius * 2; x++) {
+                                const dx = x - radius + 0.5;
+                                const dz = z - radius + 0.5;
+                                if (dx * dx + dz * dz <= r2) {
+                                    voxels.push({ x, y, z });
+                                }
                             }
                         }
                     }
                 }
+                return voxels;
             };
 
             if (withBase && finalBaseH > 0) {
-                generateFilledCylinder(baseRadius, finalBaseH, 0);
+                const baseVoxels = generateCylinder(baseRadius, finalBaseH, baseStyle);
+                const offsetX = Math.floor((width / 2) - baseRadius);
+                const offsetZ = Math.floor((depth / 2) - baseRadius);
+                baseVoxels.forEach(v => addVoxel(v.x + offsetX, v.y, v.z + offsetZ));
             }
 
             if (finalShaftH > 0) {
-                 const shaftVoxels: {x:number, y:number, z:number}[] = [];
-                 const r2 = colRadius * colRadius;
+                 const shaftVoxels = generateCylinder(colRadius, finalShaftH, 'simple');
                  const offsetX = Math.floor((width / 2) - colRadius);
                  const offsetZ = Math.floor((depth / 2) - colRadius);
+                 const shaftStartY = finalBaseH;
 
-                 for (let y = 0; y < finalShaftH; y++) {
-                    for (let z = 0; z < colRadius * 2; z++) {
-                        for (let x = 0; x < colRadius * 2; x++) {
-                             const dx = x - colRadius + 0.5;
-                             const dz = z - colRadius + 0.5;
-                             if (dx * dx + dz * dz <= r2) {
-                                 shaftVoxels.push({ x: x + offsetX, y: y + finalBaseH, z: z + offsetZ });
-                             }
-                        }
-                    }
-                 }
-                
-                if (brokenTop && !withCapital) {
+                 if (brokenTop) {
                     const tanAngle = Math.tan(breakAngle * Math.PI / 180);
                     shaftVoxels.forEach(v => {
-                        const yFromShaftTop = (finalBaseH + finalShaftH - 1) - v.y;
-                        const xFromCenter = v.x - (width / 2);
-                        const breakPlane = yFromShaftTop * tanAngle;
-                        if (xFromCenter < breakPlane) {
-                           addVoxel(v.x, v.y, v.z);
+                        const yFromShaftTop = (finalShaftH - 1) - v.y;
+                        const xFromCenter = (v.x + offsetX) - (width / 2);
+                        const breakPlaneY = yFromShaftTop * tanAngle;
+
+                        if (xFromCenter < breakPlaneY) {
+                           addVoxel(v.x + offsetX, v.y + shaftStartY, v.z + offsetZ);
                         }
                     });
-
-                } else {
-                     shaftVoxels.forEach(v => addVoxel(v.x, v.y, v.z));
-                }
+                 } else {
+                    shaftVoxels.forEach(v => addVoxel(v.x + offsetX, v.y + shaftStartY, v.z + offsetZ));
+                 }
             }
-
+            
             if (withCapital && finalCapitalH > 0) {
-                generateFilledCylinder(baseRadius, finalCapitalH, finalBaseH + finalShaftH);
+                const capitalVoxels = generateCylinder(baseRadius, finalCapitalH, capitalStyle);
+                const offsetX = Math.floor((width / 2) - baseRadius);
+                const offsetZ = Math.floor((depth / 2) - baseRadius);
+                const capitalStartY = finalBaseH + finalShaftH;
+                capitalVoxels.forEach(v => {
+                    // Reverse Y for capital to have groove at the top
+                     addVoxel(v.x + offsetX, (capitalStartY + finalCapitalH - 1) - v.y, v.z + offsetZ)
+                });
             }
             break;
         }
-
         
         case 'cone':
             width = depth = shape.radius * 2;
@@ -972,7 +1014,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
     const voxObject = {
         size: voxSize,
         xyzi: {
-            numVoxels: xyziValues.length,
             values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
         },
         rgba: {

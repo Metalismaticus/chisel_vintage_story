@@ -37,6 +37,7 @@ type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart';
 type TextVoxMode = 'extrude' | 'engrave';
 type PixelArtVoxMode = 'extrude' | 'engrave';
 type ColumnPlacement = 'center' | 'corner';
+type ColumnStyle = 'simple' | 'decorative';
 
 export function VoxGenerator() {
   const t = useI18n();
@@ -82,6 +83,8 @@ export function VoxGenerator() {
   const [withCapital, setWithCapital] = useState(false);
   const [brokenTop, setBrokenTop] = useState(false);
   const [showCrashWarning, setShowCrashWarning] = useState(false);
+  const [baseStyle, setBaseStyle] = useState<ColumnStyle>('simple');
+  const [capitalStyle, setCapitalStyle] = useState<ColumnStyle>('simple');
 
 
   // Text state
@@ -377,7 +380,7 @@ export function VoxGenerator() {
            const breakAngle = brokenTop ? validateAndParse(dimensions.breakAngle, t('voxGenerator.column.breakAngle')) : undefined;
            if(brokenTop && breakAngle === null) return;
 
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, brokenTop, breakAngle };
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, breakAngle };
           break;
         }
         case 'cone': {
@@ -695,15 +698,35 @@ export function VoxGenerator() {
                         <Label htmlFor="with-capital" className={cn(brokenTop && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
                     </div>
                     {(withBase || withCapital) && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 pl-1">
-                            <div className="space-y-2">
-                                <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>
-                                <Input id="baseRadius" type="number" value={dimensions.baseRadius} onChange={e => handleDimensionChange('baseRadius', e.target.value)} placeholder="e.g. 10" />
+                        <div className="pt-2 pl-1 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>
+                                    <Input id="baseRadius" type="number" value={dimensions.baseRadius} onChange={e => handleDimensionChange('baseRadius', e.target.value)} placeholder="e.g. 10" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="baseHeight">{t('voxGenerator.column.baseHeight')}</Label>
+                                    <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 4" />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="baseHeight">{t('voxGenerator.column.baseHeight')}</Label>
-                                <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 4" />
-                            </div>
+                             {withBase && (
+                                <div className="space-y-2">
+                                    <Label>{t('voxGenerator.column.baseStyle')}</Label>
+                                    <RadioGroup value={baseStyle} onValueChange={(v) => setBaseStyle(v as ColumnStyle)} className="flex space-x-4">
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="simple" id="base-simple" /><Label htmlFor="base-simple">{t('voxGenerator.column.styles.simple')}</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="decorative" id="base-deco" /><Label htmlFor="base-deco">{t('voxGenerator.column.styles.decorative')}</Label></div>
+                                    </RadioGroup>
+                                </div>
+                            )}
+                             {withCapital && (
+                                <div className="space-y-2">
+                                    <Label>{t('voxGenerator.column.capitalStyle')}</Label>
+                                    <RadioGroup value={capitalStyle} onValueChange={(v) => setCapitalStyle(v as ColumnStyle)} className="flex space-x-4">
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="simple" id="cap-simple" /><Label htmlFor="cap-simple">{t('voxGenerator.column.styles.simple')}</Label></div>
+                                        <div className="flex items-center space-x-2"><RadioGroupItem value="decorative" id="cap-deco" /><Label htmlFor="cap-deco">{t('voxGenerator.column.styles.decorative')}</Label></div>
+                                    </RadioGroup>
+                                </div>
+                            )}
                         </div>
                     )}
                </div>
