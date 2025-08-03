@@ -48,7 +48,6 @@ export type VoxShape =
         type: 'column', 
         radius: number, 
         height: number,
-        placement: 'center' | 'corner',
         withBase?: boolean,
         withCapital?: boolean,
         baseRadius?: number,
@@ -546,7 +545,7 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 /**
  * Generates a .vox file for a given 3D shape using the vox-saver library.
  */
-export function voxToSchematic(shape: VoxShape): SchematicOutput {
+export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x:number, y:number, z:number} } {
     let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
     let width: number, height: number, depth: number;
     let name = `VOX Shape: ${shape.type}`;
@@ -616,96 +615,112 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const { 
                 radius: colRadius, 
                 height: colHeight, 
-                placement,
                 withBase,
                 withCapital,
                 brokenTop,
-                baseRadius = Math.round(colRadius * 1.25),
-                baseHeight = Math.max(1, Math.round(colRadius * 0.5)),
+                baseRadius: initialBaseRadius = Math.round(colRadius * 1.25),
+                baseHeight: initialBaseHeight = Math.max(1, Math.round(colRadius * 0.5)),
                 breakAngle = 45,
             } = shape;
             
-            const capitalHeight = baseHeight;
+            const baseRadius = withBase || withCapital ? initialBaseRadius : colRadius;
+            const baseHeight = withBase || withCapital ? initialBaseHeight : 0;
+            const capitalHeight = withCapital ? baseHeight : 0;
 
-            let currentHeight = 0;
             width = depth = Math.max(colRadius, baseRadius) * 2;
             height = colHeight;
-            
-            const drawCylinder = (h: number, r: number, yOffset: number, isShaft: boolean = false) => {
-                const cylinderWidth = r * 2;
-                const center = (cylinderWidth -1) / 2;
-                const totalWidthCenter = (width - 1) / 2;
-                const posOffset = totalWidthCenter - center;
-                
+            let currentHeight = 0;
+
+            const drawCylinder = (h: number, r: number, yOffset: number) => {
+                const center = (width - 1) / 2.0;
                 for (let y = 0; y < h; y++) {
-                    if (isShaft && brokenTop && y >= h - r * 2) {
-                        const angleRad = breakAngle * (Math.PI / 180);
-                        const planeY = y - (h - r * 2); 
-                        const planeX = (planeY / Math.tan(angleRad)); 
-                        
-                        for (let z = 0; z < cylinderWidth; z++) {
-                            for (let x = 0; x < cylinderWidth; x++) {
-                                const dx = x - center;
-                                const dz = z - center;
-                                if (dx * dx + dz * dz <= r * r) {
-                                     if(x < planeX) {
-                                         addVoxel(x + posOffset, y + yOffset, z + posOffset);
-                                     }
-                                }
-                            }
-                        }
-                    } else {
-                        for (let z = 0; z < cylinderWidth; z++) {
-                            for (let x = 0; x < cylinderWidth; x++) {
-                                const dx = x - center;
-                                const dz = z - center;
-                                if (dx * dx + dz * dz <= r * r) {
-                                    addVoxel(x + posOffset, y + yOffset, z + posOffset);
-                                }
+                    for (let z = 0; z < width; z++) {
+                        for (let x = 0; x < width; x++) {
+                            const dx = x - center;
+                            const dz = z - center;
+                            if (dx * dx + dz * dz <= r * r) {
+                                addVoxel(x, y + yOffset, z);
                             }
                         }
                     }
                 }
             };
             
-            const drawCornerCylinder = (h: number, r: number, yOffset: number) => {
-                 const discSlice: {x: number, z: number}[] = [];
-                 const modelR = r * 2;
+            const drawDecorativeBase = (h: number, r: number, yOffset: number) => {
+                const center = (width - 1) / 2.0;
+                const step1H = Math.max(1, Math.floor(h * 0.4));
+                const step2H = Math.max(1, Math.floor(h * 0.6));
+                const step1R = r;
+                const step2R = r * 0.85;
 
-                 for (let z = 0; z < modelR; z++) {
-                    for (let x = 0; x < modelR; x++) {
-                        const dx = x - r;
-                        const dz = z - r;
-                        if (dx * dx + dz * dz <= r * r) {
-                            discSlice.push({ x: x, z: z });
+                // Bottom wider step
+                for (let y = 0; y < step1H; y++) {
+                    for (let x = 0; x < width; x++) {
+                         for (let z = 0; z < width; z++) {
+                            const dx = x - center;
+                            const dz = z - center;
+                            if (dx*dx + dz*dz <= step1R*step1R) addVoxel(x, y + yOffset, z);
                         }
                     }
-                 }
-
-                 for (let y = 0; y < h; y++) {
-                    for (const voxel2D of discSlice) {
-                        addVoxel(voxel2D.x, y + yOffset, voxel2D.z);
+                }
+                 // Top narrower step
+                for (let y = 0; y < step2H; y++) {
+                     for (let x = 0; x < width; x++) {
+                         for (let z = 0; z < width; z++) {
+                            const dx = x - center;
+                            const dz = z - center;
+                            if (dx*dx + dz*dz <= step2R*step2R) addVoxel(x, y + yOffset + step1H, z);
+                        }
                     }
-                 }
-            }
+                }
+            };
             
-            if (placement === 'corner') {
-                 width = depth = colRadius * 2;
-                 height = colHeight;
-                 drawCornerCylinder(height, colRadius, 0);
-            } else { // 'center' placement
-                 if (withBase) {
-                    drawCylinder(baseHeight, baseRadius, 0);
-                    currentHeight += baseHeight;
-                }
-                const shaftHeight = colHeight - (withBase ? baseHeight : 0) - (withCapital ? capitalHeight : 0);
-                if (shaftHeight > 0) {
-                     drawCylinder(shaftHeight, colRadius, currentHeight, true);
-                     currentHeight += shaftHeight;
-                }
-                if(withCapital) {
-                    drawCylinder(capitalHeight, baseRadius, currentHeight);
-                }
+            if (withBase) {
+                drawDecorativeBase(baseHeight, baseRadius, 0);
+                currentHeight += baseHeight;
+            }
+
+            const shaftHeight = colHeight - (withBase ? baseHeight : 0) - (withCapital ? capitalHeight : 0);
+            if (shaftHeight > 0) {
+                 const shaftCenter = (width - 1) / 2.0;
+                 for (let y = 0; y < shaftHeight; y++) {
+                     let sliceBroken = false;
+                     if (brokenTop) {
+                         const yFromTop = shaftHeight - y;
+                         const breakHeightStart = colRadius / Math.tan(breakAngle * Math.PI / 180);
+                         if (yFromTop <= breakHeightStart) {
+                             sliceBroken = true;
+                             const breakPlaneX = (yFromTop -1) * Math.tan(breakAngle * Math.PI / 180);
+                              for (let z = 0; z < width; z++) {
+                                 for (let x = 0; x < width; x++) {
+                                     const dx = x - shaftCenter;
+                                     const dz = z - shaftCenter;
+                                     if (dx * dx + dz * dz <= colRadius * colRadius) {
+                                         if(x > breakPlaneX) {
+                                             addVoxel(x, y + currentHeight, z);
+                                         }
+                                     }
+                                 }
+                             }
+                         }
+                     }
+                     if (!sliceBroken) {
+                         for (let z = 0; z < width; z++) {
+                             for (let x = 0; x < width; x++) {
+                                 const dx = x - shaftCenter;
+                                 const dz = z - shaftCenter;
+                                 if (dx * dx + dz * dz <= colRadius * colRadius) {
+                                     addVoxel(x, y + currentHeight, z);
+                                 }
+                             }
+                         }
+                     }
+                 }
+                 currentHeight += shaftHeight;
+            }
+
+            if(withCapital) {
+                 drawDecorativeBase(capitalHeight, baseRadius, currentHeight);
             }
             break;
         }
@@ -970,8 +985,10 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
     palette[2] = { r: 10, g: 10, b: 10, a: 255 };
     palette[3] = { r: 100, g: 100, b: 100, a: 255 };
     
+    const voxSize = { x: width, y: depth, z: height };
+    
     const voxObject = {
-        size: { x: width, y: depth, z: height },
+        size: voxSize,
         xyzi: {
             values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
         },
@@ -990,6 +1007,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         pixels: [], // No 2D pixel preview for voxels
         isVox: true,
         voxData: buffer,
+        voxSize: voxSize,
     };
 }
 

@@ -78,7 +78,6 @@ export function VoxGenerator() {
   const [ringOrientation, setRingOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [archType, setArchType] = useState<'rectangular' | 'rounded' | 'circular'>('rectangular');
   const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
-  const [columnPlacement, setColumnPlacement] = useState<ColumnPlacement>('center');
   const [withBase, setWithBase] = useState(false);
   const [withCapital, setWithCapital] = useState(false);
   const [brokenTop, setBrokenTop] = useState(false);
@@ -129,7 +128,7 @@ export function VoxGenerator() {
   const checkForCrashRisk = useCallback((radiusStr: string, baseRadiusStr: string) => {
     const colR = parseInt(radiusStr, 10);
     const baseR = parseInt(baseRadiusStr, 10);
-    const isRisky = (colR > 0 && colR % 16 === 0) || ((withBase || withCapital) && baseR > 0 && baseR % 16 === 0);
+    const isRisky = (colR > 0 && colR % 8 === 0) || ((withBase || withCapital) && baseR > 0 && baseR % 8 === 0);
     setShowCrashWarning(isRisky);
   }, [withBase, withCapital]);
 
@@ -378,7 +377,7 @@ export function VoxGenerator() {
            const breakAngle = brokenTop ? validateAndParse(dimensions.breakAngle, t('voxGenerator.column.breakAngle')) : undefined;
            if(brokenTop && breakAngle === null) return;
 
-           shapeParams = { type: 'column', radius, height, placement: columnPlacement, withBase, withCapital, baseRadius, baseHeight, brokenTop, breakAngle };
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, brokenTop, breakAngle };
           break;
         }
         case 'cone': {
@@ -463,7 +462,7 @@ export function VoxGenerator() {
     try {
       const result: VoxOutput = await generateVoxFlow(shapeParams);
       const voxDataBytes = Buffer.from(result.voxData, 'base64');
-      setSchematicOutput({ ...result, voxData: voxDataBytes });
+      setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: (result as any).voxSize });
 
     } catch (error) {
        console.error(error);
@@ -668,31 +667,6 @@ export function VoxGenerator() {
       case 'column':
         return (
            <div className="space-y-4">
-            <div className="space-y-2">
-                <Label>{t('voxGenerator.column.placement.label')}</Label>
-                <RadioGroup value={columnPlacement} onValueChange={(v) => setColumnPlacement(v as ColumnPlacement)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
-                    <RadioGroupItem value="center" id="place-center" className="sr-only" />
-                    <Label 
-                        htmlFor="place-center"
-                        className={cn(
-                            "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
-                            columnPlacement === 'center' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
-                        )}
-                    >
-                        {t('voxGenerator.column.placement.center')}
-                    </Label>
-                    <RadioGroupItem value="corner" id="place-corner" className="sr-only" />
-                    <Label 
-                        htmlFor="place-corner"
-                        className={cn(
-                            "flex-1 text-center py-2 px-4 rounded-md cursor-pointer",
-                            columnPlacement === 'corner' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50'
-                        )}
-                    >
-                        {t('voxGenerator.column.placement.corner')}
-                    </Label>
-                </RadioGroup>
-            </div>
             {showCrashWarning && (
                 <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />

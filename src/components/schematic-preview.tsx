@@ -30,12 +30,16 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
   
   const getTotalBlocksText = () => {
-    if (!isVox || !schematicOutput) {
+    if (!isVox || !schematicOutput || !schematicOutput.voxData) {
       return null;
     }
-    const blocksX = Math.ceil(schematicOutput.width / BLOCK_SIZE);
-    const blocksY = Math.ceil(schematicOutput.height / BLOCK_SIZE);
-    const blocksZ = Math.ceil((schematicOutput.depth || 0) / BLOCK_SIZE);
+     // vox-saver uses y for depth, z for height.
+    const voxSize = (schematicOutput as any).voxSize;
+    if (!voxSize) return null;
+
+    const blocksX = Math.ceil(voxSize.x / BLOCK_SIZE);
+    const blocksY = Math.ceil(voxSize.z / BLOCK_SIZE); // height
+    const blocksZ = Math.ceil(voxSize.y / BLOCK_SIZE); // depth
 
     return (blocksX * blocksY * blocksZ).toLocaleString();
   };
