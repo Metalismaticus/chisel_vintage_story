@@ -241,6 +241,8 @@ export default {
       baseRadiusTooSmall: 'Радиус основания должен быть больше радиуса колонны.',
       noQrUrl: 'URL пуст',
       noQrUrlDesc: 'Пожалуйста, введите URL или текст для генерации QR-кода.',
+      crashWarningTitle: 'Возможен сбой игры',
+      crashWarningDesc: 'Размеры, кратные 16, могут вызывать проблемы с модом "Automatic Chiselling", приводящие к сбою. Используйте на свой страх и риск.',
     },
   },
   schematicPreview: {

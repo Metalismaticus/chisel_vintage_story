@@ -241,6 +241,8 @@ export default {
       baseRadiusTooSmall: 'Base radius must be larger than the column radius.',
       noQrUrl: 'URL is empty',
       noQrUrlDesc: 'Please enter a URL or text to generate a QR code.',
+      crashWarningTitle: 'Potential Game Crash',
+      crashWarningDesc: 'Sizes that are multiples of 16 can cause issues with the "Automatic Chiselling" mod, leading to a crash. Use at your own risk.',
     },
   },
   schematicPreview: {

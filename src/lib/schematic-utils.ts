@@ -53,7 +53,6 @@ export type VoxShape =
         withCapital?: boolean,
         baseRadius?: number,
         baseHeight?: number,
-        capitalHeight?: number,
         brokenTop?: boolean,
         breakAngle?: number,
       }
@@ -614,82 +613,103 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'column': {
-            const { radius: colRadius, height: colHeight, placement } = shape;
+            const { 
+                radius: colRadius, 
+                height: colHeight, 
+                placement,
+                withBase,
+                withCapital,
+                brokenTop,
+                baseRadius = Math.round(colRadius * 1.25),
+                baseHeight = Math.max(1, Math.round(colRadius * 0.5)),
+                breakAngle = 45,
+            } = shape;
+            
+            const capitalHeight = baseHeight;
 
-            if (placement === 'corner') {
-                // "Smart" algorithm based on extruding a disc
-                width = depth = colRadius * 2;
-                height = colHeight;
-                const centerX = (width - 1) / 2.0;
-                const centerZ = (depth - 1) / 2.0;
+            let currentHeight = 0;
+            width = depth = Math.max(colRadius, baseRadius) * 2;
+            height = colHeight;
+            
+            const drawCylinder = (h: number, r: number, yOffset: number, isShaft: boolean = false) => {
+                const cylinderWidth = r * 2;
+                const center = (cylinderWidth -1) / 2;
+                const totalWidthCenter = (width - 1) / 2;
+                const posOffset = totalWidthCenter - center;
                 
-                const discSlice: {x: number, z: number}[] = [];
-                for (let z = 0; z < depth; z++) {
-                    for (let x = 0; x < width; x++) {
-                        const dx = x - centerX;
-                        const dz = z - centerZ;
-                        if (dx * dx + dz * dz <= colRadius * colRadius) {
-                            discSlice.push({ x, z });
-                        }
-                    }
-                }
-                for (let y = 0; y < height; y++) {
-                    for (const voxel2D of discSlice) {
-                        addVoxel(voxel2D.x, y, voxel2D.z);
-                    }
-                }
-
-            } else { // 'center' placement - original algorithm
-                const { 
-                    withBase = false,
-                    withCapital = false,
-                    brokenTop = false,
-                } = shape;
-                
-                const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
-                const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-                const capitalHeight = shape.capitalHeight || baseHeight;
-
-                let currentHeight = 0;
-                width = depth = Math.max(colRadius, baseRadius) * 2;
-                height = colHeight;
-                const center = (width - 1) / 2.0;
-
-                const drawCylinder = (h: number, r: number, yOffset: number) => {
-                     for (let y = 0; y < h; y++) {
-                        for (let z = 0; z < width; z++) {
-                            for (let x = 0; x < width; x++) {
+                for (let y = 0; y < h; y++) {
+                    if (isShaft && brokenTop && y >= h - r * 2) {
+                        const angleRad = breakAngle * (Math.PI / 180);
+                        const planeY = y - (h - r * 2); 
+                        const planeX = (planeY / Math.tan(angleRad)); 
+                        
+                        for (let z = 0; z < cylinderWidth; z++) {
+                            for (let x = 0; x < cylinderWidth; x++) {
                                 const dx = x - center;
                                 const dz = z - center;
                                 if (dx * dx + dz * dz <= r * r) {
-                                    addVoxel(x, y + yOffset, z);
+                                     if(x < planeX) {
+                                         addVoxel(x + posOffset, y + yOffset, z + posOffset);
+                                     }
+                                }
+                            }
+                        }
+                    } else {
+                        for (let z = 0; z < cylinderWidth; z++) {
+                            for (let x = 0; x < cylinderWidth; x++) {
+                                const dx = x - center;
+                                const dz = z - center;
+                                if (dx * dx + dz * dz <= r * r) {
+                                    addVoxel(x + posOffset, y + yOffset, z + posOffset);
                                 }
                             }
                         }
                     }
                 }
-                
-                if (withBase) {
+            };
+            
+            const drawCornerCylinder = (h: number, r: number, yOffset: number) => {
+                 const discSlice: {x: number, z: number}[] = [];
+                 const modelR = r * 2;
+
+                 for (let z = 0; z < modelR; z++) {
+                    for (let x = 0; x < modelR; x++) {
+                        const dx = x - r;
+                        const dz = z - r;
+                        if (dx * dx + dz * dz <= r * r) {
+                            discSlice.push({ x: x, z: z });
+                        }
+                    }
+                 }
+
+                 for (let y = 0; y < h; y++) {
+                    for (const voxel2D of discSlice) {
+                        addVoxel(voxel2D.x, y + yOffset, voxel2D.z);
+                    }
+                 }
+            }
+            
+            if (placement === 'corner') {
+                 width = depth = colRadius * 2;
+                 height = colHeight;
+                 drawCornerCylinder(height, colRadius, 0);
+            } else { // 'center' placement
+                 if (withBase) {
                     drawCylinder(baseHeight, baseRadius, 0);
                     currentHeight += baseHeight;
                 }
-
                 const shaftHeight = colHeight - (withBase ? baseHeight : 0) - (withCapital ? capitalHeight : 0);
                 if (shaftHeight > 0) {
-                     drawCylinder(shaftHeight, colRadius, currentHeight);
+                     drawCylinder(shaftHeight, colRadius, currentHeight, true);
                      currentHeight += shaftHeight;
                 }
-                
                 if(withCapital) {
                     drawCylinder(capitalHeight, baseRadius, currentHeight);
-                }
-
-                if (brokenTop) {
-                    // This logic is complex and might need review from original implementation
                 }
             }
             break;
         }
+
         
         case 'cone':
             width = depth = shape.radius * 2;
