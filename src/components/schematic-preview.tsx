@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRef } from 'react';
@@ -12,7 +13,7 @@ import { useI18n } from '@/locales/client';
 import { VoxPreview } from './vox-preview';
 
 interface SchematicPreviewProps {
-  schematicOutput?: (SchematicOutput & { depth?: number; voxSize?: {x: number, y: number, z: number} }) | null;
+  schematicOutput?: SchematicOutput | null;
   loading: boolean;
 }
 
@@ -30,7 +31,15 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
   
   const getTotalBlocksText = () => {
-    if (!isVox || !schematicOutput || !schematicOutput.voxData || !schematicOutput.voxSize) {
+    if (!isVox || !schematicOutput) {
+      return null;
+    }
+    
+    if (schematicOutput.totalVoxels) {
+        return schematicOutput.totalVoxels.toLocaleString();
+    }
+    
+    if (!schematicOutput.voxData || !schematicOutput.voxSize) {
       return null;
     }
     const { voxSize } = schematicOutput;

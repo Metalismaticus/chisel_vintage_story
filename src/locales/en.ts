@@ -171,9 +171,11 @@ export default {
         withBase: 'Add base',
         withCapital: 'Add capital',
         brokenTop: 'Broken top',
+        withDebris: 'Add debris',
+        debrisLength: 'Debris length',
+        debrisHasCapital: 'Debris has capital',
         baseRadius: 'Base/Capital Radius',
         baseHeight: 'Base/Capital Height',
-        breakAngle: 'Slice angle',
         placement: {
             label: 'Placement',
             center: 'Center of a block',

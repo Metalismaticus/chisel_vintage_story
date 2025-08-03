@@ -171,9 +171,11 @@ export default {
         withBase: 'Добавить основание',
         withCapital: 'Добавить капитель',
         brokenTop: 'Сломанный верх',
+        withDebris: 'Добавить обломок',
+        debrisLength: 'Длина обломка',
+        debrisHasCapital: 'Обломок с капителью',
         baseRadius: 'Радиус осн./капители',
         baseHeight: 'Высота осн./капители',
-        breakAngle: 'Угол среза',
         placement: {
             label: 'Размещение',
             center: 'По центру блока',

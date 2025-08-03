@@ -37,7 +37,7 @@ type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart';
 type TextVoxMode = 'extrude' | 'engrave';
 type PixelArtVoxMode = 'extrude' | 'engrave';
 type ColumnPlacement = 'center' | 'corner';
-type ColumnStyle = 'simple' | 'decorative';
+export type ColumnStyle = 'simple' | 'decorative';
 
 export function VoxGenerator() {
   const t = useI18n();
@@ -69,6 +69,7 @@ export function VoxGenerator() {
     ringRadius: '16',
     ringThickness: '4',
     ringHeight: '4',
+    debrisLength: '16',
   });
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
@@ -84,6 +85,8 @@ export function VoxGenerator() {
   const [showCrashWarning, setShowCrashWarning] = useState(false);
   const [baseStyle, setBaseStyle] = useState<ColumnStyle>('simple');
   const [capitalStyle, setCapitalStyle] = useState<ColumnStyle>('simple');
+  const [withDebris, setWithDebris] = useState(false);
+  const [debrisHasCapital, setDebrisHasCapital] = useState(true);
 
 
   // Text state
@@ -265,7 +268,7 @@ export function VoxGenerator() {
 
         const result: TextToVoxOutput = await generateTextToVoxFlow(input);
         const voxDataBytes = Buffer.from(result.voxData, 'base64');
-        setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: (result as any).voxSize });
+        setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: result.voxSize });
 
     } catch (error) {
         console.error(error);
@@ -375,8 +378,11 @@ export function VoxGenerator() {
                 toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.column.baseRadius')}), description: t('voxGenerator.errors.baseRadiusTooSmall'), variant: "destructive" });
                 return;
            }
+            const debrisLen = withDebris && brokenTop ? validateAndParse(dimensions.debrisLength, t('voxGenerator.column.debrisLength')) : 0;
+            if (withDebris && brokenTop && debrisLen === null) return;
 
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop };
+
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLen, debrisHasCapital };
           break;
         }
         case 'cone': {
@@ -461,7 +467,7 @@ export function VoxGenerator() {
     try {
       const result: VoxOutput = await generateVoxFlow(shapeParams);
       const voxDataBytes = Buffer.from(result.voxData, 'base64');
-      setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: (result as any).voxSize });
+      setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: result.voxSize });
 
     } catch (error) {
        console.error(error);
@@ -690,12 +696,12 @@ export function VoxGenerator() {
                         <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
                     </div>
                      <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); if (checked) setBrokenTop(false); }} disabled={brokenTop} />
-                        <Label htmlFor="with-capital" className={cn(brokenTop && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
+                        <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); }}/>
+                        <Label htmlFor="with-capital">{t('voxGenerator.column.withCapital')}</Label>
                     </div>
                     {(withBase || withCapital) && (
-                        <div className="pt-2 pl-1 space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="pt-2 pl-1 space-y-4 border-l-2 border-primary/20 ml-2">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>
                                     <Input id="baseRadius" type="number" value={dimensions.baseRadius} onChange={e => handleDimensionChange('baseRadius', e.target.value)} placeholder="e.g. 10" />
@@ -706,7 +712,7 @@ export function VoxGenerator() {
                                 </div>
                             </div>
                              {withBase && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 pl-4">
                                     <Label>{t('voxGenerator.column.baseStyle')}</Label>
                                     <RadioGroup value={baseStyle} onValueChange={(v) => setBaseStyle(v as ColumnStyle)} className="flex space-x-4">
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="simple" id="base-simple" /><Label htmlFor="base-simple">{t('voxGenerator.column.styles.simple')}</Label></div>
@@ -715,7 +721,7 @@ export function VoxGenerator() {
                                 </div>
                             )}
                              {withCapital && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 pl-4">
                                     <Label>{t('voxGenerator.column.capitalStyle')}</Label>
                                     <RadioGroup value={capitalStyle} onValueChange={(v) => setCapitalStyle(v as ColumnStyle)} className="flex space-x-4">
                                         <div className="flex items-center space-x-2"><RadioGroupItem value="simple" id="cap-simple" /><Label htmlFor="cap-simple">{t('voxGenerator.column.styles.simple')}</Label></div>
@@ -728,9 +734,29 @@ export function VoxGenerator() {
                </div>
                 <div className="space-y-2">
                     <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="broken-top" checked={brokenTop} onCheckedChange={(checked) => { setBrokenTop(checked); if (checked) setWithCapital(false); }} disabled={withCapital}/>
-                        <Label htmlFor="broken-top" className={cn(withCapital && "text-muted-foreground")}>{t('voxGenerator.column.brokenTop')}</Label>
+                        <Switch id="broken-top" checked={brokenTop} onCheckedChange={setBrokenTop}/>
+                        <Label htmlFor="broken-top" >{t('voxGenerator.column.brokenTop')}</Label>
                     </div>
+                     {brokenTop && (
+                         <div className="pt-2 pl-1 space-y-4 border-l-2 border-primary/20 ml-2">
+                             <div className="flex items-center space-x-2 pl-4">
+                                <Switch id="with-debris" checked={withDebris} onCheckedChange={setWithDebris} />
+                                <Label htmlFor="with-debris">{t('voxGenerator.column.withDebris')}</Label>
+                            </div>
+                            {withDebris && (
+                                <div className="space-y-4 pl-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="debrisLength">{t('voxGenerator.column.debrisLength')}</Label>
+                                        <Input id="debrisLength" type="number" value={dimensions.debrisLength} onChange={e => handleDimensionChange('debrisLength', e.target.value)} placeholder="e.g. 16" />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch id="debris-has-capital" checked={debrisHasCapital} onCheckedChange={setDebrisHasCapital} />
+                                        <Label htmlFor="debris-has-capital">{t('voxGenerator.column.debrisHasCapital')}</Label>
+                                    </div>
+                                </div>
+                            )}
+                         </div>
+                     )}
                </div>
             </div>
           </div>
