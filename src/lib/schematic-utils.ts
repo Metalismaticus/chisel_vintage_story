@@ -32,7 +32,7 @@ type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
 type CircularArchOrientation = 'top' | 'bottom';
-type ColumnStyle = 'simple' | 'decorative';
+export type ColumnStyle = 'simple' | 'decorative';
 
 
 type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
@@ -651,56 +651,26 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
             }
             
             const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle) => {
-                const voxels = [];
-                const r2 = radius * radius;
-                 if (style === 'decorative' && cylinderHeight >= 4) {
-                    // Layer 1
-                    for (let y = 0; y < 2; y++) {
-                        for (let z = 0; z < radius * 2; z++) {
-                            for (let x = 0; x < radius * 2; x++) {
-                                const dx = x - radius + 0.5;
-                                const dz = z - radius + 0.5;
-                                if (dx * dx + dz * dz <= r2) {
-                                    voxels.push({ x, y, z });
-                                }
-                            }
+                const voxels: {x: number, y: number, z: number}[] = [];
+                
+                for (let y = 0; y < cylinderHeight; y++) {
+                    let currentRadius = radius;
+                    if (style === 'decorative' && radius > 1) {
+                         // Create a repeating 4-pixel pattern: 2px normal, 2px inset
+                        const patternStep = y % 4;
+                        if (patternStep === 2 || patternStep === 3) {
+                            currentRadius = radius - 1;
                         }
                     }
-                     // Layer 2 (groove)
-                    const innerRadius = radius - 1;
-                    const innerR2 = innerRadius * innerRadius;
-                    for (let y = 2; y < 4; y++) {
-                        for (let z = 0; z < radius * 2; z++) {
-                            for (let x = 0; x < radius * 2; x++) {
-                                const dx = x - radius + 0.5;
-                                const dz = z - radius + 0.5;
-                                if (dx * dx + dz * dz <= innerR2) {
-                                    voxels.push({ x, y, z });
-                                }
-                            }
-                        }
-                    }
-                    // Layer 3 (rest)
-                     for (let y = 4; y < cylinderHeight; y++) {
-                        for (let z = 0; z < radius * 2; z++) {
-                            for (let x = 0; x < radius * 2; x++) {
-                                const dx = x - radius + 0.5;
-                                const dz = z - radius + 0.5;
-                                if (dx * dx + dz * dz <= r2) {
-                                    voxels.push({ x, y, z });
-                                }
-                            }
-                        }
-                    }
-                } else { // simple or not high enough for decoration
-                    for (let y = 0; y < cylinderHeight; y++) {
-                        for (let z = 0; z < radius * 2; z++) {
-                            for (let x = 0; x < radius * 2; x++) {
-                                const dx = x - radius + 0.5;
-                                const dz = z - radius + 0.5;
-                                if (dx * dx + dz * dz <= r2) {
-                                    voxels.push({ x, y, z });
-                                }
+                    const r2 = currentRadius * currentRadius;
+                    const center = radius; 
+                    
+                    for (let z = 0; z < radius * 2; z++) {
+                        for (let x = 0; x < radius * 2; x++) {
+                            const dx = x - center + 0.5;
+                            const dz = z - center + 0.5;
+                            if (dx * dx + dz * dz <= r2) {
+                                voxels.push({ x, y, z });
                             }
                         }
                     }
@@ -725,7 +695,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput & { voxSize: {x
                     const tanAngle = Math.tan(breakAngle * Math.PI / 180);
                     shaftVoxels.forEach(v => {
                         const yFromShaftTop = (finalShaftH - 1) - v.y;
-                        const xFromCenter = (v.x + offsetX) - (width / 2);
+                        const xFromCenter = (v.x) - (colRadius - 0.5);
                         const breakPlaneY = yFromShaftTop * tanAngle;
 
                         if (xFromCenter < breakPlaneY) {
