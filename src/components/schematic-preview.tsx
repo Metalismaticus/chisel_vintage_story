@@ -12,7 +12,7 @@ import { useI18n } from '@/locales/client';
 import { VoxPreview } from './vox-preview';
 
 interface SchematicPreviewProps {
-  schematicOutput?: (SchematicOutput & { depth?: number }) | null;
+  schematicOutput?: (SchematicOutput & { depth?: number; voxSize?: {x: number, y: number, z: number} }) | null;
   loading: boolean;
 }
 
@@ -30,13 +30,12 @@ export function SchematicPreview({ schematicOutput, loading }: SchematicPreviewP
   const isScaled = schematicOutput && (schematicOutput.originalWidth || schematicOutput.originalHeight) && (schematicOutput.width !== schematicOutput.originalWidth || schematicOutput.height !== schematicOutput.originalHeight);
   
   const getTotalBlocksText = () => {
-    if (!isVox || !schematicOutput || !schematicOutput.voxData) {
+    if (!isVox || !schematicOutput || !schematicOutput.voxData || !schematicOutput.voxSize) {
       return null;
     }
-     // vox-saver uses y for depth, z for height.
-    const voxSize = (schematicOutput as any).voxSize;
-    if (!voxSize) return null;
+    const { voxSize } = schematicOutput;
 
+    // vox-saver uses y for depth, z for height.
     const blocksX = Math.ceil(voxSize.x / BLOCK_SIZE);
     const blocksY = Math.ceil(voxSize.z / BLOCK_SIZE); // height
     const blocksZ = Math.ceil(voxSize.y / BLOCK_SIZE); // depth
