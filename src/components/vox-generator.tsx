@@ -13,8 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
-import { generateTextToVoxFlow, type TextToVoxInput } from '@/ai/flows/text-to-vox-flow';
-import { generatePixelArtToVoxFlow, type PixelArtToVoxInput } from '@/ai/flows/pixelart-to-vox-flow';
+import { generateTextToVoxFlow, type TextToVoxInput, type TextToVoxOutput } from '@/ai/flows/text-to-vox-flow';
+import { generatePixelArtToVoxFlow, type PixelArtToVoxInput, type PixelArtToVoxOutput } from '@/ai/flows/pixelart-to-vox-flow';
 import { Loader2, Upload, QrCode, HelpCircle, UploadCloud, X, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -263,9 +263,9 @@ export function VoxGenerator() {
             stickerMode: textStickerMode,
         };
 
-        const result = await generateTextToVoxFlow(input);
+        const result: TextToVoxOutput = await generateTextToVoxFlow(input);
         const voxDataBytes = Buffer.from(result.voxData, 'base64');
-        setSchematicOutput({ ...result, voxData: voxDataBytes });
+        setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: (result as any).voxSize });
 
     } catch (error) {
         console.error(error);
@@ -317,7 +317,7 @@ export function VoxGenerator() {
 
       const result = await generateVoxFlow(shapeParams);
       const voxDataBytes = Buffer.from(result.voxData, 'base64');
-      setSchematicOutput({ ...result, voxData: voxDataBytes });
+      setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: (result as any).voxSize });
 
     } catch (error) {
        console.error(error);
@@ -515,9 +515,9 @@ export function VoxGenerator() {
             };
 
             try {
-              const result = await generatePixelArtToVoxFlow(input);
+              const result: PixelArtToVoxOutput = await generatePixelArtToVoxFlow(input);
               const voxDataBytes = Buffer.from(result.voxData, 'base64');
-              setSchematicOutput({ ...result, voxData: voxDataBytes });
+              setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: (result as any).voxSize });
             } catch (flowError) {
                toast({
                 title: t('common.errors.generationFailed'),
