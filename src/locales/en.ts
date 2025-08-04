@@ -176,6 +176,8 @@ export default {
         debrisHasCapital: 'Debris has capital',
         baseRadius: 'Base/Capital Radius',
         baseHeight: 'Base/Capital Height',
+        breakAngleX: 'Break Angle X',
+        breakAngleZ: 'Break Angle Z',
         placement: {
             label: 'Placement',
             center: 'Center of a block',
@@ -329,3 +331,5 @@ export default {
     },
   },
 } as const;
+
+    

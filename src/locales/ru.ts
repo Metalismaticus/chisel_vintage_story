@@ -176,6 +176,8 @@ export default {
         debrisHasCapital: 'Обломок с капителью',
         baseRadius: 'Радиус осн./капители',
         baseHeight: 'Высота осн./капители',
+        breakAngleX: 'Наклон по оси X',
+        breakAngleZ: 'Наклон по оси Z',
         placement: {
             label: 'Размещение',
             center: 'По центру блока',
@@ -329,3 +331,5 @@ export default {
     },
   },
 } as const;
+
+    

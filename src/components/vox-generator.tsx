@@ -86,6 +86,8 @@ export function VoxGenerator() {
   const [baseStyle, setBaseStyle] = useState<ColumnStyle>('simple');
   const [capitalStyle, setCapitalStyle] = useState<ColumnStyle>('simple');
   const [withDebris, setWithDebris] = useState(false);
+  const [breakAngleX, setBreakAngleX] = useState(20);
+  const [breakAngleZ, setBreakAngleZ] = useState(-15);
 
 
   // Text state
@@ -381,7 +383,7 @@ export function VoxGenerator() {
             if (withDebris && brokenTop && debrisLen === null) return;
 
 
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLen };
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLen, breakAngleX, breakAngleZ };
           break;
         }
         case 'cone': {
@@ -738,6 +740,14 @@ export function VoxGenerator() {
                     </div>
                      {brokenTop && (
                          <div className="pt-2 pl-1 space-y-4 border-l-2 border-primary/20 ml-2">
+                            <div className="space-y-2 pl-4">
+                                <Label htmlFor="breakAngleX">{t('voxGenerator.column.breakAngleX')}: {breakAngleX}°</Label>
+                                <Slider id="breakAngleX" min={-45} max={45} step={1} value={[breakAngleX]} onValueChange={(v) => setBreakAngleX(v[0])} />
+                            </div>
+                             <div className="space-y-2 pl-4">
+                                <Label htmlFor="breakAngleZ">{t('voxGenerator.column.breakAngleZ')}: {breakAngleZ}°</Label>
+                                <Slider id="breakAngleZ" min={-45} max={45} step={1} value={[breakAngleZ]} onValueChange={(v) => setBreakAngleZ(v[0])} />
+                            </div>
                              <div className="flex items-center space-x-2 pl-4">
                                 <Switch id="with-debris" checked={withDebris} onCheckedChange={setWithDebris} />
                                 <Label htmlFor="with-debris">{t('voxGenerator.column.withDebris')}</Label>
@@ -1385,3 +1395,6 @@ export function VoxGenerator() {
   );
 }
 
+
+
+    
