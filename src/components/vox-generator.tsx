@@ -86,7 +86,6 @@ export function VoxGenerator() {
   const [baseStyle, setBaseStyle] = useState<ColumnStyle>('simple');
   const [capitalStyle, setCapitalStyle] = useState<ColumnStyle>('simple');
   const [withDebris, setWithDebris] = useState(false);
-  const [debrisHasCapital, setDebrisHasCapital] = useState(true);
 
 
   // Text state
@@ -382,7 +381,7 @@ export function VoxGenerator() {
             if (withDebris && brokenTop && debrisLen === null) return;
 
 
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLen, debrisHasCapital };
+           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLen };
           break;
         }
         case 'cone': {
@@ -696,8 +695,8 @@ export function VoxGenerator() {
                         <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
                     </div>
                      <div className="flex items-center space-x-2 pt-2">
-                        <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); }}/>
-                        <Label htmlFor="with-capital">{t('voxGenerator.column.withCapital')}</Label>
+                        <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); }} disabled={brokenTop && !withDebris}/>
+                        <Label htmlFor="with-capital" className={cn(brokenTop && !withDebris && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
                     </div>
                     {(withBase || withCapital) && (
                         <div className="pt-2 pl-1 space-y-4 border-l-2 border-primary/20 ml-2">
@@ -748,10 +747,6 @@ export function VoxGenerator() {
                                     <div className="space-y-2">
                                         <Label htmlFor="debrisLength">{t('voxGenerator.column.debrisLength')}</Label>
                                         <Input id="debrisLength" type="number" value={dimensions.debrisLength} onChange={e => handleDimensionChange('debrisLength', e.target.value)} placeholder="e.g. 16" />
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <Switch id="debris-has-capital" checked={debrisHasCapital} onCheckedChange={setDebrisHasCapital} />
-                                        <Label htmlFor="debris-has-capital">{t('voxGenerator.column.debrisHasCapital')}</Label>
                                     </div>
                                 </div>
                             )}
@@ -1389,3 +1384,4 @@ export function VoxGenerator() {
     </div>
   );
 }
+
