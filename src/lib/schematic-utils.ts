@@ -631,9 +631,10 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 brokenTop = false,
                 withDebris = false,
                 debrisLength = 16,
-                breakAngleX = 20,
-                breakAngleZ = -15,
             } = shape;
+
+            const breakAngleX = brokenTop ? (shape.breakAngleX ?? (Math.random() * 60 - 30)) : 0;
+            const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? (Math.random() * 60 - 30)) : 0;
 
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
             const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
@@ -674,9 +675,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                  for (let y = 0; y < cylinderHeight; y++) {
                     let currentRadius = radius;
                     if (style === 'decorative' && radius > 1) {
-                         const patternStep = y % 4;
+                        const patternStep = y % 4;
                         if (patternStep === 1 || patternStep === 2) { 
-                            currentRadius = radius - 1;
+                             currentRadius = radius - 1;
                         }
                     }
                     const currentR2 = currentRadius * currentRadius;
@@ -697,6 +698,12 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const tanX = brokenTop ? Math.tan(breakAngleX * Math.PI / 180) : 0;
             const tanZ = brokenTop ? Math.tan(breakAngleZ * Math.PI / 180) : 0;
             
+            // Standing Column Part
+            let standingShaftHeight = finalShaftH;
+            if (brokenTop && withDebris && withCapital) {
+                 standingShaftHeight += finalCapitalH;
+            }
+
             if (withBase && finalBaseH > 0) {
                 const baseVoxels = generateCylinder(baseRadius, finalBaseH, baseStyle);
                 const offsetX = Math.floor((mainColWidth / 2) - baseRadius);
@@ -704,8 +711,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 baseVoxels.forEach(v => addVoxel(v.x + offsetX, v.y, v.z + offsetZ));
             }
             
-            if (finalShaftH > 0) {
-                 const shaftVoxels = generateCylinder(colRadius, finalShaftH, 'simple');
+            if (standingShaftHeight > 0) {
+                 const shaftVoxels = generateCylinder(colRadius, standingShaftHeight, 'simple');
                  const offsetX = Math.floor((mainColWidth / 2) - colRadius);
                  const offsetZ = Math.floor((depth / 2) - colRadius);
                  const shaftStartY = finalBaseH;
@@ -734,6 +741,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 });
             }
 
+            // Debris Part
             if (brokenTop && withDebris && debrisLength > 0) {
                  const debrisHasCapital = hasCapital;
                  let debrisCapitalH = debrisHasCapital ? capitalHeight : 0;
@@ -745,6 +753,28 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 
                  let currentDebrisLength = 0;
 
+                 if (debrisShaftH > 0) {
+                    const shaftVoxels = generateCylinder(colRadius, debrisShaftH, 'simple');
+                    shaftVoxels.forEach(v => {
+                        const xFromCenter = v.x - colRadius + 0.5;
+                        const zFromCenter = v.z - colRadius + 0.5;
+                        const breakPlaneY = finalShaftH - (xFromCenter * tanX + zFromCenter * tanZ);
+                        
+                        if (v.y + finalShaftH > breakPlaneY) {
+                            const rotatedX = v.y + currentDebrisLength;
+                            const rotatedY = v.x;
+                            const rotatedZ = v.z;
+
+                            addVoxel(
+                                rotatedX + debrisOffsetX, 
+                                rotatedY,
+                                rotatedZ + Math.floor((depth / 2) - colRadius)
+                            );
+                        }
+                    });
+                    currentDebrisLength += debrisShaftH;
+                 }
+                 
                  if (debrisHasCapital && debrisCapitalH > 0) {
                     const capVoxels = generateCylinder(baseRadius, debrisCapitalH, capitalStyle);
                      capVoxels.forEach(v => {
@@ -757,28 +787,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                             rotatedY, 
                             rotatedZ + Math.floor((depth / 2) - baseRadius)
                         );
-                    });
-                    currentDebrisLength += debrisCapitalH;
-                 }
-                 
-                 if (debrisShaftH > 0) {
-                    const shaftVoxels = generateCylinder(colRadius, debrisShaftH, 'simple');
-                    shaftVoxels.forEach(v => {
-                        const xFromCenter = v.x - colRadius + 0.5;
-                        const zFromCenter = v.z - colRadius + 0.5;
-                        const breakPlaneY = - (xFromCenter * tanX + zFromCenter * tanZ);
-                        
-                        if(v.y > breakPlaneY) {
-                            const rotatedX = v.y + currentDebrisLength;
-                            const rotatedY = v.x;
-                            const rotatedZ = v.z;
-
-                            addVoxel(
-                                rotatedX + debrisOffsetX, 
-                                rotatedY,
-                                rotatedZ + Math.floor((depth / 2) - colRadius)
-                            );
-                        }
                     });
                  }
             }
