@@ -1,6 +1,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -113,70 +114,101 @@ const TINY_FONT_DATA: { [char: string]: string[] } = {
   '_': ['   ', '   ', '   ', '   ', '███'], '-': ['   ', '   ', '███', '   ', '   '], '+': ['   ', ' █ ', '███', ' █ ', '   '],
 };
 
-export async function rasterizePixelText(text: string): Promise<{ pixels: boolean[], width: number, height: number }> {
-    const lines = text.toUpperCase().split('\n');
+export async function rasterizePixelText(text: string, maxWidth?: number): Promise<{ pixels: boolean[], width: number, height: number }> {
     const FONT_HEIGHT = 5;
-    const FONT_WIDTH = 3;
-    const FONT_SPACING = 1;
+    const CHAR_SPACING = 1;
 
-    let maxWidth = 0;
-    const linePixels: boolean[][] = [];
+    const getCharData = (char: string) => TINY_FONT_DATA[char.toUpperCase()] || TINY_FONT_DATA['?'];
+    const getCharWidth = (char: string) => (getCharData(char)[0] || '').length;
+
+    let wrappedText = text;
+    if (maxWidth) {
+        const lines = text.split('\n');
+        const newLines: string[] = [];
+        for (const line of lines) {
+            let currentLine = '';
+            let currentLineWidth = 0;
+            const words = line.split(' ');
+
+            for (let i = 0; i < words.length; i++) {
+                const word = words[i];
+                const wordWidth = word.split('').reduce((acc, char) => acc + getCharWidth(char) + CHAR_SPACING, -CHAR_SPACING);
+
+                if (currentLineWidth > 0 && currentLineWidth + wordWidth > maxWidth) {
+                    newLines.push(currentLine);
+                    currentLine = '';
+                    currentLineWidth = 0;
+                }
+                
+                currentLine += (currentLineWidth > 0 ? ' ' : '') + word;
+                currentLineWidth += (currentLineWidth > 0 ? getCharWidth(' ') + CHAR_SPACING : 0) + wordWidth;
+            }
+            if (currentLine) {
+                newLines.push(currentLine);
+            }
+        }
+        wrappedText = newLines.join('\n');
+    }
+
+    const lines = wrappedText.split('\n');
+    let finalMaxWidth = 0;
+    const linePixelData: boolean[][] = [];
 
     for (const line of lines) {
-        const linePixelData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
+        const lineData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
         let currentLineWidth = 0;
         for (const char of line) {
-            const charData = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
-            const charWidth = charData[0].length;
+            const charData = getCharData(char);
+            const charWidth = getCharWidth(char);
             for (let y = 0; y < FONT_HEIGHT; y++) {
                 for (let x = 0; x < charWidth; x++) {
-                    linePixelData[y].push(charData[y][x] === '█');
+                    lineData[y].push(charData[y][x] === '█');
                 }
-                // Add spacing
-                if (FONT_SPACING > 0) {
-                   for (let s = 0; s < FONT_SPACING; s++) linePixelData[y].push(false);
+                if (CHAR_SPACING > 0) {
+                    for (let s = 0; s < CHAR_SPACING; s++) lineData[y].push(false);
                 }
             }
-            currentLineWidth += charWidth + FONT_SPACING;
+            currentLineWidth += charWidth + CHAR_SPACING;
         }
-        if (currentLineWidth > maxWidth) {
-            maxWidth = currentLineWidth;
+        if (currentLineWidth > finalMaxWidth) {
+            finalMaxWidth = currentLineWidth;
         }
-        linePixels.push(...linePixelData.flat());
+        linePixelData.push(...lineData);
     }
-    
-    const totalHeight = lines.length * FONT_HEIGHT + (lines.length - 1); // with line breaks
+
+    const finalHeight = lines.length * FONT_HEIGHT + (lines.length > 1 ? lines.length -1 : 0);
     const finalPixels: boolean[] = [];
 
-     for (let l = 0; l < lines.length; l++) {
-        const line = lines[l].toUpperCase();
-        for (let y = 0; y < FONT_HEIGHT; y++) {
-            let line_has_pixel = false;
-            for (let x = 0; x < maxWidth; x++) {
-                let char_pixel = false;
-                let current_x = 0;
-                for (const char of line) {
-                    const charData = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
-                    const charWidth = charData[0].length;
-                    if (x >= current_x && x < current_x + charWidth) {
-                       char_pixel = charData[y][x - current_x] === '█';
-                    }
-                    current_x += charWidth + FONT_SPACING;
+    let lineY = 0;
+    for(const line of lines) {
+        const lineData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
+         let currentX = 0;
+         for (const char of line) {
+             const charData = getCharData(char);
+             const charWidth = getCharWidth(char);
+              for (let y = 0; y < FONT_HEIGHT; y++) {
+                for (let x = 0; x < charWidth; x++) {
+                    lineData[y][currentX + x] = charData[y][x] === '█';
                 }
-                finalPixels.push(char_pixel);
-                if (char_pixel) line_has_pixel = true;
-            }
+              }
+            currentX += charWidth + CHAR_SPACING;
         }
-        // Add line break
-        if (l < lines.length - 1) {
-            for (let x = 0; x < maxWidth; x++) {
-                finalPixels.push(false);
-            }
+        
+        for (let y = 0; y < FONT_HEIGHT; y++) {
+             for (let x = 0; x < finalMaxWidth; x++) {
+                 finalPixels.push(lineData[y][x] || false);
+             }
         }
+
+        if (lineY < lines.length - 1) {
+             for (let x = 0; x < finalMaxWidth; x++) {
+                 finalPixels.push(false);
+             }
+        }
+        lineY++;
     }
 
-
-    return { pixels: finalPixels, width: maxWidth, height: totalHeight };
+    return { pixels: finalPixels, width: finalMaxWidth, height: finalHeight };
 }
 
 export async function rasterizeText({
@@ -722,8 +754,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? 0) : 0;
 
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
-            const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-            const capitalHeight = baseHeight;
+            let baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
+            let capitalHeight = baseHeight;
             const debrisLength = shape.debrisLength || 0;
             
             let finalBaseH = withBase ? baseHeight : 0;
@@ -908,37 +940,37 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
 
             // Debris Part
-            if (brokenTop && withDebris && debrisLength > 0) {
+             if (brokenTop && withDebris && debrisLength > 0) {
                 let debrisCapitalH = withCapital ? capitalHeight : 0;
                 let debrisShaftH = debrisLength - debrisCapitalH;
-                 if (debrisShaftH < 0) {
-                     debrisCapitalH = debrisLength;
-                     debrisShaftH = 0;
-                 }
+                if (debrisShaftH < 0) {
+                    debrisCapitalH = debrisLength;
+                    debrisShaftH = 0;
+                }
                 
                 const debrisVoxels: {x: number, y: number, z: number}[] = [];
 
-                if (debrisShaftH > 0) {
-                    const shaftVoxels = generateCylinder(colRadius, debrisShaftH, 'simple');
-                    shaftVoxels.forEach(v => {
-                        const xFromCenter = v.x - colRadius + 0.5;
-                        const zFromCenter = v.z - colRadius + 0.5;
-                        const breakPlaneY = finalShaftH - (xFromCenter * tanX + zFromCenter * tanZ);
-                        if (finalShaftH + v.y > breakPlaneY) {
-                            debrisVoxels.push({x: v.x, y: v.y, z: v.z });
-                        }
-                    });
-                }
-                
                 if (withCapital && debrisCapitalH > 0) {
                     const capitalVoxels = (capitalStyle === 'ionic') 
                         ? generateIonicCapital(debrisCapitalH, colRadius, baseRadius)
                         : generateCylinder(baseRadius, debrisCapitalH, capitalStyle);
                     
                     const capOffsetX = Math.floor(baseRadius - colRadius);
-
                     capitalVoxels.forEach(v => {
-                        debrisVoxels.push({x: v.x - capOffsetX, y: v.y + debrisShaftH, z: v.z - capOffsetX});
+                        debrisVoxels.push({x: v.x - capOffsetX, y: v.y, z: v.z - capOffsetX});
+                    });
+                }
+                
+                if (debrisShaftH > 0) {
+                    const shaftVoxels = generateCylinder(colRadius, debrisShaftH, 'simple');
+                    shaftVoxels.forEach(v => {
+                        const xFromCenter = v.x - colRadius + 0.5;
+                        const zFromCenter = v.z - colRadius + 0.5;
+                        const breakPlaneY = finalShaftH - (xFromCenter * tanX + zFromCenter * tanZ);
+                        // We want the part of the shaft that is *above* the break plane
+                        if (finalShaftH + v.y >= breakPlaneY) {
+                            debrisVoxels.push({x: v.x, y: v.y + debrisCapitalH, z: v.z });
+                        }
                     });
                 }
                 
@@ -1252,3 +1284,4 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+

@@ -622,7 +622,7 @@ export function VoxGenerator() {
         const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
 
         // Process Text
-        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText(signText);
+        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText(signText, contentWidth);
 
         const input: SignToVoxInput = {
             width: signWidth,
@@ -1578,4 +1578,5 @@ export function VoxGenerator() {
 
 
     
+
 
