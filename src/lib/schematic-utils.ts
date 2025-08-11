@@ -98,36 +98,34 @@ interface RasterizeTextParams {
 }
 
 const TINY_FONT_DATA: { [char: string]: string[] } = {
-  'A': [' █ ', '█ █', '███', '█ █', '█ █'], 'B': ['██ ', '█ █', '██ ', '█ █', '██ '], 'C': [' ██', '█  ', '█  ', '█  ', ' ██'],
-  'D': ['██ ', '█ █', '█ █', '█ █', '██ '], 'E': ['███', '█  ', '██ ', '█  ', '███'], 'F': ['███', '█  ', '██ ', '█  ', '█  '],
-  'G': [' ██', '█  ', '█ ██', '█ █', ' ██'], 'H': ['█ █', '█ █', '███', '█ █', '█ █'], 'I': ['███', ' █ ', ' █ ', ' █ ', '███'],
-  'J': ['  █', '  █', '  █', '█ █', ' ██'], 'K': ['█ █', '█ █', '██ ', '█ █', '█ █'], 'L': ['█  ', '█  ', '█  ', '█  ', '███'],
-  'M': ['█ █', '███', '█ █', '█ █', '█ █'], 'N': ['█ █', '███', '█ █', '█ █', '█ █'], 'O': [' ██ ', '█  █', '█  █', '█  █', ' ██ '],
-  'P': ['██ ', '█ █', '██ ', '█  ', '█  '], 'Q': [' ██ ', '█  █', '█  █', '█ ██', ' ██ '], 'R': ['██ ', '█ █', '██ ', '█ █', '█ █'],
-  'S': [' ██', '█  ', ' ██', '  █', '██ '], 'T': ['███', ' █ ', ' █ ', ' █ ', ' █ '], 'U': ['█ █', '█ █', '█ █', '█ █', ' ██'],
-  'V': ['█ █', '█ █', '█ █', ' █ ', ' █ '], 'W': ['█ █', '█ █', '█ █', '███', '█ █'], 'X': ['█ █', ' █ ', ' █ ', ' █ ', '█ █'],
-  'Y': ['█ █', '█ █', ' ██', ' █ ', ' █ '], 'Z': ['███', '  █', ' █ ', '█  ', '███'],
-  '0': [' ██ ', '█ █', '█ █', '█ █', ' ██ '], '1': [' █ ', '██ ', ' █ ', ' █ ', '███'], '2': ['██ ', '  █', ' █ ', '█  ', '███'],
-  '3': ['██ ', '  █', ' ██', '  █', '██ '], '4': ['█ █', '█ █', '███', '  █', '  █'], '5': ['███', '█  ', '██ ', '  █', '██ '],
-  '6': [' ██', '█  ', '██ ', '█ █', ' ██'], '7': ['███', '  █', ' █ ', ' █ ', ' █ '], '8': [' ██ ', '█ █', ' ██ ', '█ █', ' ██ '],
-  '9': [' ██ ', '█ █', ' ██', '  █', ' ██'],
-  '.': ['   ', '   ', '   ', '   ', ' █ '], ',': ['   ', '   ', '   ', ' █ ', '█  '], '!': [' █ ', ' █ ', ' █ ', '   ', ' █ '],
-  '?': ['██ ', '  █', ' █ ', '   ', ' █ '], ' ': ['   ', '   ', '   ', '   ', '   '],
-  '_': ['   ', '   ', '   ', '   ', '███'], '-': ['   ', '   ', '███', '   ', '   '], '+': ['   ', ' █ ', '███', ' █ ', '   '],
-  // Russian Alphabet
-  'А': [' █ ', '█ █', '███', '█ █', '█ █'], 'Б': ['██ ', '█ █', '██ ', '█ █', '██ '], 'В': ['██ ', '█ █', '██ ', '█ █', '██ '],
-  'Г': ['███', '█  ', '█  ', '█  ', '█  '], 'Д': [' ██ ', '█  █', '█  █', '████', '  █ '], 'Е': ['███', '█  ', '██ ', '█  ', '███'],
-  'Ё': ['███', ' █ ', '███', ' █ ', '███'], 'Ж': ['█ █', ' █ ', '███', ' █ ', '█ █'], 'З': ['██ ', '  █', ' █ ', '  █', '██ '],
-  'И': ['█ █', '█ █', '███', '█ █', '█ █'], 'Й': ['█ █', ' █ ', '███', '█ █', '█ █'], 'К': ['█ █', '█ █', '██ ', '█ █', '█ █'],
-  'Л': ['  ██', ' █ █', '█  █', '█  █', '█  █'], 'М': ['█ █', '███', '█ █', '█ █', '█ █'], 'Н': ['█ █', '█ █', '███', '█ █', '█ █'],
-  'О': [' ██ ', '█  █', '█  █', '█  █', ' ██ '], 'П': ['███', '█ █', '█ █', '█ █', '█ █'], 'Р': ['██ ', '█ █', '██ ', '█  ', '█  '],
-  'С': [' ██', '█  ', '█  ', '█  ', ' ██'], 'Т': ['███', ' █ ', ' █ ', ' █ ', ' █ '], 'У': ['█ █', '█ █', '█ █', '█ █', ' ██'],
-  'Ф': [' ██ ', '█  █', ' ██ ', '█  █', ' ██ '], 'Х': ['█ █', ' █ ', ' █ ', ' █ ', '█ █'], 'Ц': ['█ █', '█ █', '█_█', '  █', '  █'],
-  'Ч': ['█  ', '█  ', '██ ', '  █', '  █'], 'Ш': ['█ █ █', '█ █ █', '█ █ █', '█ █ █', '█ █ █'], 'Щ': ['█ █ █', '█ █ █', '█_█_█', '  █  ', '  █  '],
-  'Ъ': ['██', '█ ', '█ ', '██', '█ '], 'Ы': ['█ █', '█ █', '█_ ', '█  ', '█  '], 'Ь': ['█  ', '█  ', '██ ', '█ █', '██ '],
-  'Э': [' ██', '█  ', ' ██', '█  ', ' ██'], 'Ю': ['█  █', '██ █', '█ █ █', '█  █', '█  █'], 'Я': [' ██', '█  █', ' ██', '█ █', '█  █'],
+    'A': ['010', '101', '111', '101', '101'], 'B': ['110', '101', '110', '101', '110'], 'C': ['011', '100', '100', '100', '011'],
+    'D': ['110', '101', '101', '101', '110'], 'E': ['111', '100', '110', '100', '111'], 'F': ['111', '100', '110', '100', '100'],
+    'G': ['011', '100', '101', '101', '011'], 'H': ['101', '101', '111', '101', '101'], 'I': ['111', '010', '010', '010', '111'],
+    'J': ['001', '001', '001', '101', '010'], 'K': ['101', '101', '110', '101', '101'], 'L': ['100', '100', '100', '100', '111'],
+    'M': ['101', '111', '101', '101', '101'], 'N': ['101', '111', '101', '101', '101'], 'O': ['010', '101', '101', '101', '010'],
+    'P': ['110', '101', '110', '100', '100'], 'Q': ['010', '101', '101', '111', '011'], 'R': ['110', '101', '110', '101', '101'],
+    'S': ['011', '100', '010', '001', '110'], 'T': ['111', '010', '010', '010', '010'], 'U': ['101', '101', '101', '101', '010'],
+    'V': ['101', '101', '101', '010', '010'], 'W': ['101', '101', '101', '111', '101'], 'X': ['101', '101', '010', '101', '101'],
+    'Y': ['101', '101', '010', '010', '010'], 'Z': ['111', '001', '010', '100', '111'],
+    '0': ['010', '101', '101', '101', '010'], '1': ['010', '110', '010', '010', '111'], '2': ['110', '001', '010', '100', '111'],
+    '3': ['111', '001', '010', '001', '111'], '4': ['101', '101', '111', '001', '001'], '5': ['111', '100', '110', '001', '110'],
+    '6': ['010', '100', '110', '101', '010'], '7': ['111', '001', '010', '010', '010'], '8': ['010', '101', '010', '101', '010'],
+    '9': ['010', '101', '011', '001', '010'],
+    '.': ['000', '000', '000', '000', '010'], ',': ['000', '000', '000', '010', '100'], '!': ['010', '010', '010', '000', '010'],
+    '?': ['110', '001', '010', '000', '010'], ' ': ['000', '000', '000', '000', '000'],
+    '_': ['000', '000', '000', '000', '111'], '-': ['000', '000', '111', '000', '000'], '+': ['000', '010', '111', '010', '000'],
+    'А': ['010', '101', '111', '101', '101'], 'Б': ['110', '101', '110', '101', '110'], 'В': ['110', '101', '110', '101', '110'],
+    'Г': ['111', '100', '100', '100', '100'], 'Д': ['010', '101', '101', '111', '010'], 'Е': ['111', '100', '110', '100', '111'],
+    'Ё': ['111', '100', '110', '100', '111'], 'Ж': ['101', '010', '111', '010', '101'], 'З': ['110', '001', '010', '001', '110'],
+    'И': ['101', '101', '111', '101', '101'], 'Й': ['101', '101', '111', '101', '101'], 'К': ['101', '101', '110', '101', '101'],
+    'Л': ['011', '101', '101', '100', '100'], 'М': ['101', '111', '101', '101', '101'], 'Н': ['101', '101', '111', '101', '101'],
+    'О': ['010', '101', '101', '101', '010'], 'П': ['111', '101', '101', '101', '101'], 'Р': ['110', '101', '110', '100', '100'],
+    'С': ['011', '100', '100', '100', '011'], 'Т': ['111', '010', '010', '010', '010'], 'У': ['101', '101', '101', '101', '010'],
+    'Ф': ['010', '101', '111', '101', '010'], 'Х': ['101', '101', '010', '101', '101'], 'Ц': ['101', '101', '111', '001', '001'],
+    'Ч': ['100', '100', '111', '001', '001'], 'Ш': ['101', '101', '101', '101', '111'], 'Щ': ['101', '101', '111', '001', '001'],
+    'Ъ': ['110', '101', '101', '110', '100'], 'Ы': ['101', '101', '111', '101', '101'], 'Ь': ['100', '100', '110', '101', '110'],
+    'Э': ['011', '100', '010', '100', '011'], 'Ю': ['101', '101', '110', '010', '010'], 'Я': ['110', '101', '010', '100', '111'],
 };
-
 
 export async function rasterizePixelText(text: string, maxWidth?: number): Promise<{ pixels: boolean[], width: number, height: number }> {
     const FONT_HEIGHT = 5;
@@ -196,7 +194,7 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
             const charWidth = getCharWidth(char);
             for (let y = 0; y < FONT_HEIGHT; y++) {
                 for (let x = 0; x < charWidth; x++) {
-                    lineData[y].push(charData[y]?.[x] === '█');
+                    lineData[y].push(charData[y]?.[x] === '1');
                 }
                 if (CHAR_SPACING > 0) {
                     for (let s = 0; s < CHAR_SPACING; s++) lineData[y].push(false);
@@ -826,62 +824,65 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 return voxels;
             };
 
-            const generateIonicCapital = (capitalH: number, shaftR: number, capitalR: number): {x: number, y: number, z: number}[] => {
-                const capitalVoxels: {x: number, y: number, z: number}[] = [];
-                const abacusSize = capitalR * 2 + 1; // Make it odd for a clear center
-
-                const abacusHeight = Math.max(1, Math.floor(capitalH * 0.25));
-                const abacusYStart = capitalH - abacusHeight;
+            const generateIonicCapital = (capitalHeight: number, shaftRadius: number, capitalRadius: number): {x: number, y: number, z: number}[] => {
+                const voxels: {x: number, y: number, z: number}[] = [];
+                
+                // 1. Абака (верхняя плита)
+                const abacusHeight = Math.max(1, Math.floor(capitalHeight * 0.25));
+                const abacusSize = capitalRadius * 2 + 1; // Делаем нечетным для четкого центра
+                const abacusYStart = capitalHeight - abacusHeight;
                 for (let y = 0; y < abacusHeight; y++) {
                     for (let z = 0; z < abacusSize; z++) {
                         for (let x = 0; x < abacusSize; x++) {
-                            capitalVoxels.push({x, y: y + abacusYStart, z});
+                            voxels.push({x, y: y + abacusYStart, z});
                         }
                     }
                 }
-
-                const echinusHeight = Math.max(1, Math.floor(capitalH * 0.2));
-                const echinusYStart = capitalH - abacusHeight - echinusHeight;
+            
+                // 2. Эхин (подушка) - упрощенный вариант
+                const echinusHeight = Math.max(1, Math.floor(capitalHeight * 0.2));
+                const echinusYStart = capitalHeight - abacusHeight - echinusHeight;
                 for (let y = 0; y < echinusHeight; y++) {
-                    const progress = echinusHeight > 1 ? y / (echinusHeight - 1) : 1;
-                    const currentRadius = shaftR + (capitalR - shaftR) * progress;
-                    const centerX = capitalR;
-                    const centerZ = capitalR;
+                    const progress = echinusHeight > 1 ? y / (echinusHeight - 1) : 1; // от 0 до 1
+                    const currentRadius = shaftRadius + (capitalRadius - shaftRadius) * progress;
+                    const centerX = capitalRadius;
+                    const centerZ = capitalRadius;
                     
                     for (let z = 0; z < abacusSize; z++) {
                         for (let x = 0; x < abacusSize; x++) {
                             const dx = x - centerX;
                             const dz = z - centerZ;
                             if (dx * dx + dz * dz <= currentRadius * currentRadius) {
-                                capitalVoxels.push({x, y: y + echinusYStart, z});
+                                voxels.push({x, y: y + echinusYStart, z});
                             }
                         }
                     }
                 }
-
-                const voluteHeight = capitalH - abacusHeight;
-                const voluteThickness = Math.max(2, Math.floor(shaftR * 0.5));
+            
+                // 3. Волюты (спирали) - самая сложная часть
+                const voluteHeight = capitalHeight - abacusHeight;
+                const voluteThickness = Math.max(2, Math.floor(shaftRadius * 0.5));
                 const voluteCenterY = voluteHeight / 2;
                 
                 const generateVolute = (centerZ: number, flip: boolean) => {
                     const spiralVoxels = new Set<string>();
-                    const a = 1.5;
-                    const b = 0.5;
-                    const maxRadius = capitalR - shaftR - 1;
-
+                    const a = 1.5; // Начальный радиус спирали
+                    const b = 0.5; // Коэффициент раскручивания
+                    const maxRadius = capitalRadius - shaftRadius - 1;
+            
                     for (let angle = 0; angle < Math.PI * 4; angle += 0.1) {
                         const r = a + b * angle;
                         if (r > maxRadius) break;
                         
                         const relY = r * Math.sin(angle);
                         const relX = r * Math.cos(angle);
-
-                        const vx = Math.round(shaftR + (flip ? -relX : relX));
+            
+                        const vx = Math.round(shaftRadius + (flip ? -relX : relX));
                         const vy = Math.round(voluteCenterY + relY);
-
+            
                         if (vy >= 0 && vy < voluteHeight) {
-                            for (let z_thick = 0; z_thick < voluteThickness; z_thick++) {
-                                const vz = Math.round(centerZ - voluteThickness / 2 + z_thick);
+                            for (let z = 0; z < voluteThickness; z++) {
+                                const vz = Math.round(centerZ - voluteThickness / 2 + z);
                                 spiralVoxels.add(`${vx},${vy},${vz}`);
                             }
                         }
@@ -891,22 +892,26 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                         return {x, y, z};
                     });
                 };
-
-                const voluteOffsetX = Math.floor((abacusSize - shaftR * 2) / 2);
+            
+                const voluteOffsetX = Math.floor((abacusSize - shaftRadius * 2) / 2);
                 
+                // Передняя левая волюта
                 const volute1 = generateVolute(voluteThickness / 2, false);
-                volute1.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+                volute1.forEach(v => voxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
                 
+                // Передняя правая волюта
                 const volute2 = generateVolute(voluteThickness / 2, true);
-                volute2.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
-
+                volute2.forEach(v => voxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+            
+                // Задняя левая волюта
                 const volute3 = generateVolute(abacusSize - voluteThickness / 2, false);
-                volute3.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+                volute3.forEach(v => voxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
                 
+                // Задняя правая волюта
                 const volute4 = generateVolute(abacusSize - voluteThickness / 2, true);
-                volute4.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
-
-                return capitalVoxels;
+                volute4.forEach(v => voxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+            
+                return voxels;
             };
 
             const tanX = brokenTop ? Math.tan(breakAngleX * Math.PI / 180) : 0;
@@ -1299,6 +1304,3 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
-
-
-

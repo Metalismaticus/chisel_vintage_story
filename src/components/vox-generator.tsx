@@ -1407,7 +1407,6 @@ export function VoxGenerator() {
   const renderSignInputs = () => {
     const contentHeight = signHeight - (signFrameWidth * 2);
     const maxIconOffset = Math.floor(contentHeight / 2);
-    const maxTextOffset = Math.floor(contentHeight / 2);
     
     return (
         <div className="space-y-6">
@@ -1451,11 +1450,11 @@ export function VoxGenerator() {
               </div>
               <div className="space-y-2">
                   <Label htmlFor="sign-icon-offset-y">{t('voxGenerator.sign.iconOffsetY')}: {signIconOffsetY}px</Label>
-                  <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={maxIconOffset} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
+                  <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={0} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
               </div>
                <div className="space-y-2">
                   <Label htmlFor="sign-text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {signTextOffsetY}px</Label>
-                  <Slider id="sign-text-offset-y" min={-maxTextOffset} max={maxTextOffset} step={1} value={[signTextOffsetY]} onValueChange={(v) => setSignTextOffsetY(v[0])} />
+                  <Slider id="sign-text-offset-y" min={0} max={maxIconOffset} step={1} value={[signTextOffsetY]} onValueChange={(v) => setSignTextOffsetY(v[0])} />
               </div>
             </div>
         </div>
@@ -1579,6 +1578,3 @@ export function VoxGenerator() {
 
 
     
-
-
-

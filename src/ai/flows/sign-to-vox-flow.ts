@@ -74,30 +74,22 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
         if (x < frameWidth || x >= signWidth - frameWidth) isFrame = true;
 
         // Carve out rounded corners
+        const checkCorner = (cx: number, cy: number, radius: number) => {
+            const dx = Math.abs(x - cx);
+            const dy = Math.abs(y - cy);
+            if (dx > radius || dy > radius) return false;
+            return (dx - radius) * (dx - radius) + (dy - radius) * (dy - radius) > radius * radius;
+        }
+        
         // Top-left
-        if (x < cornerRadius && y < cornerRadius) {
-            const dx = cornerRadius - x;
-            const dy = cornerRadius - y;
-            if (dx*dx + dy*dy > cornerRadius*cornerRadius) isFrame = false;
-        }
+        if (checkCorner(cornerRadius, cornerRadius, cornerRadius)) isFrame = false;
         // Top-right
-        if (x >= signWidth - cornerRadius && y < cornerRadius) {
-            const dx = x - (signWidth - cornerRadius);
-            const dy = cornerRadius - y;
-            if (dx*dx + dy*dy > cornerRadius*cornerRadius) isFrame = false;
-        }
+        if (checkCorner(signWidth - 1 - cornerRadius, cornerRadius, cornerRadius)) isFrame = false;
         // Bottom-left
-         if (x < cornerRadius && y >= signHeight - cornerRadius) {
-            const dx = cornerRadius - x;
-            const dy = y - (signHeight - cornerRadius);
-            if (dx*dx + dy*dy > cornerRadius*cornerRadius) isFrame = false;
-        }
+        if (checkCorner(cornerRadius, signHeight - 1 - cornerRadius, cornerRadius)) isFrame = false;
         // Bottom-right
-        if (x >= signWidth - cornerRadius && y >= signHeight - cornerRadius) {
-            const dx = x - (signWidth - cornerRadius);
-            const dy = y - (signHeight - cornerRadius);
-            if (dx*dx + dy*dy > cornerRadius*cornerRadius) isFrame = false;
-        }
+        if (checkCorner(signWidth - 1 - cornerRadius, signHeight - 1 - cornerRadius, cornerRadius)) isFrame = false;
+
 
         if(isFrame) addVoxel(x, signHeight - 1 - y, 0);
     }
