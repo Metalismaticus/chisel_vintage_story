@@ -2,6 +2,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -112,11 +113,23 @@ const TINY_FONT_DATA: { [char: string]: string[] } = {
   '.': ['   ', '   ', '   ', '   ', ' █ '], ',': ['   ', '   ', '   ', ' █ ', '█  '], '!': [' █ ', ' █ ', ' █ ', '   ', ' █ '],
   '?': ['██ ', '  █', ' █ ', '   ', ' █ '], ' ': ['   ', '   ', '   ', '   ', '   '],
   '_': ['   ', '   ', '   ', '   ', '███'], '-': ['   ', '   ', '███', '   ', '   '], '+': ['   ', ' █ ', '███', ' █ ', '   '],
+  // Russian Alphabet
+  'А': [' █ ', '█ █', '███', '█ █', '█ █'], 'Б': ['██ ', '█ █', '██ ', '█ █', '██ '], 'В': ['██ ', '█ █', '██ ', '█ █', '██ '],
+  'Г': ['███', '█  ', '█  ', '█  ', '█  '], 'Д': [' ██ ', '█  █', '█  █', '████', '  █ '], 'Е': ['███', '█  ', '██ ', '█  ', '███'],
+  'Ё': ['███', '█ █', '██ ', '█  ', '███'], 'Ж': ['█ █', ' █ ', '███', ' █ ', '█ █'], 'З': ['██ ', '  █', ' █ ', '  █', '██ '],
+  'И': ['█ █', '█ █', '███', '█ █', '█ █'], 'Й': ['█ █', '█ █', '███', '█ █', '█ █'], 'Л': ['  ██', ' █ █', '█  █', '█  █', '█  █'],
+  'П': ['███', '█ █', '█ █', '█ █', '   '], 'Т': ['███', ' █ ', ' █ ', ' █ ', ' █ '], 'У': ['█ █', '█ █', ' █ ', ' █ ', ' █ '],
+  'Ф': [' ██ ', '█  █', ' ██ ', '█  █', ' ██ '], 'Х': ['█ █', ' █ ', ' █ ', ' █ ', '█ █'], 'Ц': ['█ █', '█ █', '█_█', '  █', '  █'],
+  'Ч': ['█  ', '█  ', '██ ', '  █', '  █'], 'Ш': ['█ █ █', '█ █ █', '█ █ █', '█ █ █', '     '], 'Щ': ['█ █ █', '█ █ █', '█_█_█', '     ', '     '],
+  'Ъ': ['██', '█ ', '█ ', '██', '█ '], 'Ы': ['█ █', '█ █', '█_ ', '█  ', '█  '], 'Ь': ['█  ', '█  ', '██ ', '█ █', '██ '],
+  'Э': [' ██', '█  ', ' ██', '█  ', ' ██'], 'Ю': ['█  █', '██ █', '█ █ █', '█  █', '█  █'], 'Я': [' ██', '█  █', ' ██', '█ █', '█  █'],
 };
+
 
 export async function rasterizePixelText(text: string, maxWidth?: number): Promise<{ pixels: boolean[], width: number, height: number }> {
     const FONT_HEIGHT = 5;
     const CHAR_SPACING = 1;
+    const LINE_SPACING = 1;
 
     const getCharData = (char: string) => TINY_FONT_DATA[char.toUpperCase()] || TINY_FONT_DATA['?'];
     const getCharWidth = (char: string) => (getCharData(char)[0] || '').length;
@@ -134,14 +147,18 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
                 const word = words[i];
                 const wordWidth = word.split('').reduce((acc, char) => acc + getCharWidth(char) + CHAR_SPACING, -CHAR_SPACING);
 
-                if (currentLineWidth > 0 && currentLineWidth + wordWidth > maxWidth) {
+                if (currentLineWidth > 0 && currentLineWidth + (CHAR_SPACING + getCharWidth(' ')) + wordWidth > maxWidth) {
                     newLines.push(currentLine);
                     currentLine = '';
                     currentLineWidth = 0;
                 }
                 
-                currentLine += (currentLineWidth > 0 ? ' ' : '') + word;
-                currentLineWidth += (currentLineWidth > 0 ? getCharWidth(' ') + CHAR_SPACING : 0) + wordWidth;
+                if (currentLineWidth > 0) {
+                    currentLine += ' ';
+                    currentLineWidth += CHAR_SPACING + getCharWidth(' ');
+                }
+                currentLine += word;
+                currentLineWidth += wordWidth;
             }
             if (currentLine) {
                 newLines.push(currentLine);
@@ -152,17 +169,30 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
 
     const lines = wrappedText.split('\n');
     let finalMaxWidth = 0;
-    const linePixelData: boolean[][] = [];
+    lines.forEach(line => {
+      const lineWidth = line.split('').reduce((acc, char) => acc + getCharWidth(char) + CHAR_SPACING, -CHAR_SPACING);
+      if (lineWidth > finalMaxWidth) {
+        finalMaxWidth = lineWidth;
+      }
+    });
+    if (!maxWidth || finalMaxWidth > maxWidth) {
+      finalMaxWidth = maxWidth || 0;
+    }
+
+
+    const finalHeight = lines.length * (FONT_HEIGHT + LINE_SPACING) - LINE_SPACING;
+    const finalPixels: boolean[] = [];
 
     for (const line of lines) {
         const lineData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
         let currentLineWidth = 0;
+
         for (const char of line) {
             const charData = getCharData(char);
             const charWidth = getCharWidth(char);
             for (let y = 0; y < FONT_HEIGHT; y++) {
                 for (let x = 0; x < charWidth; x++) {
-                    lineData[y].push(charData[y][x] === '█');
+                    lineData[y].push(charData[y]?.[x] === '█');
                 }
                 if (CHAR_SPACING > 0) {
                     for (let s = 0; s < CHAR_SPACING; s++) lineData[y].push(false);
@@ -170,46 +200,38 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
             }
             currentLineWidth += charWidth + CHAR_SPACING;
         }
-        if (currentLineWidth > finalMaxWidth) {
-            finalMaxWidth = currentLineWidth;
-        }
-        linePixelData.push(...lineData);
-    }
-
-    const finalHeight = lines.length * FONT_HEIGHT + (lines.length > 1 ? lines.length -1 : 0);
-    const finalPixels: boolean[] = [];
-
-    let lineY = 0;
-    for(const line of lines) {
-        const lineData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
-         let currentX = 0;
-         for (const char of line) {
-             const charData = getCharData(char);
-             const charWidth = getCharWidth(char);
-              for (let y = 0; y < FONT_HEIGHT; y++) {
-                for (let x = 0; x < charWidth; x++) {
-                    lineData[y][currentX + x] = charData[y][x] === '█';
-                }
-              }
-            currentX += charWidth + CHAR_SPACING;
-        }
         
+        if (currentLineWidth > 0) {
+            currentLineWidth -= CHAR_SPACING;
+            for (let y = 0; y < FONT_HEIGHT; y++) {
+                lineData[y].splice(-CHAR_SPACING);
+            }
+        }
+
+        const lineOffsetX = Math.floor((finalMaxWidth - currentLineWidth) / 2);
+
         for (let y = 0; y < FONT_HEIGHT; y++) {
-             for (let x = 0; x < finalMaxWidth; x++) {
-                 finalPixels.push(lineData[y][x] || false);
-             }
+            for (let x = 0; x < finalMaxWidth; x++) {
+                if (x >= lineOffsetX && x < lineOffsetX + currentLineWidth) {
+                    finalPixels.push(lineData[y][x - lineOffsetX] || false);
+                } else {
+                    finalPixels.push(false);
+                }
+            }
         }
 
-        if (lineY < lines.length - 1) {
-             for (let x = 0; x < finalMaxWidth; x++) {
-                 finalPixels.push(false);
-             }
+        if (lines.indexOf(line) < lines.length - 1) {
+            for (let i = 0; i < LINE_SPACING; i++) {
+                for (let x = 0; x < finalMaxWidth; x++) {
+                    finalPixels.push(false);
+                }
+            }
         }
-        lineY++;
     }
-
+    
     return { pixels: finalPixels, width: finalMaxWidth, height: finalHeight };
 }
+
 
 export async function rasterizeText({
   text,
@@ -941,7 +963,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             // Debris Part
              if (brokenTop && withDebris && debrisLength > 0) {
-                let debrisCapitalH = withCapital ? capitalHeight : 0;
+                let debrisCapitalH = (withCapital) ? capitalHeight : 0;
                 let debrisShaftH = debrisLength - debrisCapitalH;
                 if (debrisShaftH < 0) {
                     debrisCapitalH = debrisLength;
@@ -957,19 +979,20 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                     
                     const capOffsetX = Math.floor(baseRadius - colRadius);
                     capitalVoxels.forEach(v => {
-                        debrisVoxels.push({x: v.x - capOffsetX, y: v.y, z: v.z - capOffsetX});
+                        debrisVoxels.push({x: v.x, y: v.y, z: v.z});
                     });
                 }
                 
                 if (debrisShaftH > 0) {
-                    const shaftVoxels = generateCylinder(colRadius, debrisShaftH, 'simple');
+                    const shaftVoxels = generateCylinder(colRadius, finalShaftH, 'simple');
                     shaftVoxels.forEach(v => {
                         const xFromCenter = v.x - colRadius + 0.5;
                         const zFromCenter = v.z - colRadius + 0.5;
-                        const breakPlaneY = finalShaftH - (xFromCenter * tanX + zFromCenter * tanZ);
+                        const breakPlaneY = (finalShaftH - 1) - (xFromCenter * tanX + zFromCenter * tanZ);
                         // We want the part of the shaft that is *above* the break plane
-                        if (finalShaftH + v.y >= breakPlaneY) {
-                            debrisVoxels.push({x: v.x, y: v.y + debrisCapitalH, z: v.z });
+                        if (v.y >= breakPlaneY) {
+                           const newY = v.y - breakPlaneY;
+                           debrisVoxels.push({x: v.x, y: newY, z: v.z });
                         }
                     });
                 }
@@ -1284,4 +1307,5 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 

@@ -1405,8 +1405,9 @@ export function VoxGenerator() {
   }
   
   const renderSignInputs = () => {
-    const maxIconOffset = Math.floor(signHeight / 4);
-    const maxTextOffset = Math.floor(signHeight / 4);
+    const contentHeight = signHeight - (signFrameWidth * 2);
+    const maxIconOffset = Math.floor(contentHeight / 2);
+    const maxTextOffset = Math.floor(contentHeight / 2);
     
     return (
         <div className="space-y-6">
@@ -1578,5 +1579,6 @@ export function VoxGenerator() {
 
 
     
+
 
 
