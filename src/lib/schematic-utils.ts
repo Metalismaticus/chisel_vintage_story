@@ -10,6 +10,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -269,125 +270,116 @@ export async function rasterizeText({
     return { pixels: croppedPixels, width: croppedWidth, height: croppedHeight };
 }
 
-interface RasterizePixelTextParams {
-  text: string;
-  fontUrl: string;
-  maxWidth?: number;
-}
+// Map for a 5px height pixel font. 1 represents a pixel.
+const TINY_FONT_DATA: Record<string, number[][]> = {
+    'A': [[0,1,1,0],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+    'B': [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,1,1,0]],
+    'C': [[0,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[0,1,1,1]],
+    'D': [[1,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,1,1,0]],
+    'E': [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,1,1,1]],
+    'F': [[1,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+    'G': [[0,1,1,1],[1,0,0,0],[1,0,1,1],[1,0,0,1],[0,1,1,1]],
+    'H': [[1,0,0,1],[1,0,0,1],[1,1,1,1],[1,0,0,1],[1,0,0,1]],
+    'I': [[1,1,1],[0,1,0],[0,1,0],[0,1,0],[1,1,1]],
+    'J': [[0,0,1,1],[0,0,0,1],[0,0,0,1],[1,0,0,1],[0,1,1,0]],
+    'K': [[1,0,0,1],[1,0,1,0],[1,1,0,0],[1,0,1,0],[1,0,0,1]],
+    'L': [[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,1]],
+    'M': [[1,0,0,0,1],[1,1,0,1,1],[1,0,1,0,1],[1,0,0,0,1],[1,0,0,0,1]],
+    'N': [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
+    'O': [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
+    'P': [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,0],[1,0,0,0]],
+    'Q': [[0,1,1,0],[1,0,0,1],[1,0,0,1],[1,0,1,1],[0,1,1,1]],
+    'R': [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
+    'S': [[0,1,1,1],[1,0,0,0],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
+    'T': [[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
+    'U': [[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,1,0]],
+    'V': [[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,1,0,1],[0,0,1,0]],
+    'W': [[1,0,0,0,1],[1,0,0,0,1],[1,0,1,0,1],[1,1,0,1,1],[1,0,0,0,1]],
+    'X': [[1,0,0,1],[0,1,1,0],[0,0,1,0],[0,1,1,0],[1,0,0,1]],
+    'Y': [[1,0,0,1],[1,0,0,1],[0,1,1,0],[0,1,0,0],[0,1,0,0]],
+    'Z': [[1,1,1,1],[0,0,1,0],[0,1,0,0],[1,0,0,0],[1,1,1,1]],
+    '0': [[0,1,1,0],[1,0,1,1],[1,1,0,1],[1,0,0,1],[0,1,1,0]],
+    '1': [[0,1,0],[1,1,0],[0,1,0],[0,1,0],[1,1,1]],
+    '2': [[0,1,1,0],[1,0,0,1],[0,0,1,0],[0,1,0,0],[1,1,1,1]],
+    '3': [[1,1,1,0],[0,0,0,1],[0,1,1,0],[0,0,0,1],[1,1,1,0]],
+    '4': [[1,0,1,0],[1,0,1,0],[1,1,1,1],[0,0,1,0],[0,0,1,0]],
+    '5': [[1,1,1,1],[1,0,0,0],[1,1,1,0],[0,0,0,1],[1,1,1,0]],
+    '6': [[0,1,1,1],[1,0,0,0],[1,1,1,0],[1,0,0,1],[0,1,1,0]],
+    '7': [[1,1,1,1],[0,0,0,1],[0,0,1,0],[0,1,0,0],[0,1,0,0]],
+    '8': [[0,1,1,0],[1,0,0,1],[0,1,1,0],[1,0,0,1],[0,1,1,0]],
+    '9': [[0,1,1,0],[1,0,0,1],[0,1,1,1],[0,0,0,1],[1,1,1,0]],
+    ' ': [[0,0],[0,0],[0,0],[0,0],[0,0]],
+    '.': [[0],[0],[0],[0],[1]],
+    ',': [[0,0],[0,0],[0,0],[1,0],[0,1]],
+    '!': [[1],[1],[1],[0],[1]],
+    '?': [[0,1,1,0],[1,0,0,1],[0,0,1,0],[0,0,0,0],[0,0,1,0]],
+    '(': [[0,1],[1,0],[1,0],[1,0],[0,1]],
+    ')': [[1,0],[0,1],[0,1],[0,1],[1,0]],
+    '/': [[0,0,1],[0,1,0],[0,1,0],[1,0,0],[1,0,0]],
+    '\\':[[1,0,0],[1,0,0],[0,1,0],[0,1,0],[0,0,1]],
+    '+': [[0,0,0],[0,1,0],[1,1,1],[0,1,0],[0,0,0]],
+    '-': [[0,0,0],[0,0,0],[1,1,1],[0,0,0],[0,0,0]],
+    '=': [[0,0,0],[1,1,1],[0,0,0],[1,1,1],[0,0,0]],
+    '_': [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[1,1,1,1,1]],
+    'Б': [[1,1,1,0],[1,0,0,1],[1,1,1,0],[1,0,0,1],[1,0,0,1]],
+    'Г': [[1,1,1,1],[1,0,0,0],[1,0,0,0],[1,0,0,0],[1,0,0,0]],
+    'Д': [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,1]],
+    'Ж': [[1,0,1,0,1],[0,1,1,1,0],[0,0,1,0,0],[0,1,1,1,0],[1,0,1,0,1]],
+    'З': [[0,1,1,0],[1,0,0,1],[0,0,1,1],[1,0,0,1],[0,1,1,0]],
+    'И': [[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1],[1,0,0,1]],
+    'Й': [[0,1,1,0],[1,0,0,1],[1,1,0,1],[1,0,1,1],[1,0,0,1]],
+    'Л': [[1,0,0,0,1],[1,0,0,1,0],[1,0,1,0,0],[1,1,0,0,0],[1,0,0,0,0]],
+    'П': [[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1]],
+    'У': [[1,0,0,1],[1,0,0,1],[0,1,1,0],[0,0,1,0],[0,1,0,1]],
+    'Ф': [[0,1,1,1,0],[1,0,1,0,1],[0,1,1,1,0],[0,0,1,0,0],[0,0,1,0,0]],
+    'Ц': [[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,1,1]],
+    'Ч': [[1,0,0,1],[1,0,0,1],[0,1,1,1],[0,0,0,1],[0,0,0,1]],
+    'Ш': [[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1]],
+    'Щ': [[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,0,1,1]],
+    'Ъ': [[1,1,1,0,0],[1,0,0,1,0],[1,1,1,0,0],[1,0,0,1,0],[0,1,1,0,0]],
+    'Ы': [[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,0],[1,0,0,1,0],[1,0,0,1,1]],
+    'Ь': [[1,0,0,0],[1,0,0,0],[1,1,1,0],[1,0,0,1],[0,1,1,0]],
+    'Э': [[0,1,1,1],[1,0,0,0],[1,0,1,0],[1,0,0,0],[0,1,1,1]],
+    'Ю': [[1,0,0,1,1,0],[1,0,1,0,0,1],[1,1,0,0,0,1],[1,0,1,0,0,1],[1,0,0,1,1,0]],
+    'Я': [[0,1,1,1],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
+};
 
-export async function rasterizePixelText({
-  text,
-  fontUrl,
-  maxWidth,
-}: RasterizePixelTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
-    if (typeof document === 'undefined' || !text || !text.trim()) {
-        return { width: 0, height: 0, pixels: [] };
-    }
-
-    const fontName = fontUrl.split('/').pop()?.split('.')[0] || 'custom-pixel-font';
-    const fontFace = new FontFace(fontName, `url(${fontUrl})`);
-    try {
-      await fontFace.load();
-      document.fonts.add(fontFace);
-    } catch (e) {
-      console.error('Pixel font loading failed:', e);
-      throw new Error(`Failed to load pixel font: ${fontUrl}`);
-    }
-
-    const tempCtx = document.createElement('canvas').getContext('2d')!;
-    tempCtx.font = `8px ${fontName}`;
-    tempCtx.imageSmoothingEnabled = false;
-
-    const charCanvases: { [key: string]: HTMLCanvasElement } = {};
-    const uniqueChars = [...new Set(text.split(''))];
-    let maxCharHeight = 0;
-
-    for (const char of uniqueChars) {
-        const metrics = tempCtx.measureText(char);
-        const charWidth = Math.ceil(metrics.width);
-        const charHeight = Math.ceil((metrics.actualBoundingBoxAscent || 8) + (metrics.actualBoundingBoxDescent || 0));
-        maxCharHeight = Math.max(maxCharHeight, charHeight);
-
-        const charCanvas = document.createElement('canvas');
-        charCanvas.width = charWidth;
-        charCanvas.height = charHeight;
-        const charCtx = charCanvas.getContext('2d')!;
-        charCtx.imageSmoothingEnabled = false;
-        charCtx.font = `8px ${fontName}`;
-        charCtx.fillStyle = '#FFFFFF';
-        charCtx.fillText(char, 0, metrics.actualBoundingBoxAscent || 8);
-        charCanvases[char] = charCanvas;
-    }
-
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = words[0] || '';
-    const KERNING = 1;
-
-    if (maxWidth) {
-        for (let i = 1; i < words.length; i++) {
-            const testLine = currentLine + ' ' + words[i];
-            let testWidth = 0;
-            for (const char of testLine) {
-              testWidth += (charCanvases[char]?.width || 0) + KERNING;
-            }
-            if (testWidth > maxWidth && i > 0) {
-                lines.push(currentLine);
-                currentLine = words[i];
-            } else {
-                currentLine = testLine;
-            }
-        }
-    } else {
-        currentLine = text;
-    }
-    lines.push(currentLine);
-
+export async function rasterizePixelText({ text }: { text: string }): Promise<{ pixels: boolean[], width: number, height: number }> {
+    const charHeight = 5;
     let totalWidth = 0;
-    for (const line of lines) {
-      let lineWidth = 0;
-      for (const char of line) {
-        lineWidth += (charCanvases[char]?.width || 0) + KERNING;
-      }
-      totalWidth = Math.max(totalWidth, lineWidth);
-    }
-    const totalHeight = maxCharHeight * lines.length;
+    const charKerning = 1;
+    const charDataArray: { data: number[][], width: number }[] = [];
 
-    if (totalWidth <= 0 || totalHeight <= 0) {
-      if (document.fonts.has(fontFace)) document.fonts.delete(fontFace);
-      return { width: 0, height: 0, pixels: [] };
-    }
-
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = totalWidth;
-    finalCanvas.height = totalHeight;
-    const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true })!;
-    finalCtx.imageSmoothingEnabled = false;
-
-    let currentY = 0;
-    for (const line of lines) {
-      let currentX = 0;
-      for (const char of line) {
-        const charCanvas = charCanvases[char];
-        if (charCanvas) {
-          finalCtx.drawImage(charCanvas, currentX, currentY);
-          currentX += charCanvas.width + KERNING;
-        }
-      }
-      currentY += maxCharHeight;
-    }
-
-    const imageData = finalCtx.getImageData(0, 0, totalWidth, totalHeight);
-    const pixels = Array(totalWidth * totalHeight).fill(false);
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      if (imageData.data[i + 3] > 128) {
-        pixels[i / 4] = true;
-      }
+    for (const char of text) {
+        const data = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
+        const width = data[0].length;
+        charDataArray.push({ data, width });
+        totalWidth += width + charKerning;
     }
     
-    if (document.fonts.has(fontFace)) document.fonts.delete(fontFace);
+    if (totalWidth > 0) {
+        totalWidth -= charKerning; // No kerning after the last character
+    }
 
-    return { pixels, width: totalWidth, height: totalHeight };
+    if (totalWidth <= 0) {
+        return { pixels: [], width: 0, height: 0 };
+    }
+
+    const pixels: boolean[] = Array(totalWidth * charHeight).fill(false);
+
+    let currentX = 0;
+    for (const { data, width } of charDataArray) {
+        for (let y = 0; y < charHeight; y++) {
+            for (let x = 0; x < width; x++) {
+                if (data[y][x] === 1) {
+                    pixels[y * totalWidth + (currentX + x)] = true;
+                }
+            }
+        }
+        currentX += width + charKerning;
+    }
+
+    return { pixels, width: totalWidth, height: charHeight };
 }
 
 
@@ -1303,3 +1295,4 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+

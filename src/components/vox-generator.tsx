@@ -612,11 +612,8 @@ export function VoxGenerator() {
         const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
 
         // Process Text
-        const fontUrl = `/fonts/QuinqueFive.ttf`;
         const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText({ 
-            text: signText,
-            fontUrl: fontUrl,
-            maxWidth: contentWidth,
+            text: signText.toUpperCase(),
         });
 
         const input: SignToVoxInput = {
@@ -624,7 +621,7 @@ export function VoxGenerator() {
             height: signHeight,
             frameWidth: signFrameWidth,
             icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
-            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: signTextOffsetY },
+            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: textOffsetY },
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -1628,5 +1625,6 @@ export function VoxGenerator() {
 
 
     
+
 
 
