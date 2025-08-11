@@ -7,6 +7,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -97,136 +98,11 @@ interface RasterizeTextParams {
   fontUrl?: string;
   outline?: boolean;
   outlineGap?: number;
+  outlineWidth?: number;
   orientation?: TextOrientation;
   isPixelFont?: boolean;
+  maxWidth?: number;
 }
-
-const TINY_FONT_DATA: { [char: string]: string[] } = {
-    'A': ['010', '101', '111', '101', '101'], 'B': ['110', '101', '110', '101', '110'], 'C': ['011', '100', '100', '100', '011'],
-    'D': ['110', '101', '101', '101', '110'], 'E': ['111', '100', '110', '100', '111'], 'F': ['111', '100', '110', '100', '100'],
-    'G': ['011', '100', '101', '101', '011'], 'H': ['101', '101', '111', '101', '101'], 'I': ['111', '010', '010', '010', '111'],
-    'J': ['001', '001', '001', '101', '010'], 'K': ['101', '101', '110', '101', '101'], 'L': ['100', '100', '100', '100', '111'],
-    'M': ['101', '111', '101', '101', '101'], 'N': ['101', '111', '101', '101', '101'], 'O': ['010', '101', '101', '101', '010'],
-    'P': ['110', '101', '110', '100', '100'], 'Q': ['010', '101', '101', '111', '011'], 'R': ['110', '101', '110', '101', '101'],
-    'S': ['011', '100', '010', '001', '110'], 'T': ['111', '010', '010', '010', '010'], 'U': ['101', '101', '101', '101', '010'],
-    'V': ['101', '101', '101', '010', '010'], 'W': ['101', '101', '101', '111', '101'], 'X': ['101', '101', '010', '101', '101'],
-    'Y': ['101', '101', '010', '010', '010'], 'Z': ['111', '001', '010', '100', '111'],
-    '0': ['010', '101', '101', '101', '010'], '1': ['010', '110', '010', '010', '111'], '2': ['110', '001', '010', '100', '111'],
-    '3': ['111', '001', '010', '001', '111'], '4': ['101', '101', '111', '001', '001'], '5': ['111', '100', '110', '001', '110'],
-    '6': ['010', '100', '110', '101', '010'], '7': ['111', '001', '010', '010', '010'], '8': ['010', '101', '010', '101', '010'],
-    '9': ['010', '101', '011', '001', '010'],
-    '.': ['000', '000', '000', '000', '010'], ',': ['000', '000', '000', '010', '100'], '!': ['010', '010', '010', '000', '010'],
-    '?': ['110', '001', '010', '000', '010'], ' ': ['000', '000', '000', '000', '000'],
-    '_': ['000', '000', '000', '000', '111'], '-': ['000', '000', '111', '000', '000'], '+': ['000', '010', '111', '010', '000'],
-    'А': ['010', '101', '111', '101', '101'], 'Б': ['110', '101', '110', '101', '110'], 'В': ['110', '101', '110', '101', '110'],
-    'Г': ['111', '100', '100', '100', '100'], 'Д': ['010', '101', '101', '111', '010'], 'Е': ['111', '100', '110', '100', '111'],
-    'Ё': ['111', '100', '110', '100', '111'], 'Ж': ['101', '010', '111', '010', '101'], 'З': ['110', '001', '010', '001', '110'],
-    'И': ['101', '101', '111', '101', '101'], 'Й': ['101', '101', '111', '101', '101'], 'К': ['101', '101', '110', '101', '101'],
-    'Л': ['011', '101', '101', '100', '100'], 'М': ['101', '111', '101', '101', '101'], 'Н': ['101', '101', '111', '101', '101'],
-    'О': ['010', '101', '101', '101', '010'], 'П': ['111', '101', '101', '101', '101'], 'Р': ['110', '101', '110', '100', '100'],
-    'С': ['011', '100', '100', '100', '011'], 'Т': ['111', '010', '010', '010', '010'], 'У': ['101', '101', '101', '101', '010'],
-    'Ф': ['010', '101', '111', '101', '010'], 'Х': ['101', '101', '010', '101', '101'], 'Ц': ['101', '101', '111', '001', '001'],
-    'Ч': ['100', '100', '111', '001', '001'], 'Ш': ['101', '101', '101', '101', '111'], 'Щ': ['101', '101', '111', '001', '001'],
-    'Ъ': ['110', '101', '101', '110', '100'], 'Ы': ['101', '101', '111', '101', '101'], 'Ь': ['100', '100', '110', '101', '110'],
-    'Э': ['011', '100', '010', '100', '011'], 'Ю': ['101', '101', '110', '010', '010'], 'Я': ['110', '101', '010', '100', '111'],
-};
-
-export async function rasterizePixelText(text: string, maxWidth?: number): Promise<{ pixels: boolean[], width: number, height: number }> {
-    const FONT_HEIGHT = 5;
-    const CHAR_SPACING = 1;
-    const LINE_SPACING = 1;
-
-    const getCharData = (char: string) => TINY_FONT_DATA[char.toUpperCase()] || TINY_FONT_DATA['?'];
-    const getCharWidth = (char: string) => (getCharData(char)[0] || '').length;
-
-    let wrappedText = text;
-    if (maxWidth) {
-        const lines = text.split('\n');
-        const newLines: string[] = [];
-        for (const line of lines) {
-            let currentLine = '';
-            let currentLineWidth = 0;
-            const words = line.split(' ');
-
-            for (let i = 0; i < words.length; i++) {
-                const word = words[i];
-                const wordWidth = word.split('').reduce((acc, char) => acc + getCharWidth(char) + CHAR_SPACING, -CHAR_SPACING);
-
-                if (currentLineWidth > 0 && currentLineWidth + (CHAR_SPACING + getCharWidth(' ')) + wordWidth > maxWidth) {
-                    newLines.push(currentLine);
-                    currentLine = '';
-                    currentLineWidth = 0;
-                }
-                
-                if (currentLineWidth > 0) {
-                    currentLine += ' ';
-                    currentLineWidth += CHAR_SPACING + getCharWidth(' ');
-                }
-                currentLine += word;
-                currentLineWidth += wordWidth;
-            }
-            if (currentLine) {
-                newLines.push(currentLine);
-            }
-        }
-        wrappedText = newLines.join('\n');
-    }
-
-    const lines = wrappedText.split('\n');
-    let finalMaxWidth = 0;
-    lines.forEach(line => {
-      const lineWidth = line.split('').reduce((acc, char) => acc + getCharWidth(char) + CHAR_SPACING, -CHAR_SPACING);
-      if (lineWidth > finalMaxWidth) {
-        finalMaxWidth = lineWidth;
-      }
-    });
-    if (maxWidth && finalMaxWidth > maxWidth) {
-      finalMaxWidth = maxWidth;
-    }
-
-
-    const finalHeight = lines.length * (FONT_HEIGHT + LINE_SPACING) - LINE_SPACING;
-    const finalPixels: boolean[] = new Array(finalMaxWidth * finalHeight).fill(false);
-
-    let currentY = 0;
-    for (const line of lines) {
-        const lineData: boolean[][] = Array(FONT_HEIGHT).fill(0).map(() => []);
-        let currentLineWidth = 0;
-
-        for (const char of line) {
-            const charData = getCharData(char);
-            const charWidth = getCharWidth(char);
-            for (let y = 0; y < FONT_HEIGHT; y++) {
-                for (let x = 0; x < charWidth; x++) {
-                    lineData[y].push(charData[y]?.[x] === '1');
-                }
-                if (CHAR_SPACING > 0) {
-                    for (let s = 0; s < CHAR_SPACING; s++) lineData[y].push(false);
-                }
-            }
-            currentLineWidth += charWidth + CHAR_SPACING;
-        }
-        
-        if (currentLineWidth > 0) {
-            currentLineWidth -= CHAR_SPACING;
-             for (let y = 0; y < FONT_HEIGHT; y++) {
-                lineData[y].splice(-CHAR_SPACING);
-            }
-        }
-
-        const lineOffsetX = Math.floor((finalMaxWidth - currentLineWidth) / 2);
-
-        for (let y = 0; y < FONT_HEIGHT; y++) {
-            for (let x = 0; x < currentLineWidth; x++) {
-                 finalPixels[(currentY + y) * finalMaxWidth + (lineOffsetX + x)] = lineData[y][x];
-            }
-        }
-        currentY += FONT_HEIGHT + LINE_SPACING;
-    }
-    
-    return { pixels: finalPixels, width: finalMaxWidth, height: finalHeight };
-}
-
 
 export async function rasterizeText({
   text,
@@ -237,6 +113,7 @@ export async function rasterizeText({
   outlineGap = 1,
   orientation = 'horizontal',
   isPixelFont = false,
+  maxWidth,
 }: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
     if (typeof document === 'undefined' || !text || !text.trim()) {
         return { width: 0, height: 0, pixels: [] };
@@ -246,7 +123,7 @@ export async function rasterizeText({
     let loadedFontFamily = font;
 
     let fontFace: FontFace | undefined;
-    if (fontUrl && font === 'custom') {
+    if (fontUrl && (font === 'custom' || isPixelFont)) {
       fontFace = new FontFace(fontName, `url(${fontUrl})`);
       try {
         await fontFace.load();
@@ -262,12 +139,36 @@ export async function rasterizeText({
     // Create a temporary canvas to measure text
     const tempCtx = document.createElement('canvas').getContext('2d')!;
     tempCtx.font = `${fontSize}px ${loadedFontFamily}`;
+    
+    // Word wrapping logic
+    const words = text.split(' ');
+    let lines: string[] = [];
+    let currentLine = words[0] || '';
 
-    const metrics = tempCtx.measureText(text);
-    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? fontSize;
-    const descent = metrics.fontBoundingBoxDescent ?? metrics.actualBoundingBoxDescent ?? 0;
-    const totalHeight = Math.ceil(ascent + descent);
-    const totalWidth = Math.ceil(metrics.width);
+    if (maxWidth) {
+        for (let i = 1; i < words.length; i++) {
+            let testLine = currentLine + ' ' + words[i];
+            let metrics = tempCtx.measureText(testLine);
+            let testWidth = metrics.width;
+            if (testWidth > maxWidth && i > 0) {
+                lines.push(currentLine);
+                currentLine = words[i];
+            } else {
+                currentLine = testLine;
+            }
+        }
+    } else {
+        currentLine = text;
+    }
+    lines.push(currentLine);
+
+    const lineMetrics = lines.map(line => tempCtx.measureText(line));
+    const totalWidth = Math.ceil(Math.max(...lineMetrics.map(m => m.width)));
+    const ascent = Math.max(...lineMetrics.map(m => m.fontBoundingBoxAscent ?? m.actualBoundingBoxAscent ?? fontSize));
+    const descent = Math.max(...lineMetrics.map(m => m.fontBoundingBoxDescent ?? m.actualBoundingBoxDescent ?? 0));
+    const lineHeight = Math.ceil(ascent + descent);
+    const totalHeight = lineHeight * lines.length;
+
     
     if (totalWidth <= 0 || totalHeight <= 0) {
         if (fontFace && document.fonts.has(fontFace)) {
@@ -294,7 +195,9 @@ export async function rasterizeText({
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#FFFFFF';
     ctx.textBaseline = 'top'; 
-    ctx.fillText(text, PADDING, PADDING);
+    lines.forEach((line, i) => {
+        ctx.fillText(line, PADDING, PADDING + i * lineHeight);
+    });
     
     // Cleanup custom font
     if (fontFace && document.fonts.has(fontFace)) {
