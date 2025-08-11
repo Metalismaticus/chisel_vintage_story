@@ -62,7 +62,6 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     xyziValues.push({ x: Math.round(px), y: Math.round(py), z: Math.round(pz), i: colorIndex });
   };
   
-  // Anchor point only for extrude mode, as it can cause issues in engrave mode
   if (mode === 'extrude') {
       addVoxel(0,0,0,2);
   }
@@ -95,7 +94,7 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   const STICKER_BLOCK_DEPTH = 16;
   
   const placeVoxel = (px: number, py: number, pz: number, zOffset: number) => {
-    addVoxel(px, py, pz + zOffset);
+    addVoxel(px, modelHeight - 1 - py, pz + zOffset);
   };
 
   if (mode === 'extrude') {
@@ -144,8 +143,8 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelHeight;
     finalDepth = modelDepth;
     
-    // Default mapping for horizontal, inverting Y
-    finalXyzi = xyziValues.map(v => ({ x: v.x, y: (modelHeight - 1 - v.y), z: v.z, i: v.i }));
+    // Default mapping for horizontal
+    finalXyzi = xyziValues;
   }
  
   const palette: PaletteColor[] = [
