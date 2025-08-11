@@ -93,16 +93,16 @@ export function VoxGenerator() {
 
   // Text state
   const [text, setText] = useState('Vintage');
-  const [fontSize, setFontSize] = useState([32]);
-  const [font, setFont] = useState<FontStyle>('serif');
-  const [fontFile, setFontFile] = useState<File | null>(null);
-  const fontFileUrlRef = useRef<string | null>(null);
+  const [fontSize, setFontSize] = useState([8]);
+  const [fontFileUrlRef, setFontFileUrlRef] = useState('QuinqueFive.ttf');
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
   const [textStickerMode, setTextStickerMode] = useState(true);
   const [letterDepth, setLetterDepth] = useState([5]);
   const [backgroundDepth, setBackgroundDepth] = useState([16]);
   const [engraveDepth, setEngraveDepth] = useState([3]);
   const [textOrientation, setTextOrientation] = useState<TextOrientation>('horizontal');
+  const [textOutline, setTextOutline] = useState(false);
+  const [textOutlineGap, setTextOutlineGap] = useState([1]);
   
   // QR Code State
   const [qrUrl, setQrUrl] = useState('https://www.vintagestory.at/');
@@ -138,6 +138,11 @@ export function VoxGenerator() {
   const [signIconScale, setSignIconScale] = useState(50);
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
   const [signTextOffsetY, setSignTextOffsetY] = useState(0);
+  const [signFont, setSignFont] = useState('QuinqueFive.ttf');
+  const [signFontSize, setSignFontSize] = useState([8]);
+  const [signTextOutline, setSignTextOutline] = useState(false);
+  const [signTextOutlineGap, setSignTextOutlineGap] = useState([1]);
+
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -174,7 +179,6 @@ export function VoxGenerator() {
   
    useEffect(() => {
     return () => {
-      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
       if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
       if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
     };
@@ -211,28 +215,6 @@ export function VoxGenerator() {
     };
   }, [toast, t]);
 
-  const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
-      setFontFile(file);
-      const url = URL.createObjectURL(file);
-      fontFileUrlRef.current = url;
-      setFont('custom'); 
-    }
-  };
-
-   const handleFontChange = (value: FontStyle) => {
-    setFont(value);
-    if (value !== 'custom') {
-      setFontFile(null);
-      if (fontFileUrlRef.current) {
-        URL.revokeObjectURL(fontFileUrlRef.current);
-        fontFileUrlRef.current = null;
-      }
-    }
-  }
-
   const validateAndParse = (value: string, name: string, min = 1): number | null => {
     const parsed = parseInt(value, 10);
     if (isNaN(parsed) || parsed < min) {
@@ -252,12 +234,14 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
+        const fontUrl = `/fonts/${fontFileUrlRef}`;
         const { pixels, width, height } = await rasterizeText({
             text, 
-            font, 
             fontSize: fontSize[0], 
-            fontUrl: fontFileUrlRef.current ?? undefined,
+            fontUrl: fontUrl,
             orientation: textOrientation,
+            outline: textOutline,
+            outlineGap: textOutlineGap[0],
         });
 
         if (width === 0 || height === 0) {
@@ -622,7 +606,14 @@ export function VoxGenerator() {
         const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
 
         // Process Text
-        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText(signText, contentWidth);
+        const fontUrl = `/fonts/${signFont}`;
+        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizeText({
+            text: signText, 
+            fontSize: signFontSize[0],
+            fontUrl: fontUrl,
+            outline: signTextOutline,
+            outlineGap: signTextOutlineGap[0],
+        });
 
         const input: SignToVoxInput = {
             width: signWidth,
@@ -1087,42 +1078,46 @@ export function VoxGenerator() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label>{t('textConstructor.fontLabel')}</Label>
-                <Select 
-                value={font} 
-                onValueChange={(v) => handleFontChange(v as FontStyle)}>
-                <SelectTrigger>
-                    <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
-                    <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
-                    <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
-                    {fontFile && <SelectItem value="custom" disabled>{fontFile.name}</SelectItem>}
-                </SelectContent>
+                <Select value={fontFileUrlRef} onValueChange={setFontFileUrlRef}>
+                  <SelectTrigger>
+                      <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
+                      <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
+                      <SelectItem value="microfont.otf">microfont.otf</SelectItem>
+                  </SelectContent>
                 </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="font-upload">{t('textConstructor.uploadLabel')}</Label>
-                <Button asChild variant="outline" className="w-full">
-                <label className="cursor-pointer flex items-center justify-center">
-                    <Upload className="mr-2 h-4 w-4" />
-                    {fontFile ? fontFile.name : t('textConstructor.uploadButton')}
-                    <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
-                </label>
-                </Button>
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="font-size">{t('textConstructor.sizeLabel')}: {fontSize[0]}px</Label>
             <Slider
               id="font-size"
-              min={8}
+              min={4}
               max={128}
               step={1}
               value={fontSize}
               onValueChange={setFontSize}
             />
           </div>
+           <div className="flex items-center space-x-2">
+            <Switch id="text-outline-switch" checked={textOutline} onCheckedChange={setTextOutline} />
+            <Label htmlFor="text-outline-switch">{t('textConstructor.outlineLabel')}</Label>
+          </div>
+          {textOutline && (
+             <div className="space-y-2">
+                <Label htmlFor="text-outline-gap">{t('textConstructor.outlineGapLabel')}: {textOutlineGap[0]}px</Label>
+                <Slider
+                id="text-outline-gap"
+                min={1}
+                max={5}
+                step={1}
+                value={textOutlineGap}
+                onValueChange={setTextOutlineGap}
+                />
+            </div>
+          )}
            <div className="space-y-2">
             <Label>{t('voxGenerator.text.orientation.label')}</Label>
             <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
@@ -1437,10 +1432,57 @@ export function VoxGenerator() {
                     {signIconUrl && <img src={signIconUrl} alt="Icon Preview" className="h-10 w-10 p-1 border rounded-md" />}
                 </div>
             </div>
-             <div className="space-y-2">
+            
+            <div className="space-y-2 pt-4 border-t border-primary/20">
                 <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
+                
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                  <div className="space-y-2">
+                      <Label>{t('textConstructor.fontLabel')}</Label>
+                      <Select value={signFont} onValueChange={setSignFont}>
+                        <SelectTrigger>
+                            <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
+                            <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
+                            <SelectItem value="microfont.otf">microfont.otf</SelectItem>
+                        </SelectContent>
+                      </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sign-font-size">{t('textConstructor.sizeLabel')}: {signFontSize[0]}px</Label>
+                    <Slider
+                      id="sign-font-size"
+                      min={4}
+                      max={128}
+                      step={1}
+                      value={signFontSize}
+                      onValueChange={setSignFontSize}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-2">
+                  <Switch id="sign-text-outline-switch" checked={signTextOutline} onCheckedChange={setSignTextOutline} />
+                  <Label htmlFor="sign-text-outline-switch">{t('textConstructor.outlineLabel')}</Label>
+                </div>
+                {signTextOutline && (
+                   <div className="space-y-2">
+                      <Label htmlFor="sign-text-outline-gap">{t('textConstructor.outlineGapLabel')}: {signTextOutlineGap[0]}px</Label>
+                      <Slider
+                      id="sign-text-outline-gap"
+                      min={1}
+                      max={5}
+                      step={1}
+                      value={signTextOutlineGap}
+                      onValueChange={setSignTextOutlineGap}
+                      />
+                  </div>
+                )}
             </div>
+
             
             <div className="space-y-4 pt-4 border-t border-primary/20">
               <Label>{t('voxGenerator.sign.layout')}</Label>

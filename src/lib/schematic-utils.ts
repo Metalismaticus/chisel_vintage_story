@@ -4,6 +4,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -89,7 +90,6 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
 
 interface RasterizeTextParams {
   text: string;
-  font: FontStyle;
   fontSize: number;
   fontUrl?: string;
   outline?: boolean;
@@ -226,7 +226,6 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
 
 export async function rasterizeText({
   text,
-  font,
   fontSize,
   fontUrl,
   outline = false,
@@ -237,22 +236,24 @@ export async function rasterizeText({
         return { width: 0, height: 0, pixels: [] };
     }
 
-    let loadedFontFamily = font as string;
-    if (font === 'monospace') loadedFontFamily = '"Roboto Mono", monospace';
-    if (font === 'serif') loadedFontFamily = '"Roboto Slab", serif';
-    if (font === 'sans-serif') loadedFontFamily = '"Roboto Condensed", sans-serif';
+    const fontName = fontUrl?.split('/').pop()?.split('.')[0] || 'custom-font';
+    let loadedFontFamily = fontName;
 
     let fontFace: FontFace | undefined;
-    if (fontUrl && font === 'custom') {
-      fontFace = new FontFace('custom-font', `url(${fontUrl})`);
+    if (fontUrl) {
+      fontFace = new FontFace(fontName, `url(${fontUrl})`);
       try {
         await fontFace.load();
         document.fonts.add(fontFace);
-        loadedFontFamily = 'custom-font';
+        loadedFontFamily = fontName;
       } catch (e) {
         console.error('Font loading failed:', e);
-        loadedFontFamily = '"Roboto Condensed", sans-serif';
+        // Fallback or re-throw
+        throw new Error(`Failed to load font: ${fontUrl}`);
       }
+    } else {
+        // This case should ideally not happen if a URL is always provided
+        loadedFontFamily = 'monospace';
     }
     
     // Create a temporary canvas to measure text
@@ -394,7 +395,6 @@ export async function rasterizeText({
 
 interface TextToSchematicParams {
   text: string;
-  font: FontStyle;
   fontSize: number;
   fontUrl?: string;
   outline?: boolean;
@@ -407,14 +407,13 @@ interface TextToSchematicParams {
  */
 export async function textToSchematic({
   text,
-  font,
   fontSize,
   fontUrl,
   outline = false,
   outlineGap = 1,
 }: TextToSchematicParams): Promise<Omit<SchematicOutput, 'depth'>> {
    
-    const { pixels: croppedPixels, width: croppedWidth, height: croppedHeight } = await rasterizeText({ text, font, fontSize, fontUrl, outline, outlineGap});
+    const { pixels: croppedPixels, width: croppedWidth, height: croppedHeight } = await rasterizeText({ text, fontSize, fontUrl, outline, outlineGap});
     
      if (croppedWidth === 0) { // Empty schematic
         return {
