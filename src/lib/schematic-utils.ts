@@ -3,6 +3,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -116,11 +117,13 @@ const TINY_FONT_DATA: { [char: string]: string[] } = {
   // Russian Alphabet
   'А': [' █ ', '█ █', '███', '█ █', '█ █'], 'Б': ['██ ', '█ █', '██ ', '█ █', '██ '], 'В': ['██ ', '█ █', '██ ', '█ █', '██ '],
   'Г': ['███', '█  ', '█  ', '█  ', '█  '], 'Д': [' ██ ', '█  █', '█  █', '████', '  █ '], 'Е': ['███', '█  ', '██ ', '█  ', '███'],
-  'Ё': ['███', '█ █', '██ ', '█  ', '███'], 'Ж': ['█ █', ' █ ', '███', ' █ ', '█ █'], 'З': ['██ ', '  █', ' █ ', '  █', '██ '],
-  'И': ['█ █', '█ █', '███', '█ █', '█ █'], 'Й': ['█ █', '█ █', '███', '█ █', '█ █'], 'Л': ['  ██', ' █ █', '█  █', '█  █', '█  █'],
-  'П': ['███', '█ █', '█ █', '█ █', '   '], 'Т': ['███', ' █ ', ' █ ', ' █ ', ' █ '], 'У': ['█ █', '█ █', ' █ ', ' █ ', ' █ '],
+  'Ё': ['███', ' █ ', '███', ' █ ', '███'], 'Ж': ['█ █', ' █ ', '███', ' █ ', '█ █'], 'З': ['██ ', '  █', ' █ ', '  █', '██ '],
+  'И': ['█ █', '█ █', '███', '█ █', '█ █'], 'Й': ['█ █', ' █ ', '███', '█ █', '█ █'], 'К': ['█ █', '█ █', '██ ', '█ █', '█ █'],
+  'Л': ['  ██', ' █ █', '█  █', '█  █', '█  █'], 'М': ['█ █', '███', '█ █', '█ █', '█ █'], 'Н': ['█ █', '█ █', '███', '█ █', '█ █'],
+  'О': [' ██ ', '█  █', '█  █', '█  █', ' ██ '], 'П': ['███', '█ █', '█ █', '█ █', '█ █'], 'Р': ['██ ', '█ █', '██ ', '█  ', '█  '],
+  'С': [' ██', '█  ', '█  ', '█  ', ' ██'], 'Т': ['███', ' █ ', ' █ ', ' █ ', ' █ '], 'У': ['█ █', '█ █', '█ █', '█ █', ' ██'],
   'Ф': [' ██ ', '█  █', ' ██ ', '█  █', ' ██ '], 'Х': ['█ █', ' █ ', ' █ ', ' █ ', '█ █'], 'Ц': ['█ █', '█ █', '█_█', '  █', '  █'],
-  'Ч': ['█  ', '█  ', '██ ', '  █', '  █'], 'Ш': ['█ █ █', '█ █ █', '█ █ █', '█ █ █', '     '], 'Щ': ['█ █ █', '█ █ █', '█_█_█', '     ', '     '],
+  'Ч': ['█  ', '█  ', '██ ', '  █', '  █'], 'Ш': ['█ █ █', '█ █ █', '█ █ █', '█ █ █', '█ █ █'], 'Щ': ['█ █ █', '█ █ █', '█_█_█', '  █  ', '  █  '],
   'Ъ': ['██', '█ ', '█ ', '██', '█ '], 'Ы': ['█ █', '█ █', '█_ ', '█  ', '█  '], 'Ь': ['█  ', '█  ', '██ ', '█ █', '██ '],
   'Э': [' ██', '█  ', ' ██', '█  ', ' ██'], 'Ю': ['█  █', '██ █', '█ █ █', '█  █', '█  █'], 'Я': [' ██', '█  █', ' ██', '█ █', '█  █'],
 };
@@ -175,16 +178,17 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
         finalMaxWidth = lineWidth;
       }
     });
-    if (!maxWidth || finalMaxWidth > maxWidth) {
-      finalMaxWidth = maxWidth || 0;
+    if (maxWidth && finalMaxWidth > maxWidth) {
+      finalMaxWidth = maxWidth;
     }
 
 
     const finalHeight = lines.length * (FONT_HEIGHT + LINE_SPACING) - LINE_SPACING;
-    const finalPixels: boolean[] = [];
+    const finalPixels: boolean[] = new Array(finalMaxWidth * finalHeight).fill(false);
 
+    let currentY = 0;
     for (const line of lines) {
-        const lineData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
+        const lineData: boolean[][] = Array(FONT_HEIGHT).fill(0).map(() => []);
         let currentLineWidth = 0;
 
         for (const char of line) {
@@ -203,7 +207,7 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
         
         if (currentLineWidth > 0) {
             currentLineWidth -= CHAR_SPACING;
-            for (let y = 0; y < FONT_HEIGHT; y++) {
+             for (let y = 0; y < FONT_HEIGHT; y++) {
                 lineData[y].splice(-CHAR_SPACING);
             }
         }
@@ -211,22 +215,11 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
         const lineOffsetX = Math.floor((finalMaxWidth - currentLineWidth) / 2);
 
         for (let y = 0; y < FONT_HEIGHT; y++) {
-            for (let x = 0; x < finalMaxWidth; x++) {
-                if (x >= lineOffsetX && x < lineOffsetX + currentLineWidth) {
-                    finalPixels.push(lineData[y][x - lineOffsetX] || false);
-                } else {
-                    finalPixels.push(false);
-                }
+            for (let x = 0; x < currentLineWidth; x++) {
+                 finalPixels[(currentY + y) * finalMaxWidth + (lineOffsetX + x)] = lineData[y][x];
             }
         }
-
-        if (lines.indexOf(line) < lines.length - 1) {
-            for (let i = 0; i < LINE_SPACING; i++) {
-                for (let x = 0; x < finalMaxWidth; x++) {
-                    finalPixels.push(false);
-                }
-            }
-        }
+        currentY += FONT_HEIGHT + LINE_SPACING;
     }
     
     return { pixels: finalPixels, width: finalMaxWidth, height: finalHeight };
@@ -835,9 +828,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             const generateIonicCapital = (capitalH: number, shaftR: number, capitalR: number): {x: number, y: number, z: number}[] => {
                 const capitalVoxels: {x: number, y: number, z: number}[] = [];
-                
+                const abacusSize = capitalR * 2 + 1; // Make it odd for a clear center
+
                 const abacusHeight = Math.max(1, Math.floor(capitalH * 0.25));
-                const abacusSize = capitalR * 2;
                 const abacusYStart = capitalH - abacusHeight;
                 for (let y = 0; y < abacusHeight; y++) {
                     for (let z = 0; z < abacusSize; z++) {
@@ -850,10 +843,10 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 const echinusHeight = Math.max(1, Math.floor(capitalH * 0.2));
                 const echinusYStart = capitalH - abacusHeight - echinusHeight;
                 for (let y = 0; y < echinusHeight; y++) {
-                    const progress = y / (echinusHeight > 1 ? echinusHeight - 1 : 1);
+                    const progress = echinusHeight > 1 ? y / (echinusHeight - 1) : 1;
                     const currentRadius = shaftR + (capitalR - shaftR) * progress;
-                    const centerX = capitalR - 0.5;
-                    const centerZ = capitalR - 0.5;
+                    const centerX = capitalR;
+                    const centerZ = capitalR;
                     
                     for (let z = 0; z < abacusSize; z++) {
                         for (let x = 0; x < abacusSize; x++) {
@@ -953,7 +946,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                  const offsetZ = Math.floor((depth / 2) - baseRadius);
 
                  if (capitalStyle === 'ionic') {
-                    const capitalVoxels = generateIonicCapital(finalCapitalH, colRadius, baseRadius);
+                    const capitalVoxels = generateIonicCapital(finalCapitalH, colRadius, baseRadius); 
                     capitalVoxels.forEach(v => addVoxel(v.x + offsetX, v.y + capitalStartY, v.z + offsetZ));
                  } else {
                     const capitalVoxels = generateCylinder(baseRadius, finalCapitalH, capitalStyle);
@@ -971,19 +964,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 }
                 
                 const debrisVoxels: {x: number, y: number, z: number}[] = [];
-
-                if (withCapital && debrisCapitalH > 0) {
-                    const capitalVoxels = (capitalStyle === 'ionic') 
-                        ? generateIonicCapital(debrisCapitalH, colRadius, baseRadius)
-                        : generateCylinder(baseRadius, debrisCapitalH, capitalStyle);
-                    
-                    const capOffsetX = Math.floor(baseRadius - colRadius);
-                    capitalVoxels.forEach(v => {
-                        debrisVoxels.push({x: v.x, y: v.y, z: v.z});
-                    });
-                }
                 
-                if (debrisShaftH > 0) {
+                 if (debrisShaftH > 0) {
                     const shaftVoxels = generateCylinder(colRadius, finalShaftH, 'simple');
                     shaftVoxels.forEach(v => {
                         const xFromCenter = v.x - colRadius + 0.5;
@@ -994,6 +976,16 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                            const newY = v.y - breakPlaneY;
                            debrisVoxels.push({x: v.x, y: newY, z: v.z });
                         }
+                    });
+                }
+
+                if (withCapital && debrisCapitalH > 0) {
+                    const capitalVoxels = (capitalStyle === 'ionic') 
+                        ? generateIonicCapital(debrisCapitalH, colRadius, baseRadius)
+                        : generateCylinder(baseRadius, debrisCapitalH, capitalStyle);
+                    
+                    capitalVoxels.forEach(v => {
+                        debrisVoxels.push({x: v.x, y: v.y + debrisShaftH, z: v.z});
                     });
                 }
                 
@@ -1307,5 +1299,6 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 

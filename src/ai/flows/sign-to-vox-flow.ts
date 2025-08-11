@@ -108,7 +108,8 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   
   // 2. Place Icon
   const iconXOffset = Math.floor((signWidth - icon.width) / 2);
-  const iconYOffset = contentCenterY + Math.floor(contentHeight * 0.25) - Math.floor(icon.height / 2) + (icon.offsetY || 0);
+  const iconBaseY = contentCenterY + Math.floor(contentHeight * 0.25) - Math.floor(icon.height / 2);
+  const iconYOffset = iconBaseY + (icon.offsetY || 0);
 
   for (let y = 0; y < icon.height; y++) {
       for (let x = 0; x < icon.width; x++) {
@@ -120,7 +121,9 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
 
   // 3. Place Text
   const textXOffset = Math.floor((signWidth - text.width) / 2);
-  const textYOffset = contentCenterY - Math.floor(contentHeight * 0.25) - Math.floor(text.height / 2) + (text.offsetY || 0);
+  const textBaseY = contentCenterY - Math.floor(contentHeight * 0.25) - Math.floor(text.height / 2);
+  const textYOffset = textBaseY + (text.offsetY || 0);
+
 
   for (let y = 0; y < text.height; y++) {
       for (let x = 0; x < text.width; x++) {
