@@ -99,7 +99,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
             if (dx*dx + dy*dy > cornerRadius*cornerRadius) isFrame = false;
         }
 
-        if(isFrame) addVoxel(x, y, 0);
+        if(isFrame) addVoxel(x, signHeight - 1 - y, 0);
     }
   }
   
@@ -113,7 +113,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   for (let y = 0; y < icon.height; y++) {
       for (let x = 0; x < icon.width; x++) {
           if (icon.pixels[y * icon.width + x]) {
-              addVoxel(x + iconXOffset, y + iconYOffset, 0);
+              addVoxel(x + iconXOffset, signHeight - 1 - (y + iconYOffset), 0);
           }
       }
   }
@@ -125,7 +125,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   for (let y = 0; y < text.height; y++) {
       for (let x = 0; x < text.width; x++) {
           if (text.pixels[y * text.width + x]) {
-              addVoxel(x + textXOffset, y + textYOffset, 0);
+              addVoxel(x + textXOffset, signHeight - 1 - (y + textYOffset), 0);
           }
       }
   }
