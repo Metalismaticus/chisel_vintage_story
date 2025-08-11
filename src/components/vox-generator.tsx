@@ -141,7 +141,7 @@ export function VoxGenerator() {
   const [signIconScale, setSignIconScale] = useState(50);
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
   const [signTextOffsetY, setSignTextOffsetY] = useState(0);
-  const [signFont, setSignFont] = useState('QuinqueFive.ttf');
+  
 
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -612,7 +612,7 @@ export function VoxGenerator() {
         const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
 
         // Process Text
-        const fontUrl = `/fonts/${signFont}`;
+        const fontUrl = `/fonts/QuinqueFive.ttf`;
         const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText({ 
             text: signText,
             fontUrl: fontUrl,
@@ -1489,22 +1489,6 @@ export function VoxGenerator() {
             <div className="space-y-2 pt-4 border-t border-primary/20">
                 <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
-                
-                 <div className="grid grid-cols-1 gap-4 pt-4">
-                  <div className="space-y-2">
-                      <Label>{t('textConstructor.fontLabel')}</Label>
-                      <Select value={signFont} onValueChange={setSignFont}>
-                        <SelectTrigger>
-                            <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
-                        </SelectTrigger>
-                        <SelectContent>
-                           <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
-                           <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
-                           <SelectItem value="microfont.otf">microfont.otf</SelectItem>
-                        </SelectContent>
-                      </Select>
-                  </div>
-                </div>
             </div>
 
             
@@ -1644,4 +1628,5 @@ export function VoxGenerator() {
 
 
     
+
 

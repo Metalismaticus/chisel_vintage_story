@@ -61,7 +61,9 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   const addVoxel = (px: number, py: number, pz: number, colorIndex = 1) => {
     xyziValues.push({ x: Math.round(px), y: Math.round(py), z: Math.round(pz), i: colorIndex });
   };
-  addVoxel(0,0,0,2); // Anchor point
+  addVoxel(0,0,0,2); // Anchor point at 0,0,0
+
+  const Z_OFFSET = 15;
 
   // 1. Generate Frame
   const cornerRadius = frameWidth * 2;
@@ -91,7 +93,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
         if (checkCorner(signWidth - 1 - cornerRadius, signHeight - 1 - cornerRadius, cornerRadius)) isFrame = false;
 
 
-        if(isFrame) addVoxel(x, signHeight - 1 - y, 0);
+        if(isFrame) addVoxel(x, signHeight - 1 - y, Z_OFFSET);
     }
   }
   
@@ -106,7 +108,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   for (let y = 0; y < icon.height; y++) {
       for (let x = 0; x < icon.width; x++) {
           if (icon.pixels[y * icon.width + x]) {
-              addVoxel(x + iconXOffset, signHeight - 1 - (y + iconYOffset), 0);
+              addVoxel(x + iconXOffset, signHeight - 1 - (y + iconYOffset), Z_OFFSET);
           }
       }
   }
@@ -120,14 +122,14 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   for (let y = 0; y < text.height; y++) {
       for (let x = 0; x < text.width; x++) {
           if (text.pixels[y * text.width + x]) {
-              addVoxel(x + textXOffset, signHeight - 1 - (y + textYOffset), 0);
+              addVoxel(x + textXOffset, signHeight - 1 - (y + textYOffset), Z_OFFSET);
           }
       }
   }
 
   const modelWidth = signWidth;
   const modelHeight = signHeight;
-  const modelDepth = 1;
+  const modelDepth = 16;
  
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
   palette[0] = { r: 0, g: 0, b: 0, a: 0 };
