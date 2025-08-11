@@ -619,6 +619,27 @@ export function VoxGenerator() {
     }
   };
 
+    const imageToPixels = async (img: HTMLImageElement, targetWidth: number): Promise<{pixels: boolean[], width: number, height: number}> => {
+        const aspectRatio = img.height / img.width;
+        const width = targetWidth;
+        const height = Math.round(width * aspectRatio);
+
+        const canvas = new OffscreenCanvas(width, height);
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) throw new Error('Could not get canvas context for icon');
+        
+        ctx.drawImage(img, 0, 0, width, height);
+        const imageData = ctx.getImageData(0, 0, width, height);
+        
+        const pixels: boolean[] = [];
+        for (let i = 0; i < imageData.data.length; i += 4) {
+            // Simple thresholding for B&W from alpha channel
+            pixels.push(imageData.data[i+3] > 128);
+        }
+
+        return { pixels, width, height };
+    }
+
   const handleGenerateSign = async () => {
     if (!signIconFile) {
         toast({ title: t('voxGenerator.errors.noIcon'), description: t('voxGenerator.errors.noIconDesc'), variant: 'destructive' });
@@ -633,22 +654,32 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const iconDataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(signIconFile);
+        const contentWidth = signWidth - signFrameWidth * 4;
+
+        // Process Icon
+        const img = document.createElement('img');
+        await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = URL.createObjectURL(signIconFile);
+        });
+        const iconTargetWidth = Math.floor(contentWidth * 0.5);
+        const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
+
+        // Process Text
+        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizeText({ 
+            text: signText, 
+            font: signFont, 
+            fontSize: signFontSize[0], 
+            fontUrl: signFontFileUrlRef.current ?? undefined 
         });
 
         const input: SignToVoxInput = {
             width: signWidth,
             height: signHeight,
             frameWidth: signFrameWidth,
-            iconDataUrl,
-            text: signText,
-            font: signFont,
-            fontSize: signFontSize[0],
-            fontUrl: signFontFileUrlRef.current,
+            icon: { pixels: iconPixels, width: iconWidth, height: iconHeight },
+            text: { pixels: textPixels, width: textWidth, height: textHeight },
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
