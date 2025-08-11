@@ -63,15 +63,14 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   };
   addVoxel(0,0,0,2); // Add anchor point
   
-  // Align to chunk grid for engrave mode background
-  const finalWidth = mode === 'engrave' ? Math.ceil(textWidth / 16) * 16 : textWidth;
-  const finalHeight = mode === 'engrave' ? Math.ceil(textHeight / 16) * 16 : textHeight;
-  
   let pixels = originalPixels;
-  let currentWidth = textWidth;
-  let currentHeight = textHeight;
+  let modelWidth = textWidth;
+  let modelHeight = textHeight;
 
   if (mode === 'engrave') {
+      const finalWidth = Math.ceil(textWidth / 16) * 16;
+      const finalHeight = Math.ceil(textHeight / 16) * 16;
+      
       const paddedPixels = Array(finalWidth * finalHeight).fill(false);
       const xOffset = Math.floor((finalWidth - textWidth) / 2);
       const yOffset = Math.floor((finalHeight - textHeight) / 2);
@@ -84,32 +83,30 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
           }
       }
       pixels = paddedPixels;
-      currentWidth = finalWidth;
-      currentHeight = finalHeight;
+      modelWidth = finalWidth;
+      modelHeight = finalHeight;
   }
 
-  let modelWidth = currentWidth;
-  let modelHeight = currentHeight;
   let modelDepth = 0;
-
   const STICKER_BLOCK_DEPTH = 16;
-  const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - letterDepth : 0;
+  
 
-  const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
-      const finalPz = pz;
+  const mapCoords = (px: number, py: number, pz: number, zOffset: number): [number, number, number] => {
       if (orientation === 'vertical-lr') { 
-          return [px, finalPz, modelHeight - 1 - py]; 
+          return [px, pz + zOffset, modelHeight - 1 - py]; 
       }
-      return [px, modelHeight - 1 - py, finalPz]; 
+      return [px, modelHeight - 1 - py, pz + zOffset]; 
   };
 
   if (mode === 'extrude') {
+    const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - letterDepth : 0;
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : letterDepth;
+
     for (let py = 0; py < modelHeight; py++) {
       for (let px = 0; px < modelWidth; px++) {
         if (pixels[py * modelWidth + px]) {
           for (let pz = 0; pz < letterDepth; pz++) {
-            const [x, y, z] = mapCoords(px, py, pz + zOffset);
+            const [x, y, z] = mapCoords(px, py, pz, zOffset);
             addVoxel(x, y, z);
           }
         }
@@ -117,7 +114,7 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     }
   } else if (mode === 'engrave') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : backgroundDepth;
-    const engraveZOffset = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
+    const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
     
     for (let py = 0; py < modelHeight; py++) {
       for (let px = 0; px < modelWidth; px++) {
@@ -127,7 +124,7 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
         const startDepth = isTextPixel ? engraveDepth : 0;
 
         for (let pz = startDepth; pz < backgroundDepth; pz++) {
-             const [x, y, z] = mapCoords(px, py, pz + engraveZOffset);
+             const [x, y, z] = mapCoords(px, py, pz, zOffset);
              addVoxel(x, y, z);
         }
       }
@@ -143,22 +140,30 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   }
  
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
-  palette[0] = { r: 0, g: 0, b: 0, a: 0 };
+  palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed
   palette[1] = { r: 200, g: 164, b: 100, a: 255 }; // Main color
   palette[2] = { r: 10, g: 10, b: 10, a: 255 }; // Anchor color
 
   let voxSize;
+  // vox-saver uses {x: width, y: depth, z: height}
   if (orientation === 'vertical-lr') {
     voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
   } else {
     voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
   }
+  
+  const finalXyzi = xyziValues.map(v => {
+      if (orientation === 'vertical-lr') {
+          return { x: v.x, y: v.z, z: v.y, i: v.i };
+      }
+      return { x: v.x, y: v.z, z: v.y, i: v.i };
+  });
 
   const voxObject = {
       size: voxSize,
       xyzi: {
-          numVoxels: xyziValues.length,
-          values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
+          numVoxels: finalXyzi.length,
+          values: finalXyzi,
       },
       rgba: { values: palette }
   };
@@ -176,3 +181,4 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
       voxSize: voxSize,
   };
 }
+
