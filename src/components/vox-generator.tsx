@@ -140,7 +140,7 @@ export function VoxGenerator() {
   const signIconInputRef = useRef<HTMLInputElement>(null);
   const [signIconScale, setSignIconScale] = useState(50);
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
-  const [signTextOffsetY, setSignTextOffsetY] = useState(0);
+  const [textOffsetY, setTextOffsetY] = useState(0);
   
 
 
@@ -614,6 +614,7 @@ export function VoxGenerator() {
         // Process Text
         const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText({ 
             text: signText.toUpperCase(),
+            maxWidth: contentWidth,
         });
 
         const input: SignToVoxInput = {
@@ -621,7 +622,7 @@ export function VoxGenerator() {
             height: signHeight,
             frameWidth: signFrameWidth,
             icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
-            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: signTextOffsetY },
+            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: textOffsetY },
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -1500,8 +1501,8 @@ export function VoxGenerator() {
                   <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={0} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
               </div>
                <div className="space-y-2">
-                  <Label htmlFor="sign-text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {signTextOffsetY}px</Label>
-                  <Slider id="sign-text-offset-y" min={0} max={maxIconOffset} step={1} value={[signTextOffsetY]} onValueChange={(v) => setSignTextOffsetY(v[0])} />
+                  <Label htmlFor="sign-text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {textOffsetY}px</Label>
+                  <Slider id="sign-text-offset-y" min={0} max={maxIconOffset} step={1} value={[textOffsetY]} onValueChange={(v) => setTextOffsetY(v[0])} />
               </div>
             </div>
         </div>
@@ -1625,6 +1626,7 @@ export function VoxGenerator() {
 
 
     
+
 
 
 

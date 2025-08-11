@@ -11,6 +11,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -344,42 +345,87 @@ const TINY_FONT_DATA: Record<string, number[][]> = {
     'Я': [[0,1,1,1],[1,0,0,1],[1,1,1,0],[1,0,1,0],[1,0,0,1]],
 };
 
-export async function rasterizePixelText({ text }: { text: string }): Promise<{ pixels: boolean[], width: number, height: number }> {
+export async function rasterizePixelText({ text, maxWidth }: { text: string, maxWidth?: number }): Promise<{ pixels: boolean[], width: number, height: number }> {
     const charHeight = 5;
-    let totalWidth = 0;
     const charKerning = 1;
-    const charDataArray: { data: number[][], width: number }[] = [];
 
-    for (const char of text) {
+    const getCharWidth = (char: string): number => {
         const data = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
-        const width = data[0].length;
-        charDataArray.push({ data, width });
-        totalWidth += width + charKerning;
-    }
+        return data[0].length;
+    };
     
-    if (totalWidth > 0) {
-        totalWidth -= charKerning; // No kerning after the last character
-    }
+    const getWordWidth = (word: string): number => {
+        let width = 0;
+        for (const char of word) {
+            width += getCharWidth(char) + charKerning;
+        }
+        return width > 0 ? width - charKerning : 0;
+    };
 
-    if (totalWidth <= 0) {
-        return { pixels: [], width: 0, height: 0 };
-    }
+    // Word wrapping logic
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
 
-    const pixels: boolean[] = Array(totalWidth * charHeight).fill(false);
-
-    let currentX = 0;
-    for (const { data, width } of charDataArray) {
-        for (let y = 0; y < charHeight; y++) {
-            for (let x = 0; x < width; x++) {
-                if (data[y][x] === 1) {
-                    pixels[y * totalWidth + (currentX + x)] = true;
+    if (maxWidth) {
+        for (const word of words) {
+            const wordWidth = getWordWidth(word);
+            const spaceWidth = getCharWidth(' ');
+            
+            if (currentLine === '') {
+                currentLine = word;
+            } else {
+                const currentLineWidth = getWordWidth(currentLine);
+                if (currentLineWidth + spaceWidth + wordWidth <= maxWidth) {
+                    currentLine += ' ' + word;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = word;
                 }
             }
         }
-        currentX += width + charKerning;
+    } else {
+        currentLine = text;
+    }
+    lines.push(currentLine);
+
+    const lineMetrics = lines.map(line => ({
+        text: line,
+        width: getWordWidth(line),
+    }));
+
+    const finalWidth = Math.max(...lineMetrics.map(m => m.width));
+    const finalHeight = lines.length * (charHeight + charKerning) - charKerning;
+
+    if (finalWidth <= 0 || finalHeight <= 0) {
+        return { pixels: [], width: 0, height: 0 };
     }
 
-    return { pixels, width: totalWidth, height: charHeight };
+    const pixels: boolean[] = Array(finalWidth * finalHeight).fill(false);
+    
+    let currentY = 0;
+    for (const line of lineMetrics) {
+        let currentX = Math.floor((finalWidth - line.width) / 2); // Center align
+        for (const char of line.text) {
+            const data = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
+            const charWidth = data[0].length;
+            for (let y = 0; y < charHeight; y++) {
+                for (let x = 0; x < charWidth; x++) {
+                    if (data[y] && data[y][x] === 1) {
+                        const px = currentX + x;
+                        const py = currentY + y;
+                        if (px < finalWidth && py < finalHeight) {
+                           pixels[py * finalWidth + px] = true;
+                        }
+                    }
+                }
+            }
+            currentX += charWidth + charKerning;
+        }
+        currentY += charHeight + charKerning;
+    }
+
+    return { pixels, width: finalWidth, height: finalHeight };
 }
 
 
@@ -1295,4 +1341,8 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
+
+
+
 
