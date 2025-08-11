@@ -10,7 +10,7 @@
 
 import { z } from 'zod';
 const writeVox = require('vox-saver');
-import type { PaletteColor, TextOrientation } from '@/lib/schematic-utils';
+import type { PaletteColor } from '@/lib/schematic-utils';
 
 const TextToVoxInputSchema = z.object({
   pixels: z.array(z.boolean()),
@@ -61,8 +61,12 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   const addVoxel = (px: number, py: number, pz: number, colorIndex = 1) => {
     xyziValues.push({ x: Math.round(px), y: Math.round(py), z: Math.round(pz), i: colorIndex });
   };
-  addVoxel(0,0,0,2); // Add anchor point
   
+  // Anchor point only for extrude mode, as it can cause issues in engrave mode
+  if (mode === 'extrude') {
+      addVoxel(0,0,0,2);
+  }
+
   let pixels = originalPixels;
   let modelWidth = textWidth;
   let modelHeight = textHeight;
@@ -90,14 +94,8 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   let modelDepth = 0;
   const STICKER_BLOCK_DEPTH = 16;
   
-  // This maps the 2D canvas coordinates (px, py) and depth (pz) to a 3D model space
-  // where Y is UP.
   const placeVoxel = (px: number, py: number, pz: number, zOffset: number) => {
-    // We flip the Y because canvas Y=0 is top, but in 3D Y=0 is bottom.
-    const modelX = px;
-    const modelY = modelHeight - 1 - py;
-    const modelZ = pz + zOffset;
-    addVoxel(modelX, modelY, modelZ);
+    addVoxel(px, py, pz + zOffset);
   };
 
   if (mode === 'extrude') {
@@ -121,7 +119,6 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
       for (let px = 0; px < modelWidth; px++) {
         const isTextPixel = pixels[py * modelWidth + px];
         
-        // If it's a text pixel, we don't dig as deep
         const startDepth = isTextPixel ? engraveDepth : 0;
 
         for (let pz = startDepth; pz < backgroundDepth; pz++) {
@@ -131,44 +128,42 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     }
   }
 
-  let schematicWidth: number, schematicHeight: number, schematicDepth: number;
-  let voxSize: {x: number, y: number, z: number};
+  let finalWidth: number, finalHeight: number, finalDepth: number;
   let finalXyzi: {x: number, y: number, z: number, i: number}[];
 
   if (orientation === 'vertical-lr') {
-    // Vertical: The 2D canvas's height becomes the model's depth.
-    // The model's depth (text thickness) becomes its height.
-    schematicWidth = modelWidth;
-    schematicHeight = modelDepth;
-    schematicDepth = modelHeight;
+    finalWidth = modelWidth;
+    finalHeight = modelDepth;
+    finalDepth = modelHeight;
     
-    // vox-saver uses {x: width, y: depth, z: height}
-    voxSize = { x: schematicWidth, y: schematicDepth, z: schematicHeight };
-
-    // Rotate the model by swapping Y and Z and flipping Z
-    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
+    // Rotate 90 degrees around X-axis: (x, y, z) -> (x, z, max_y - y)
+    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: (modelHeight - 1 - v.y), i: v.i }));
 
   } else { // Horizontal
-    schematicWidth = modelWidth;
-    schematicHeight = modelHeight;
-    schematicDepth = modelDepth;
-
-    voxSize = { x: schematicWidth, y: schematicDepth, z: schematicHeight };
+    finalWidth = modelWidth;
+    finalHeight = modelHeight;
+    finalDepth = modelDepth;
     
     // Default mapping for horizontal
-    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
+    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.y, z: v.z, i: v.i }));
   }
  
-  const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
-  palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed
-  palette[1] = { r: 200, g: 164, b: 100, a: 255 }; // Main color
-  palette[2] = { r: 10, g: 10, b: 10, a: 255 }; // Anchor color
+  const palette: PaletteColor[] = [
+    { r: 0, g: 0, b: 0, a: 0 },
+    { r: 200, g: 164, b: 100, a: 255 }, // Main color
+    { r: 10, g: 10, b: 10, a: 255 },    // Anchor color
+  ];
+  while (palette.length < 256) {
+    palette.push({ r: 0, g: 0, b: 0, a: 0 });
+  }
+
+  const voxSize = { x: finalWidth, y: finalDepth, z: finalHeight };
 
   const voxObject = {
       size: voxSize,
       xyzi: {
           numVoxels: finalXyzi.length,
-          values: finalXyzi,
+          values: finalXyzi.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i })),
       },
       rgba: { values: palette }
   };
@@ -177,10 +172,10 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   const voxDataB64 = Buffer.from(buffer).toString('base64');
   
   return {
-      schematicData: createSchematicData('VOX Text', {width: schematicWidth, height: schematicHeight, depth: schematicDepth}),
-      width: schematicWidth,
-      height: schematicHeight,
-      depth: schematicDepth,
+      schematicData: createSchematicData('VOX Text', {width: finalWidth, height: finalHeight, depth: finalDepth}),
+      width: finalWidth,
+      height: finalHeight,
+      depth: finalDepth,
       isVox: true,
       voxData: voxDataB64,
       voxSize: voxSize,
