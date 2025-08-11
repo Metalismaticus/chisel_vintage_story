@@ -135,8 +135,7 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelDepth;
     finalDepth = modelHeight;
     
-    // Rotate 90 degrees around X-axis: (x, y, z) -> (x, z, max_y - y)
-    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: (modelHeight - 1 - v.y), i: v.i }));
+    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
 
   } else { // Horizontal
     finalWidth = modelWidth;
