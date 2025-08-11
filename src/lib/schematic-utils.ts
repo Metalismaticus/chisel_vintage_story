@@ -9,6 +9,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -111,6 +112,7 @@ export async function rasterizeText({
   fontUrl,
   outline = false,
   outlineGap = 1,
+  outlineWidth = 1,
   orientation = 'horizontal',
   maxWidth,
 }: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
@@ -177,7 +179,7 @@ export async function rasterizeText({
     }
     
     // Create a working canvas with enough padding for the outline and measurement inaccuracies
-    const PADDING = (outline ? (outlineGap ?? 1) : 0) + 5; 
+    const PADDING = (outline ? (outlineGap ?? 1) + (outlineWidth ?? 1) : 0) + 5; 
     const contentWidth = totalWidth + PADDING * 2;
     const contentHeight = totalHeight + PADDING * 2;
     
@@ -190,6 +192,16 @@ export async function rasterizeText({
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
     ctx.fillStyle = '#FFFFFF';
     ctx.textBaseline = 'top'; 
+    
+    if(outline) {
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = outlineWidth * 2; // Create stroke from center
+      ctx.lineJoin = 'round';
+      lines.forEach((line, i) => {
+          ctx.strokeText(line, PADDING + (outlineGap ?? 1), PADDING + i * lineHeight + (outlineGap ?? 1));
+      });
+    }
+
     lines.forEach((line, i) => {
         ctx.fillText(line, PADDING, PADDING + i * lineHeight);
     });
@@ -212,46 +224,6 @@ export async function rasterizeText({
     }
     
     let combinedPixels = textPixels;
-
-    if (outline) {
-        const outlinePixels = Array(contentWidth * contentHeight).fill(false);
-        const distanceCheck = (outlineGap ?? 1); 
-
-        for (let y = 0; y < contentHeight; y++) {
-            for (let x = 0; x < contentWidth; x++) {
-                if (textPixels[y * contentWidth + x]) { 
-                    continue; // Skip pixels that are part of the text
-                }
-                
-                let minDistanceSq = Infinity;
-                
-                // Heuristic to limit search area for performance
-                const searchBox = distanceCheck + 2;
-                const startY = Math.max(0, y - searchBox);
-                const endY = Math.min(contentHeight - 1, y + searchBox);
-                const startX = Math.max(0, x - searchBox);
-                const endX = Math.min(contentWidth - 1, x + searchBox);
-
-                for (let y2 = startY; y2 <= endY; y2++) {
-                    for (let x2 = startX; x2 <= endX; x2++) {
-                        if (textPixels[y2 * contentWidth + x2]) {
-                            const distSq = Math.pow(x - x2, 2) + Math.pow(y - y2, 2);
-                            minDistanceSq = Math.min(minDistanceSq, distSq);
-                        }
-                    }
-                }
-                
-                const minDistance = Math.sqrt(minDistanceSq);
-                
-                // Check if the pixel is within the outline stroke (1px wide)
-                if (minDistance > distanceCheck && minDistance <= distanceCheck + 1.2) { // Use 1.2 to fill gaps
-                     outlinePixels[y * contentWidth + x] = true;
-                }
-            }
-        }
-        
-        combinedPixels = textPixels.map((p, i) => p || outlinePixels[i]);
-    }
 
     // Crop the combined pixels to their actual bounding box
     let minX = contentWidth, minY = contentHeight, maxX = -1, maxY = -1;
@@ -323,7 +295,7 @@ export async function rasterizePixelText({
     }
 
     const tempCtx = document.createElement('canvas').getContext('2d')!;
-    tempCtx.font = `8px ${fontName}`; // Use a base size for measurement
+    tempCtx.font = `8px ${fontName}`;
     tempCtx.imageSmoothingEnabled = false;
 
     const charCanvases: { [key: string]: HTMLCanvasElement } = {};

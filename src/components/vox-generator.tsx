@@ -105,6 +105,7 @@ export function VoxGenerator() {
   const [textOrientation, setTextOrientation] = useState<TextOrientation>('horizontal');
   const [textOutline, setTextOutline] = useState(false);
   const [textOutlineGap, setTextOutlineGap] = useState([1]);
+  const [textOutlineWidth, setTextOutlineWidth] = useState([1]);
   
   // QR Code State
   const [qrUrl, setQrUrl] = useState('https://www.vintagestory.at/');
@@ -246,6 +247,7 @@ export function VoxGenerator() {
             orientation: textOrientation,
             outline: textOutline,
             outlineGap: textOutlineGap[0],
+            outlineWidth: textOutlineWidth[0],
         });
 
         if (width === 0 || height === 0) {
@@ -622,7 +624,7 @@ export function VoxGenerator() {
             height: signHeight,
             frameWidth: signFrameWidth,
             icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
-            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: signTextOffsetY },
+            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: textOffsetY },
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -1144,16 +1146,29 @@ export function VoxGenerator() {
             <Label htmlFor="text-outline-switch">{t('textConstructor.outlineLabel')}</Label>
           </div>
           {textOutline && (
-             <div className="space-y-2">
-                <Label htmlFor="text-outline-gap">{t('textConstructor.outlineGapLabel')}: {textOutlineGap[0]}px</Label>
-                <Slider
-                id="text-outline-gap"
-                min={1}
-                max={5}
-                step={1}
-                value={textOutlineGap}
-                onValueChange={setTextOutlineGap}
-                />
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="text-outline-gap">{t('textConstructor.outlineGapLabel')}: {textOutlineGap[0]}px</Label>
+                    <Slider
+                    id="text-outline-gap"
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={textOutlineGap}
+                    onValueChange={setTextOutlineGap}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="text-outline-width">Толщина контура: {textOutlineWidth[0]}px</Label>
+                    <Slider
+                    id="text-outline-width"
+                    min={1}
+                    max={5}
+                    step={1}
+                    value={textOutlineWidth}
+                    onValueChange={setTextOutlineWidth}
+                    />
+                </div>
             </div>
           )}
            <div className="space-y-2">
@@ -1483,7 +1498,6 @@ export function VoxGenerator() {
                             <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
-                           <SelectItem value="QuinqueFive.ttf">VS-Standard</SelectItem>
                            <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
                            <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
                            <SelectItem value="microfont.otf">microfont.otf</SelectItem>
