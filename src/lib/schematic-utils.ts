@@ -5,6 +5,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -95,6 +96,7 @@ interface RasterizeTextParams {
   outline?: boolean;
   outlineGap?: number;
   orientation?: TextOrientation;
+  isPixelFont?: boolean;
 }
 
 const TINY_FONT_DATA: { [char: string]: string[] } = {
@@ -231,6 +233,7 @@ export async function rasterizeText({
   outline = false,
   outlineGap = 1,
   orientation = 'horizontal',
+  isPixelFont = false,
 }: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
     if (typeof document === 'undefined' || !text || !text.trim()) {
         return { width: 0, height: 0, pixels: [] };
@@ -282,6 +285,10 @@ export async function rasterizeText({
     workCanvas.width = contentWidth;
     workCanvas.height = contentHeight;
     const ctx = workCanvas.getContext('2d', { willReadFrequently: true })!;
+
+    if (isPixelFont) {
+        ctx.imageSmoothingEnabled = false;
+    }
     
     // Draw the text onto the working canvas
     ctx.font = `${fontSize}px ${loadedFontFamily}`;

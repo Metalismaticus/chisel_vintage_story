@@ -139,7 +139,7 @@ export function VoxGenerator() {
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
   const [signTextOffsetY, setSignTextOffsetY] = useState(0);
   const [signFont, setSignFont] = useState('QuinqueFive.ttf');
-  const [signFontSize, setSignFontSize] = useState([8]);
+  const [signFontSize, setSignFontSize] = useState([5]);
   const [signTextOutline, setSignTextOutline] = useState(false);
   const [signTextOutlineGap, setSignTextOutlineGap] = useState([1]);
 
@@ -242,6 +242,7 @@ export function VoxGenerator() {
             orientation: textOrientation,
             outline: textOutline,
             outlineGap: textOutlineGap[0],
+            isPixelFont: true,
         });
 
         if (width === 0 || height === 0) {
@@ -611,8 +612,9 @@ export function VoxGenerator() {
             text: signText, 
             fontSize: signFontSize[0],
             fontUrl: fontUrl,
-            outline: signTextOutline,
-            outlineGap: signTextOutlineGap[0],
+            outline: false, // Outline removed
+            outlineGap: 1, // Default value
+            isPixelFont: true, // Use pixel-perfect rendering
         });
 
         const input: SignToVoxInput = {
@@ -1089,17 +1091,17 @@ export function VoxGenerator() {
                   </SelectContent>
                 </Select>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="font-size">{t('textConstructor.sizeLabel')}: {fontSize[0]}px</Label>
-            <Slider
-              id="font-size"
-              min={4}
-              max={128}
-              step={1}
-              value={fontSize}
-              onValueChange={setFontSize}
-            />
+             <div className="space-y-2">
+                <Label htmlFor="font-size">{t('textConstructor.sizeLabel')}: {fontSize[0]}px</Label>
+                <Slider
+                id="font-size"
+                min={4}
+                max={128}
+                step={1}
+                value={fontSize}
+                onValueChange={setFontSize}
+                />
+            </div>
           </div>
            <div className="flex items-center space-x-2">
             <Switch id="text-outline-switch" checked={textOutline} onCheckedChange={setTextOutline} />
@@ -1445,9 +1447,9 @@ export function VoxGenerator() {
                             <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
-                            <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
-                            <SelectItem value="microfont.otf">microfont.otf</SelectItem>
+                           <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
+                           <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
+                           <SelectItem value="microfont.otf">microfont.otf</SelectItem>
                         </SelectContent>
                       </Select>
                   </div>
@@ -1463,24 +1465,6 @@ export function VoxGenerator() {
                     />
                   </div>
                 </div>
-
-                <div className="flex items-center space-x-2 pt-2">
-                  <Switch id="sign-text-outline-switch" checked={signTextOutline} onCheckedChange={setSignTextOutline} />
-                  <Label htmlFor="sign-text-outline-switch">{t('textConstructor.outlineLabel')}</Label>
-                </div>
-                {signTextOutline && (
-                   <div className="space-y-2">
-                      <Label htmlFor="sign-text-outline-gap">{t('textConstructor.outlineGapLabel')}: {signTextOutlineGap[0]}px</Label>
-                      <Slider
-                      id="sign-text-outline-gap"
-                      min={1}
-                      max={5}
-                      step={1}
-                      value={signTextOutlineGap}
-                      onValueChange={setSignTextOutlineGap}
-                      />
-                  </div>
-                )}
             </div>
 
             
