@@ -93,8 +93,10 @@ export function VoxGenerator() {
 
   // Text state
   const [text, setText] = useState('Vintage');
-  const [fontSize, setFontSize] = useState([8]);
-  const [fontFileUrlRef, setFontFileUrlRef] = useState('QuinqueFive.ttf');
+  const [fontSize, setFontSize] = useState([24]);
+  const [font, setFont] = useState<FontStyle>('monospace');
+  const [fontFile, setFontFile] = useState<File | null>(null);
+  const fontFileUrlRef = useRef<string | null>(null);
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
   const [textStickerMode, setTextStickerMode] = useState(true);
   const [letterDepth, setLetterDepth] = useState([5]);
@@ -139,9 +141,6 @@ export function VoxGenerator() {
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
   const [signTextOffsetY, setSignTextOffsetY] = useState(0);
   const [signFont, setSignFont] = useState('QuinqueFive.ttf');
-  const [signFontSize, setSignFontSize] = useState([5]);
-  const [signTextOutline, setSignTextOutline] = useState(false);
-  const [signTextOutlineGap, setSignTextOutlineGap] = useState([1]);
 
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -178,9 +177,14 @@ export function VoxGenerator() {
   };
   
    useEffect(() => {
+    if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+        fontFileUrlRef.current = null;
+    }
     return () => {
       if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
       if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
+      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
     };
   }, [paPreviewUrl, signIconUrl]);
   
@@ -234,15 +238,14 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const fontUrl = `/fonts/${fontFileUrlRef}`;
         const { pixels, width, height } = await rasterizeText({
             text, 
+            font: font,
             fontSize: fontSize[0], 
-            fontUrl: fontUrl,
+            fontUrl: fontFileUrlRef.current ?? undefined,
             orientation: textOrientation,
             outline: textOutline,
             outlineGap: textOutlineGap[0],
-            isPixelFont: true,
         });
 
         if (width === 0 || height === 0) {
@@ -271,7 +274,7 @@ export function VoxGenerator() {
         console.error(error);
         toast({
           title: t('common.errors.generationFailed'),
-          description: (error instanceof Error) ? error.message : t('common.errors.serverError'),
+          description: (error instanceof Error) ? error.message : String(error),
           variant: "destructive",
         });
         setSchematicOutput(null);
@@ -607,15 +610,8 @@ export function VoxGenerator() {
         const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
 
         // Process Text
-        const fontUrl = `/fonts/${signFont}`;
-        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizeText({
-            text: signText, 
-            fontSize: signFontSize[0],
-            fontUrl: fontUrl,
-            outline: false, // Outline removed
-            outlineGap: 1, // Default value
-            isPixelFont: true, // Use pixel-perfect rendering
-        });
+        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText(signText, contentWidth);
+
 
         const input: SignToVoxInput = {
             width: signWidth,
@@ -694,6 +690,31 @@ export function VoxGenerator() {
       setPaPreviewUrl(newPreviewUrl);
     }
   }
+
+  const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+      }
+      setFontFile(file);
+      const url = URL.createObjectURL(file);
+      fontFileUrlRef.current = url;
+      setFont('custom'); 
+    }
+  };
+
+  const handleFontChange = (value: FontStyle) => {
+    setFont(value);
+    if (value !== 'custom') {
+      setFontFile(null);
+      if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+        fontFileUrlRef.current = null;
+      }
+    }
+  }
+
 
   const renderShapeInputs = () => {
     return (
@@ -1080,29 +1101,40 @@ export function VoxGenerator() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label>{t('textConstructor.fontLabel')}</Label>
-                <Select value={fontFileUrlRef} onValueChange={setFontFileUrlRef}>
+                <Select value={font} onValueChange={(v) => handleFontChange(v as FontStyle)}>
                   <SelectTrigger>
                       <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                      <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
-                      <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
-                      <SelectItem value="microfont.otf">microfont.otf</SelectItem>
+                      <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
+                      <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
+                      <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
+                      {fontFile && <SelectItem value="custom" disabled>{fontFile.name}</SelectItem>}
                   </SelectContent>
                 </Select>
             </div>
              <div className="space-y-2">
+                <Label htmlFor="font-upload">{t('textConstructor.uploadLabel')}</Label>
+                <Button asChild variant="outline" className="w-full">
+                  <label className="cursor-pointer flex items-center justify-center">
+                      <Upload className="mr-2 h-4 w-4" />
+                      {fontFile ? fontFile.name : t('textConstructor.uploadButton')}
+                      <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
+                  </label>
+                </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
                 <Label htmlFor="font-size">{t('textConstructor.sizeLabel')}: {fontSize[0]}px</Label>
                 <Slider
                 id="font-size"
-                min={4}
+                min={8}
                 max={128}
                 step={1}
                 value={fontSize}
                 onValueChange={setFontSize}
                 />
             </div>
-          </div>
            <div className="flex items-center space-x-2">
             <Switch id="text-outline-switch" checked={textOutline} onCheckedChange={setTextOutline} />
             <Label htmlFor="text-outline-switch">{t('textConstructor.outlineLabel')}</Label>
@@ -1439,7 +1471,7 @@ export function VoxGenerator() {
                 <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
                 
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                 <div className="grid grid-cols-1 gap-4 pt-4">
                   <div className="space-y-2">
                       <Label>{t('textConstructor.fontLabel')}</Label>
                       <Select value={signFont} onValueChange={setSignFont}>
@@ -1452,17 +1484,6 @@ export function VoxGenerator() {
                            <SelectItem value="microfont.otf">microfont.otf</SelectItem>
                         </SelectContent>
                       </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sign-font-size">{t('textConstructor.sizeLabel')}: {signFontSize[0]}px</Label>
-                    <Slider
-                      id="sign-font-size"
-                      min={4}
-                      max={128}
-                      step={1}
-                      value={signFontSize}
-                      onValueChange={setSignFontSize}
-                    />
                   </div>
                 </div>
             </div>

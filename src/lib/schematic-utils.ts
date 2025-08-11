@@ -6,6 +6,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -91,6 +92,7 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
 
 interface RasterizeTextParams {
   text: string;
+  font: FontStyle;
   fontSize: number;
   fontUrl?: string;
   outline?: boolean;
@@ -228,6 +230,7 @@ export async function rasterizePixelText(text: string, maxWidth?: number): Promi
 
 export async function rasterizeText({
   text,
+  font,
   fontSize,
   fontUrl,
   outline = false,
@@ -240,10 +243,10 @@ export async function rasterizeText({
     }
 
     const fontName = fontUrl?.split('/').pop()?.split('.')[0] || 'custom-font';
-    let loadedFontFamily = fontName;
+    let loadedFontFamily = font;
 
     let fontFace: FontFace | undefined;
-    if (fontUrl) {
+    if (fontUrl && font === 'custom') {
       fontFace = new FontFace(fontName, `url(${fontUrl})`);
       try {
         await fontFace.load();
@@ -254,9 +257,6 @@ export async function rasterizeText({
         // Fallback or re-throw
         throw new Error(`Failed to load font: ${fontUrl}`);
       }
-    } else {
-        // This case should ideally not happen if a URL is always provided
-        loadedFontFamily = 'monospace';
     }
     
     // Create a temporary canvas to measure text
@@ -402,6 +402,7 @@ export async function rasterizeText({
 
 interface TextToSchematicParams {
   text: string;
+  font: FontStyle;
   fontSize: number;
   fontUrl?: string;
   outline?: boolean;
@@ -414,13 +415,14 @@ interface TextToSchematicParams {
  */
 export async function textToSchematic({
   text,
+  font,
   fontSize,
   fontUrl,
   outline = false,
   outlineGap = 1,
 }: TextToSchematicParams): Promise<Omit<SchematicOutput, 'depth'>> {
    
-    const { pixels: croppedPixels, width: croppedWidth, height: croppedHeight } = await rasterizeText({ text, fontSize, fontUrl, outline, outlineGap});
+    const { pixels: croppedPixels, width: croppedWidth, height: croppedHeight } = await rasterizeText({ text, font, fontSize, fontUrl, outline, outlineGap});
     
      if (croppedWidth === 0) { // Empty schematic
         return {
