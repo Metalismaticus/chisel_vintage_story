@@ -101,31 +101,37 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   const contentCenterY = Math.floor(signHeight / 2);
   
   // 2. Place Icon
-  const iconXOffset = Math.floor((signWidth - icon.width) / 2);
-  const iconBaseY = contentCenterY + Math.floor(contentHeight * 0.25) - Math.floor(icon.height / 2);
-  const iconYOffset = iconBaseY + (icon.offsetY || 0);
+  if (icon && icon.pixels.length > 0) {
+      const iconXOffset = Math.floor((signWidth - icon.width) / 2);
+      const iconBaseY = contentCenterY + Math.floor(contentHeight * 0.25) - Math.floor(icon.height / 2);
+      const iconYOffset = iconBaseY + (icon.offsetY || 0);
 
-  for (let y = 0; y < icon.height; y++) {
-      for (let x = 0; x < icon.width; x++) {
-          if (icon.pixels[y * icon.width + x]) {
-              addVoxel(x + iconXOffset, signHeight - 1 - (y + iconYOffset), Z_OFFSET);
+      for (let y = 0; y < icon.height; y++) {
+          for (let x = 0; x < icon.width; x++) {
+              if (icon.pixels[y * icon.width + x]) {
+                  addVoxel(x + iconXOffset, signHeight - 1 - (y + iconYOffset), Z_OFFSET);
+              }
           }
       }
   }
+
 
   // 3. Place Text
-  const textXOffset = Math.floor((signWidth - text.width) / 2);
-  const textBaseY = contentCenterY - Math.floor(contentHeight * 0.25) - Math.floor(text.height / 2);
-  const textYOffset = textBaseY + (text.offsetY || 0);
+  if (text && text.pixels.length > 0) {
+      const textXOffset = Math.floor((signWidth - text.width) / 2);
+      const textBaseY = contentCenterY - Math.floor(contentHeight * 0.25) - Math.floor(text.height / 2);
+      const textYOffset = textBaseY + (text.offsetY || 0);
 
 
-  for (let y = 0; y < text.height; y++) {
-      for (let x = 0; x < text.width; x++) {
-          if (text.pixels[y * text.width + x]) {
-              addVoxel(x + textXOffset, signHeight - 1 - (y + textYOffset), Z_OFFSET);
+      for (let y = 0; y < text.height; y++) {
+          for (let x = 0; x < text.width; x++) {
+              if (text.pixels[y * text.width + x]) {
+                  addVoxel(x + textXOffset, signHeight - 1 - (y + textYOffset), Z_OFFSET);
+              }
           }
       }
   }
+
 
   const modelWidth = signWidth;
   const modelHeight = signHeight;
@@ -161,3 +167,5 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
       totalVoxels: xyziValues.length - 1,
   };
 }
+
+    
