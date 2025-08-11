@@ -45,7 +45,7 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
 
 export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<TextToVoxOutput> {
   const { 
-    pixels, 
+    pixels: originalPixels, 
     width: textWidth, 
     height: textHeight, 
     mode, 
@@ -58,38 +58,58 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
 
   let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
   
-  // Helper to add a voxel, consistently handling Y-up to Z-up conversion for vox-saver
-  // Our internal logic is X-Right, Y-Up, Z-Forward
   const addVoxel = (px: number, py: number, pz: number, colorIndex = 1) => {
-    // The color index is 1, which maps to the first color in our palette.
     xyziValues.push({ x: Math.round(px), y: Math.round(py), z: Math.round(pz), i: colorIndex });
   };
   addVoxel(0,0,0,2); // Add anchor point
   
-  let modelWidth = textWidth;
-  let modelHeight = textHeight;
+  // Align to chunk grid for engrave mode background
+  const finalWidth = mode === 'engrave' ? Math.ceil(textWidth / 16) * 16 : textWidth;
+  const finalHeight = mode === 'engrave' ? Math.ceil(textHeight / 16) * 16 : textHeight;
+  
+  let pixels = originalPixels;
+  let currentWidth = textWidth;
+  let currentHeight = textHeight;
+
+  if (mode === 'engrave') {
+      const paddedPixels = Array(finalWidth * finalHeight).fill(false);
+      const xOffset = Math.floor((finalWidth - textWidth) / 2);
+      const yOffset = Math.floor((finalHeight - textHeight) / 2);
+      
+      for(let y = 0; y < textHeight; y++) {
+          for(let x = 0; x < textWidth; x++) {
+              if (originalPixels[y * textWidth + x]) {
+                  paddedPixels[(y + yOffset) * finalWidth + (x + xOffset)] = true;
+              }
+          }
+      }
+      pixels = paddedPixels;
+      currentWidth = finalWidth;
+      currentHeight = finalHeight;
+  }
+
+  let modelWidth = currentWidth;
+  let modelHeight = currentHeight;
   let modelDepth = 0;
 
   const STICKER_BLOCK_DEPTH = 16;
   const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - letterDepth : 0;
 
-  // Remap 2D pixel coordinates (px, py) from the rasterized text to 3D voxel coordinates (x, y, z)
   const mapCoords = (px: number, py: number, pz: number): [number, number, number] => {
-      const finalPz = pz + zOffset;
-      if (orientation === 'vertical-lr') { // Text lays flat on the floor, reads left-to-right
-          return [px, finalPz, textHeight - 1 - py]; // x=text_x, y=depth, z=text_y
+      const finalPz = pz;
+      if (orientation === 'vertical-lr') { 
+          return [px, finalPz, modelHeight - 1 - py]; 
       }
-      // Horizontal text stands up on a wall
-      return [px, textHeight - 1 - py, finalPz]; // x=text_x, y=text_y, z=depth
+      return [px, modelHeight - 1 - py, finalPz]; 
   };
 
   if (mode === 'extrude') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : letterDepth;
-    for (let py = 0; py < textHeight; py++) {
-      for (let px = 0; px < textWidth; px++) {
-        if (pixels[py * textWidth + px]) {
+    for (let py = 0; py < modelHeight; py++) {
+      for (let px = 0; px < modelWidth; px++) {
+        if (pixels[py * modelWidth + px]) {
           for (let pz = 0; pz < letterDepth; pz++) {
-            const [x, y, z] = mapCoords(px, py, pz);
+            const [x, y, z] = mapCoords(px, py, pz + zOffset);
             addVoxel(x, y, z);
           }
         }
@@ -99,32 +119,27 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : backgroundDepth;
     const engraveZOffset = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
     
-    for (let py = 0; py < textHeight; py++) {
-      for (let px = 0; px < textWidth; px++) {
-        const isTextPixel = pixels[py * textWidth + px];
+    for (let py = 0; py < modelHeight; py++) {
+      for (let px = 0; px < modelWidth; px++) {
+        const isTextPixel = pixels[py * modelWidth + px];
         
         // If it's a text pixel, we don't dig as deep
-        const endDepth = isTextPixel ? backgroundDepth - engraveDepth : backgroundDepth;
+        const startDepth = isTextPixel ? engraveDepth : 0;
 
-        for (let pz = 0; pz < endDepth; pz++) {
-            const finalPz = pz + engraveZOffset;
-            if (orientation === 'vertical-lr') {
-                 addVoxel(px, finalPz, textHeight - 1 - py);
-            } else {
-                 addVoxel(px, textHeight - 1 - py, finalPz);
-            }
+        for (let pz = startDepth; pz < backgroundDepth; pz++) {
+             const [x, y, z] = mapCoords(px, py, pz + engraveZOffset);
+             addVoxel(x, y, z);
         }
       }
     }
   }
 
-  // Adjust final model dimensions based on orientation for the schematic info
-  let finalWidth = modelWidth;
-  let finalHeight = modelHeight;
-  let finalDepth = modelDepth;
+  let schematicWidth = modelWidth;
+  let schematicHeight = modelHeight;
+  let schematicDepth = modelDepth;
   if (orientation === 'vertical-lr') {
-    finalHeight = modelDepth; // New height is the depth
-    finalDepth = modelHeight; // New depth is the text height
+    schematicHeight = modelDepth; 
+    schematicDepth = modelHeight; 
   }
  
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
@@ -132,19 +147,17 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   palette[1] = { r: 200, g: 164, b: 100, a: 255 }; // Main color
   palette[2] = { r: 10, g: 10, b: 10, a: 255 }; // Anchor color
 
-  // Determine the final size for the .vox file, swapping Y and Z for Z-up format
   let voxSize;
   if (orientation === 'vertical-lr') {
-    voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
-  } else {
     voxSize = { x: modelWidth, y: modelDepth, z: modelHeight };
+  } else {
+    voxSize = { x: modelWidth, y: modelHeight, z: modelDepth };
   }
 
   const voxObject = {
       size: voxSize,
       xyzi: {
           numVoxels: xyziValues.length,
-          // Note: vox-saver expects Z-up, so we swap Y and Z from our internal coord system in the final object.
           values: xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }))
       },
       rgba: { values: palette }
@@ -154,10 +167,10 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   const voxDataB64 = Buffer.from(buffer).toString('base64');
   
   return {
-      schematicData: createSchematicData('VOX Text', {width: finalWidth, height: finalHeight, depth: finalDepth}),
-      width: finalWidth,
-      height: finalHeight,
-      depth: finalDepth,
+      schematicData: createSchematicData('VOX Text', {width: schematicWidth, height: schematicHeight, depth: schematicDepth}),
+      width: schematicWidth,
+      height: schematicHeight,
+      depth: schematicDepth,
       isVox: true,
       voxData: voxDataB64,
       voxSize: voxSize,
