@@ -110,21 +110,23 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
       for (let px = 0; px < modelWidth; px++) {
         if (pixels[py * modelWidth + px]) {
           for (let pz = 0; pz < letterDepth; pz++) {
-             placeVoxel(px, py, pz, zOffset);
+             if (orientation === 'vertical-lr' && stickerMode) {
+                placeVoxel(px, py, pz, 0);
+             } else {
+                placeVoxel(px, py, pz, zOffset);
+             }
           }
         }
       }
     }
   } else if (mode === 'engrave') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : backgroundDepth;
-    // Engraving should happen from the "top" of the block.
     const zStart = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
     
     for (let py = 0; py < modelHeight; py++) {
       for (let px = 0; px < modelWidth; px++) {
         const isTextPixel = pixels[py * modelWidth + px];
         
-        // If it's a text pixel, don't place voxels for the engrave depth.
         const startDepthForPixel = isTextPixel ? engraveDepth : 0;
 
         for (let pz = startDepthForPixel; pz < backgroundDepth; pz++) {
@@ -142,7 +144,26 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelDepth;
     finalDepth = modelHeight;
     
-    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
+    // Correct transformation for vertical orientation
+    if (mode === 'engrave') {
+        const zStartEngrave = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
+        xyziValues = []; // Recalculate for correct rotation
+        
+        for (let py = 0; py < modelHeight; py++) {
+          for (let px = 0; px < modelWidth; px++) {
+            const isTextPixel = pixels[py * modelWidth + px];
+            const startDepthForPixel = isTextPixel ? engraveDepth : 0;
+
+            for (let pz = startDepthForPixel; pz < backgroundDepth; pz++) {
+                // Correctly place voxels for vertical engraving
+                addVoxel(px, backgroundDepth - 1 - pz + zStartEngrave, modelHeight - 1 - py);
+            }
+          }
+        }
+         finalXyzi = xyziValues;
+    } else {
+         finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
+    }
 
   } else { // Horizontal
     finalWidth = modelWidth;
