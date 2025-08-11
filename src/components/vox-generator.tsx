@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
-import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic } from '@/lib/schematic-utils';
+import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic, rasterizePixelText } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput, type TextToVoxOutput } from '@/ai/flows/text-to-vox-flow';
@@ -611,12 +611,9 @@ export function VoxGenerator() {
 
         // Process Text
         const fontUrl = `/fonts/${signFont}`;
-        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizeText({ 
+        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText({ 
             text: signText,
-            font: 'custom', 
             fontUrl: fontUrl,
-            fontSize: 5, // A base size, will be scaled by rasterizer
-            isPixelFont: true,
             maxWidth: contentWidth,
         });
 
@@ -1487,6 +1484,7 @@ export function VoxGenerator() {
                         </SelectTrigger>
                         <SelectContent>
                            <SelectItem value="QuinqueFive.ttf">VS-Standard</SelectItem>
+                           <SelectItem value="QuinqueFive.ttf">QuinqueFive.ttf</SelectItem>
                            <SelectItem value="bud-5-pixel.otf">bud-5-pixel.otf</SelectItem>
                            <SelectItem value="microfont.otf">microfont.otf</SelectItem>
                         </SelectContent>

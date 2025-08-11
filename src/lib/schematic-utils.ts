@@ -8,6 +8,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -100,7 +101,6 @@ interface RasterizeTextParams {
   outlineGap?: number;
   outlineWidth?: number;
   orientation?: TextOrientation;
-  isPixelFont?: boolean;
   maxWidth?: number;
 }
 
@@ -112,7 +112,6 @@ export async function rasterizeText({
   outline = false,
   outlineGap = 1,
   orientation = 'horizontal',
-  isPixelFont = false,
   maxWidth,
 }: RasterizeTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
     if (typeof document === 'undefined' || !text || !text.trim()) {
@@ -123,7 +122,7 @@ export async function rasterizeText({
     let loadedFontFamily = font;
 
     let fontFace: FontFace | undefined;
-    if (fontUrl && (font === 'custom' || isPixelFont)) {
+    if (fontUrl && font === 'custom') {
       fontFace = new FontFace(fontName, `url(${fontUrl})`);
       try {
         await fontFace.load();
@@ -186,10 +185,6 @@ export async function rasterizeText({
     workCanvas.width = contentWidth;
     workCanvas.height = contentHeight;
     const ctx = workCanvas.getContext('2d', { willReadFrequently: true })!;
-
-    if (isPixelFont) {
-        ctx.imageSmoothingEnabled = false;
-    }
     
     // Draw the text onto the working canvas
     ctx.font = `${fontSize}px ${loadedFontFamily}`;
@@ -300,6 +295,127 @@ export async function rasterizeText({
     }
 
     return { pixels: croppedPixels, width: croppedWidth, height: croppedHeight };
+}
+
+interface RasterizePixelTextParams {
+  text: string;
+  fontUrl: string;
+  maxWidth?: number;
+}
+
+export async function rasterizePixelText({
+  text,
+  fontUrl,
+  maxWidth,
+}: RasterizePixelTextParams): Promise<{ pixels: boolean[], width: number, height: number }> {
+    if (typeof document === 'undefined' || !text || !text.trim()) {
+        return { width: 0, height: 0, pixels: [] };
+    }
+
+    const fontName = fontUrl.split('/').pop()?.split('.')[0] || 'custom-pixel-font';
+    const fontFace = new FontFace(fontName, `url(${fontUrl})`);
+    try {
+      await fontFace.load();
+      document.fonts.add(fontFace);
+    } catch (e) {
+      console.error('Pixel font loading failed:', e);
+      throw new Error(`Failed to load pixel font: ${fontUrl}`);
+    }
+
+    const tempCtx = document.createElement('canvas').getContext('2d')!;
+    tempCtx.font = `8px ${fontName}`; // Use a base size for measurement
+    tempCtx.imageSmoothingEnabled = false;
+
+    const charCanvases: { [key: string]: HTMLCanvasElement } = {};
+    const uniqueChars = [...new Set(text.split(''))];
+    let maxCharHeight = 0;
+
+    for (const char of uniqueChars) {
+        const metrics = tempCtx.measureText(char);
+        const charWidth = Math.ceil(metrics.width);
+        const charHeight = Math.ceil((metrics.actualBoundingBoxAscent || 8) + (metrics.actualBoundingBoxDescent || 0));
+        maxCharHeight = Math.max(maxCharHeight, charHeight);
+
+        const charCanvas = document.createElement('canvas');
+        charCanvas.width = charWidth;
+        charCanvas.height = charHeight;
+        const charCtx = charCanvas.getContext('2d')!;
+        charCtx.imageSmoothingEnabled = false;
+        charCtx.font = `8px ${fontName}`;
+        charCtx.fillStyle = '#FFFFFF';
+        charCtx.fillText(char, 0, metrics.actualBoundingBoxAscent || 8);
+        charCanvases[char] = charCanvas;
+    }
+
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = words[0] || '';
+    const KERNING = 1;
+
+    if (maxWidth) {
+        for (let i = 1; i < words.length; i++) {
+            const testLine = currentLine + ' ' + words[i];
+            let testWidth = 0;
+            for (const char of testLine) {
+              testWidth += (charCanvases[char]?.width || 0) + KERNING;
+            }
+            if (testWidth > maxWidth && i > 0) {
+                lines.push(currentLine);
+                currentLine = words[i];
+            } else {
+                currentLine = testLine;
+            }
+        }
+    } else {
+        currentLine = text;
+    }
+    lines.push(currentLine);
+
+    let totalWidth = 0;
+    for (const line of lines) {
+      let lineWidth = 0;
+      for (const char of line) {
+        lineWidth += (charCanvases[char]?.width || 0) + KERNING;
+      }
+      totalWidth = Math.max(totalWidth, lineWidth);
+    }
+    const totalHeight = maxCharHeight * lines.length;
+
+    if (totalWidth <= 0 || totalHeight <= 0) {
+      if (document.fonts.has(fontFace)) document.fonts.delete(fontFace);
+      return { width: 0, height: 0, pixels: [] };
+    }
+
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = totalWidth;
+    finalCanvas.height = totalHeight;
+    const finalCtx = finalCanvas.getContext('2d', { willReadFrequently: true })!;
+    finalCtx.imageSmoothingEnabled = false;
+
+    let currentY = 0;
+    for (const line of lines) {
+      let currentX = 0;
+      for (const char of line) {
+        const charCanvas = charCanvases[char];
+        if (charCanvas) {
+          finalCtx.drawImage(charCanvas, currentX, currentY);
+          currentX += charCanvas.width + KERNING;
+        }
+      }
+      currentY += maxCharHeight;
+    }
+
+    const imageData = finalCtx.getImageData(0, 0, totalWidth, totalHeight);
+    const pixels = Array(totalWidth * totalHeight).fill(false);
+    for (let i = 0; i < imageData.data.length; i += 4) {
+      if (imageData.data[i + 3] > 128) {
+        pixels[i / 4] = true;
+      }
+    }
+    
+    if (document.fonts.has(fontFace)) document.fonts.delete(fontFace);
+
+    return { pixels, width: totalWidth, height: totalHeight };
 }
 
 
