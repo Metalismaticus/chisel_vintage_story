@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
-import { type VoxShape, type SchematicOutput, rasterizePixelText, type FontStyle, type TextOrientation, imageToSchematic } from '@/lib/schematic-utils';
+import { type VoxShape, type SchematicOutput, rasterizePixelText, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput, type TextToVoxOutput } from '@/ai/flows/text-to-vox-flow';
@@ -133,13 +133,13 @@ export function VoxGenerator() {
   const [signIconFile, setSignIconFile] = useState<File | null>(null);
   const [signIconUrl, setSignIconUrl] = useState<string | null>(null);
   const [signText, setSignText] = useState('GEARSTED PATH');
-  const [signWidth, setSignWidth] = useState(48);
-  const [signHeight, setSignHeight] = useState(40);
-  const [signFrameWidth, setSignFrameWidth] = useState(2);
+  const signWidth = 48;
+  const signHeight = 40;
+  const signFrameWidth = 2;
   const signIconInputRef = useRef<HTMLInputElement>(null);
   const [signIconScale, setSignIconScale] = useState(50);
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
-  const [textOffsetY, setTextOffsetY] = useState(0);
+  const textOffsetY = 0;
   
 
 
@@ -238,8 +238,13 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const { pixels, width, height } = await rasterizePixelText({
-            text: text, 
+        const { pixels, width, height } = await rasterizeText({
+            text, 
+            font, 
+            fontSize: fontSize[0], 
+            fontUrl: fontFileUrlRef.current ?? undefined, 
+            outline: textOutline,
+            outlineGap: textOutlineGap[0],
         });
 
         if (width === 0 || height === 0) {
@@ -1094,6 +1099,63 @@ export function VoxGenerator() {
             <Label htmlFor="text-input">{t('textConstructor.textLabel')}</Label>
             <Input id="text-input" value={text} onChange={(e) => setText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label>{t('textConstructor.fontLabel')}</Label>
+                <Select 
+                value={font} 
+                onValueChange={(v) => handleFontChange(v as FontStyle)}>
+                <SelectTrigger>
+                    <SelectValue placeholder={t('textConstructor.fontPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
+                    <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
+                    <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
+                    {fontFile && <SelectItem value="custom" disabled>{fontFile.name}</SelectItem>}
+                </SelectContent>
+                </Select>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="font-upload">{t('textConstructor.uploadLabel')}</Label>
+                <Button asChild variant="outline" className="w-full">
+                <label className="cursor-pointer flex items-center justify-center">
+                    <Upload className="mr-2 h-4 w-4" />
+                    {fontFile ? fontFile.name : t('textConstructor.uploadButton')}
+                    <input id="font-upload" type="file" className="sr-only" onChange={handleFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
+                </label>
+                </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="font-size">{t('textConstructor.sizeLabel')}: {fontSize[0]}px</Label>
+            <Slider
+              id="font-size"
+              min={8}
+              max={128}
+              step={1}
+              value={fontSize}
+              onValueChange={setFontSize}
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Switch id="outline-switch" checked={textOutline} onCheckedChange={setTextOutline} />
+            <Label htmlFor="outline-switch">{t('textConstructor.outlineLabel')}</Label>
+          </div>
+          {textOutline && (
+             <div className="space-y-2">
+                <Label htmlFor="outline-gap">{t('textConstructor.outlineGapLabel')}: {textOutlineGap[0]}px</Label>
+                <Slider
+                id="outline-gap"
+                min={1}
+                max={5}
+                step={1}
+                value={textOutlineGap}
+                onValueChange={setTextOutlineGap}
+                />
+            </div>
+          )}
+
            <div className="space-y-2">
             <Label>{t('voxGenerator.text.orientation.label')}</Label>
             <RadioGroup value={textOrientation} onValueChange={(v) => setTextOrientation(v as TextOrientation)} className="flex pt-2 space-x-4 bg-muted/30 p-1 rounded-lg">
@@ -1419,10 +1481,6 @@ export function VoxGenerator() {
                   <Label htmlFor="sign-icon-offset-y">{t('voxGenerator.sign.iconOffsetY')}: {signIconOffsetY}px</Label>
                   <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={0} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
               </div>
-               <div className="space-y-2">
-                  <Label htmlFor="sign-text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {textOffsetY}px</Label>
-                  <Slider id="sign-text-offset-y" min={0} max={maxIconOffset} step={1} value={[textOffsetY]} onValueChange={(v) => setTextOffsetY(v[0])} />
-              </div>
             </div>
         </div>
     );
@@ -1545,6 +1603,7 @@ export function VoxGenerator() {
 
 
     
+
 
 
 
