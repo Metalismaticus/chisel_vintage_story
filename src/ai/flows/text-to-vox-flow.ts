@@ -144,8 +144,8 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelHeight;
     finalDepth = modelDepth;
     
-    // Default mapping for horizontal
-    finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.y, z: v.z, i: v.i }));
+    // Default mapping for horizontal, inverting Y
+    finalXyzi = xyziValues.map(v => ({ x: v.x, y: (modelHeight - 1 - v.y), z: v.z, i: v.i }));
   }
  
   const palette: PaletteColor[] = [
