@@ -1467,7 +1467,7 @@ export function VoxGenerator() {
               </div>
               <div className="space-y-2">
                   <Label htmlFor="sign-icon-offset-y">{t('voxGenerator.sign.iconOffsetY')}: {signIconOffsetY}px</Label>
-                  <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={maxIconOffset} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
+                  <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={0} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
               </div>
               <div className="space-y-2">
                   <Label htmlFor="text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {textOffsetY}px</Label>
