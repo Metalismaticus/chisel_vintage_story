@@ -12,6 +12,7 @@
 
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -97,8 +98,8 @@ function createSchematicData(name: string, dimensions: {width: number, height: n
 
 interface RasterizeTextParams {
   text: string;
-  font: FontStyle;
-  fontSize: number;
+  font?: FontStyle;
+  fontSize?: number;
   fontUrl?: string;
   outline?: boolean;
   outlineGap?: number;
@@ -348,6 +349,7 @@ const TINY_FONT_DATA: Record<string, number[][]> = {
 export async function rasterizePixelText({ text, maxWidth }: { text: string, maxWidth?: number }): Promise<{ pixels: boolean[], width: number, height: number }> {
     const charHeight = 5;
     const charKerning = 1;
+    const maxCharsPerLine = 8; // New rule
 
     const getCharWidth = (char: string): number => {
         const data = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
@@ -362,32 +364,38 @@ export async function rasterizePixelText({ text, maxWidth }: { text: string, max
         return width > 0 ? width - charKerning : 0;
     };
 
-    // Word wrapping logic
+    // Word wrapping logic based on character count
     const words = text.split(' ');
     const lines: string[] = [];
     let currentLine = '';
 
-    if (maxWidth) {
-        for (const word of words) {
-            const wordWidth = getWordWidth(word);
-            const spaceWidth = getCharWidth(' ');
+    for (const word of words) {
+        // If adding the next word (with a space) exceeds the line limit
+        if (currentLine.length + (currentLine.length > 0 ? 1 : 0) + word.length > maxCharsPerLine) {
+            // Push the current line and start a new one if the current line is not empty
+            if(currentLine.length > 0) lines.push(currentLine);
             
-            if (currentLine === '') {
-                currentLine = word;
-            } else {
-                const currentLineWidth = getWordWidth(currentLine);
-                if (currentLineWidth + spaceWidth + wordWidth <= maxWidth) {
-                    currentLine += ' ' + word;
-                } else {
-                    lines.push(currentLine);
-                    currentLine = word;
-                }
+            // Handle words longer than the max line length
+            let longWord = word;
+            while (longWord.length > maxCharsPerLine) {
+                lines.push(longWord.substring(0, maxCharsPerLine));
+                longWord = longWord.substring(maxCharsPerLine);
             }
+            currentLine = longWord;
+
+        } else {
+            // Add the word to the current line
+            if (currentLine.length > 0) {
+                currentLine += ' ';
+            }
+            currentLine += word;
         }
-    } else {
-        currentLine = text;
     }
-    lines.push(currentLine);
+    // Add the last line if it's not empty
+    if (currentLine.length > 0) {
+        lines.push(currentLine);
+    }
+
 
     const lineMetrics = lines.map(line => ({
         text: line,
@@ -1341,6 +1349,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 
