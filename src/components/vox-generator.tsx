@@ -100,7 +100,6 @@ export function VoxGenerator() {
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
   const [textStickerMode, setTextStickerMode] = useState(true);
   const [letterDepth, setLetterDepth] = useState([5]);
-  const [backgroundDepth, setBackgroundDepth] = useState([16]);
   const [engraveDepth, setEngraveDepth] = useState([3]);
   const [textOrientation, setTextOrientation] = useState<TextOrientation>('horizontal');
   const [textOutline, setTextOutline] = useState(false);
@@ -177,10 +176,6 @@ export function VoxGenerator() {
   };
   
    useEffect(() => {
-    if (fontFileUrlRef.current) {
-        URL.revokeObjectURL(fontFileUrlRef.current);
-        fontFileUrlRef.current = null;
-    }
     return () => {
       if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
       if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
@@ -259,7 +254,7 @@ export function VoxGenerator() {
             height,
             mode: textVoxMode,
             letterDepth: letterDepth[0],
-            backgroundDepth: textVoxMode === 'engrave' ? backgroundDepth[0] : 0,
+            backgroundDepth: 16, // Locked value
             engraveDepth: textVoxMode === 'engrave' ? engraveDepth[0] : 0,
             orientation: textOrientation,
             stickerMode: textStickerMode,
@@ -1219,7 +1214,7 @@ export function VoxGenerator() {
                     <Label htmlFor="engrave-depth">{t('voxGenerator.text.engraveDepth')}: {engraveDepth[0]}px</Label>
                     <Slider
                         id="engrave-depth"
-                        min={1} max={backgroundDepth[0]} step={1}
+                        min={1} max={15} step={1}
                         value={engraveDepth}
                         onValueChange={setEngraveDepth}
                     />
@@ -1431,7 +1426,7 @@ export function VoxGenerator() {
   const renderSignInputs = () => {
     const contentHeight = signHeight - (signFrameWidth * 2);
     const maxIconOffset = Math.floor(contentHeight / 2);
-    const maxTextOffset = Math.floor(contentHeight / 4);
+    const maxTextOffset = Math.floor(contentHeight / 2);
 
     return (
         <div className="space-y-6">
@@ -1610,3 +1605,6 @@ export function VoxGenerator() {
 
 
 
+
+
+  
