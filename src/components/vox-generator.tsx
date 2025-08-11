@@ -15,7 +15,8 @@ import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput, type TextToVoxOutput } from '@/ai/flows/text-to-vox-flow';
 import { generatePixelArtToVoxFlow, type PixelArtToVoxInput, type PixelArtToVoxOutput } from '@/ai/flows/pixelart-to-vox-flow';
-import { Loader2, Upload, QrCode, HelpCircle, UploadCloud, X, RefreshCw, AlertTriangle } from 'lucide-react';
+import { generateSignToVoxFlow, type SignToVoxInput, type SignToVoxOutput } from '@/ai/flows/sign-to-vox-flow';
+import { Loader2, Upload, QrCode, HelpCircle, UploadCloud, X, RefreshCw, AlertTriangle, Signpost } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from './ui/switch';
@@ -33,11 +34,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from 'next/link';
 
 
-type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart';
+type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart' | 'sign';
 type TextVoxMode = 'extrude' | 'engrave';
 type PixelArtVoxMode = 'extrude' | 'engrave';
 type ColumnPlacement = 'center' | 'corner';
-export type ColumnStyle = 'simple' | 'decorative';
+export type ColumnStyle = 'simple' | 'decorative' | 'ionic';
 
 export function VoxGenerator() {
   const t = useI18n();
@@ -126,6 +127,20 @@ export function VoxGenerator() {
   const paWorkerRef = useRef<Worker>();
   const [paOrientation, setPaOrientation] = useState<TextOrientation>('horizontal');
 
+  // Sign state
+  const [signIconFile, setSignIconFile] = useState<File | null>(null);
+  const [signIconUrl, setSignIconUrl] = useState<string | null>(null);
+  const [signText, setSignText] = useState('GEARSTED\nPATH');
+  const [signFont, setSignFont] = useState<FontStyle>('monospace');
+  const [signFontSize, setSignFontSize] = useState([8]);
+  const [signFontFile, setSignFontFile] = useState<File | null>(null);
+  const signFontFileUrlRef = useRef<string | null>(null);
+  const [signWidth, setSignWidth] = useState(128);
+  const [signHeight, setSignHeight] = useState(64);
+  const [signFrameWidth, setSignFrameWidth] = useState(4);
+  const isSignDragging = useRef(false);
+  const signIconInputRef = useRef<HTMLInputElement>(null);
+
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -139,7 +154,6 @@ export function VoxGenerator() {
         isRisky = (colR > 0 && colR % 8 === 0) || ((withBase || withCapital) && baseR > 0 && baseR % 8 === 0);
     } else if (shape === 'sphere') {
         const sphereR = parseInt(dimensions.radius, 10);
-        // Diameter is radius * 2. Risky if diameter is multiple of 8.
         isRisky = sphereR > 0 && (sphereR * 2) % 8 === 0;
     }
     setShowCrashWarning(isRisky);
@@ -161,14 +175,12 @@ export function VoxGenerator() {
   
    useEffect(() => {
     return () => {
-      if (fontFileUrlRef.current) {
-        URL.revokeObjectURL(fontFileUrlRef.current);
-      }
-      if (paPreviewUrl) {
-          URL.revokeObjectURL(paPreviewUrl);
-      }
+      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
+      if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
+      if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
+      if (signFontFileUrlRef.current) { URL.revokeObjectURL(signFontFileUrlRef.current); }
     };
-  }, [paPreviewUrl]);
+  }, [paPreviewUrl, signIconUrl]);
   
     // Generate QR preview when URL changes
   useEffect(() => {
@@ -204,9 +216,7 @@ export function VoxGenerator() {
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (fontFileUrlRef.current) {
-        URL.revokeObjectURL(fontFileUrlRef.current);
-      }
+      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
       setFontFile(file);
       const url = URL.createObjectURL(file);
       fontFileUrlRef.current = url;
@@ -370,24 +380,55 @@ export function VoxGenerator() {
            shapeParams = { type: 'pyramid', base, height };
           break;
         }
-        case 'column': {
-           const radius = validateAndParse(dimensions.columnRadius, t('voxGenerator.dims.radius'));
-           const height = validateAndParse(dimensions.columnHeight, t('voxGenerator.dims.height'));
-           if (radius === null || height === null) return;
+        case 'column': { 
+            const { 
+                radius: colRadius, 
+                height: totalHeight,
+                withBase = false,
+                withCapital = false,
+                baseStyle = 'simple',
+                capitalStyle = 'simple',
+                brokenTop = false,
+                withDebris = false,
+                debrisLength = 16,
+            } = shape;
 
-           const baseRadius = withBase || withCapital ? validateAndParse(dimensions.baseRadius, t('voxGenerator.column.baseRadius')) : undefined;
-           const baseHeight = withBase || withCapital ? validateAndParse(dimensions.baseHeight, t('voxGenerator.column.baseHeight')) : undefined;
-           if ((withBase || withCapital) && (baseRadius === null || baseHeight === null)) return;
-           if ((withBase || withCapital) && baseRadius && baseRadius <= radius) {
-                toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.column.baseRadius')}), description: t('voxGenerator.errors.baseRadiusTooSmall'), variant: "destructive" });
-                return;
-           }
-            const debrisLen = withDebris && brokenTop ? validateAndParse(dimensions.debrisLength, t('voxGenerator.column.debrisLength')) : 0;
-            if (withDebris && brokenTop && debrisLen === null) return;
+            const breakAngleX = brokenTop ? (shape.breakAngleX ?? (Math.random() * 60 - 30)) : 0;
+            const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? (Math.random() * 60 - 30)) : 0;
 
+            const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
+            const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
+            const capitalHeight = baseHeight;
+            
+            const hasCapital = withCapital;
 
-           shapeParams = { type: 'column', radius, height, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLen, breakAngleX, breakAngleZ };
-          break;
+            let finalBaseH = withBase ? baseHeight : 0;
+            let finalCapitalH = hasCapital ? capitalHeight : 0;
+            
+            if (finalBaseH + finalCapitalH > totalHeight) {
+                const partsH = finalBaseH + finalCapitalH;
+                finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
+                finalCapitalH = totalHeight - finalBaseH;
+            }
+            const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
+            
+            const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, hasCapital ? baseRadius : 0);
+            const mainColWidth = maxRadius * 2;
+            const debrisWidth = (withDebris && brokenTop) ? Math.max(colRadius, withCapital ? baseRadius : 0) * 2 : 0;
+            
+            const debrisOffsetX = withDebris ? mainColWidth + 4 : 0;
+
+            let width = mainColWidth + (withDebris ? Math.max(debrisWidth, debrisLength) + 4 : 0);
+            let depth = Math.max(mainColWidth, (withDebris ? debrisWidth : 0));
+            let height = totalHeight;
+
+            if (totalHeight <= 0) {
+                 width = height = depth = 0;
+                 break;
+            }
+
+            shapeParams = { type: 'column', radius: colRadius, height: totalHeight, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLength, breakAngleX, breakAngleZ };
+            break;
         }
         case 'cone': {
            const radius = validateAndParse(dimensions.coneRadius, t('voxGenerator.dims.baseRadius'));
@@ -543,17 +584,95 @@ export function VoxGenerator() {
     
     paWorkerRef.current?.postMessage({ file: paFile, threshold: paThreshold[0], outputWidth: width, mode: 'bw' });
   }
+
+  const handleSignIconFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast({ title: t('imageConverter.errors.invalidFileType'), variant: 'destructive' });
+        return;
+      }
+      setSignIconFile(file);
+      if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
+      setSignIconUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSignFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (signFontFileUrlRef.current) { URL.revokeObjectURL(signFontFileUrlRef.current); }
+      setSignFontFile(file);
+      signFontFileUrlRef.current = URL.createObjectURL(file);
+      setSignFont('custom');
+    }
+  };
+
+  const handleSignFontChange = (value: FontStyle) => {
+    setSignFont(value);
+    if (value !== 'custom') {
+      setSignFontFile(null);
+      if (signFontFileUrlRef.current) {
+        URL.revokeObjectURL(signFontFileUrlRef.current);
+        signFontFileUrlRef.current = null;
+      }
+    }
+  };
+
+  const handleGenerateSign = async () => {
+    if (!signIconFile) {
+        toast({ title: t('voxGenerator.errors.noIcon'), description: t('voxGenerator.errors.noIconDesc'), variant: 'destructive' });
+        return;
+    }
+     if (!signText.trim()) {
+        toast({ title: t('textConstructor.errors.noText'), description: t('textConstructor.errors.noTextDesc'), variant: 'destructive' });
+        return;
+    }
+    
+    setIsPending(true);
+    setSchematicOutput(null);
+
+    try {
+        const iconDataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(signIconFile);
+        });
+
+        const input: SignToVoxInput = {
+            width: signWidth,
+            height: signHeight,
+            frameWidth: signFrameWidth,
+            iconDataUrl,
+            text: signText,
+            font: signFont,
+            fontSize: signFontSize[0],
+            fontUrl: signFontFileUrlRef.current,
+        };
+
+        const result: SignToVoxOutput = await generateSignToVoxFlow(input);
+        const voxDataBytes = Buffer.from(result.voxData, 'base64');
+        setSchematicOutput({ ...result, voxData: voxDataBytes, voxSize: result.voxSize });
+    } catch (error) {
+        console.error("Sign generation failed:", error);
+        toast({
+            title: t('common.errors.generationFailed'),
+            description: (error instanceof Error) ? error.message : t('common.errors.serverError'),
+            variant: "destructive",
+        });
+        setSchematicOutput(null);
+    } finally {
+        setIsPending(false);
+    }
+  };
   
   const handleGenerate = () => {
-    if (mode === 'shape') {
-        handleGenerateShape();
-    } else if (mode === 'text') {
-        handleGenerateText();
-    } else if (mode === 'pixelart') {
-        handleGeneratePixelArt();
-    } else {
-        handleGenerateQr();
-    }
+    if (mode === 'shape') { handleGenerateShape(); } 
+    else if (mode === 'text') { handleGenerateText(); } 
+    else if (mode === 'pixelart') { handleGeneratePixelArt(); } 
+    else if (mode === 'sign') { handleGenerateSign(); }
+    else { handleGenerateQr(); }
   }
 
   const handlePaFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -721,19 +840,26 @@ export function VoxGenerator() {
                                    {withBase && (
                                       <div className="space-y-2 pl-4">
                                           <Label>{t('voxGenerator.column.baseStyle')}</Label>
-                                          <RadioGroup value={baseStyle} onValueChange={(v) => setBaseStyle(v as ColumnStyle)} className="flex space-x-4">
-                                              <div className="flex items-center space-x-2"><RadioGroupItem value="simple" id="base-simple" /><Label htmlFor="base-simple">{t('voxGenerator.column.styles.simple')}</Label></div>
-                                              <div className="flex items-center space-x-2"><RadioGroupItem value="decorative" id="base-deco" /><Label htmlFor="base-deco">{t('voxGenerator.column.styles.decorative')}</Label></div>
-                                          </RadioGroup>
+                                          <Select value={baseStyle} onValueChange={(v) => setBaseStyle(v as ColumnStyle)}>
+                                              <SelectTrigger><SelectValue/></SelectTrigger>
+                                              <SelectContent>
+                                                  <SelectItem value="simple">{t('voxGenerator.column.styles.simple')}</SelectItem>
+                                                  <SelectItem value="decorative">{t('voxGenerator.column.styles.decorative')}</SelectItem>
+                                              </SelectContent>
+                                          </Select>
                                       </div>
                                   )}
                                    {withCapital && (
                                       <div className="space-y-2 pl-4">
                                           <Label>{t('voxGenerator.column.capitalStyle')}</Label>
-                                          <RadioGroup value={capitalStyle} onValueChange={(v) => setCapitalStyle(v as ColumnStyle)} className="flex space-x-4">
-                                              <div className="flex items-center space-x-2"><RadioGroupItem value="simple" id="cap-simple" /><Label htmlFor="cap-simple">{t('voxGenerator.column.styles.simple')}</Label></div>
-                                              <div className="flex items-center space-x-2"><RadioGroupItem value="decorative" id="cap-deco" /><Label htmlFor="cap-deco">{t('voxGenerator.column.styles.decorative')}</Label></div>
-                                          </RadioGroup>
+                                           <Select value={capitalStyle} onValueChange={(v) => setCapitalStyle(v as ColumnStyle)}>
+                                              <SelectTrigger><SelectValue/></SelectTrigger>
+                                              <SelectContent>
+                                                  <SelectItem value="simple">{t('voxGenerator.column.styles.simple')}</SelectItem>
+                                                  <SelectItem value="decorative">{t('voxGenerator.column.styles.decorative')}</SelectItem>
+                                                  <SelectItem value="ionic">{t('voxGenerator.column.styles.ionic')}</SelectItem>
+                                              </SelectContent>
+                                          </Select>
                                       </div>
                                   )}
                               </div>
@@ -786,7 +912,7 @@ export function VoxGenerator() {
                 </div>
               );
             case 'arch': {
-              const circularArchHeight = (parseInt(dimensions.circularArchWidth, 10) || 0) / 2;
+              const circularArchHeight = Math.floor((parseInt(dimensions.circularArchWidth, 10) || 0) / 2);
               return (
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -1296,6 +1422,73 @@ export function VoxGenerator() {
         </div>
     );
   }
+  
+  const renderSignInputs = () => {
+    return (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="sign-width">{t('voxGenerator.sign.width')}</Label>
+                    <Input id="sign-width" type="number" value={signWidth} onChange={e => setSignWidth(parseInt(e.target.value) || 0)} placeholder="e.g. 128" />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="sign-height">{t('voxGenerator.sign.height')}</Label>
+                    <Input id="sign-height" type="number" value={signHeight} onChange={e => setSignHeight(parseInt(e.target.value) || 0)} placeholder="e.g. 64" />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="sign-frame-width">{t('voxGenerator.sign.frameWidth')}</Label>
+                    <Input id="sign-frame-width" type="number" value={signFrameWidth} onChange={e => setSignFrameWidth(parseInt(e.target.value) || 0)} placeholder="e.g. 4" />
+                </div>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="sign-icon-upload">{t('voxGenerator.sign.iconLabel')}</Label>
+                <div className="flex gap-2">
+                    <Button asChild variant="outline" className="flex-1">
+                        <label className="cursor-pointer flex items-center justify-center">
+                            <Upload className="mr-2 h-4 w-4" />
+                            {signIconFile ? signIconFile.name : t('textConstructor.uploadButton')}
+                            <input ref={signIconInputRef} id="sign-icon-upload" type="file" className="sr-only" onChange={handleSignIconFileChange} accept="image/png, image/jpeg, image/gif, image/svg+xml" />
+                        </label>
+                    </Button>
+                    {signIconUrl && <img src={signIconUrl} alt="Icon Preview" className="h-10 w-10 p-1 border rounded-md" />}
+                </div>
+            </div>
+             <div className="space-y-2">
+                <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
+                <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
+            </div>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label>{t('textConstructor.fontLabel')}</Label>
+                    <Select value={signFont} onValueChange={(v) => handleSignFontChange(v as FontStyle)}>
+                    <SelectTrigger><SelectValue placeholder={t('textConstructor.fontPlaceholder')} /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
+                        <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
+                        <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
+                        {signFontFile && <SelectItem value="custom" disabled>{signFontFile.name}</SelectItem>}
+                    </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="sign-font-upload">{t('textConstructor.uploadLabel')}</Label>
+                    <Button asChild variant="outline" className="w-full">
+                    <label className="cursor-pointer flex items-center justify-center">
+                        <Upload className="mr-2 h-4 w-4" />
+                        {signFontFile ? signFontFile.name : t('textConstructor.uploadButton')}
+                        <input id="sign-font-upload" type="file" className="sr-only" onChange={handleSignFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
+                    </label>
+                    </Button>
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="sign-font-size">{t('textConstructor.sizeLabel')}: {signFontSize[0]}px</Label>
+                <Slider id="sign-font-size" min={6} max={64} step={1} value={signFontSize} onValueChange={setSignFontSize}/>
+            </div>
+        </div>
+    );
+  }
+
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -1321,7 +1514,7 @@ export function VoxGenerator() {
             </Dialog>
         </CardHeader>
         <CardContent className="space-y-6">
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as GeneratorMode)} className="grid grid-cols-2 lg:grid-cols-4 gap-1 pt-2 bg-muted/30 p-1 rounded-lg">
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as GeneratorMode)} className="grid grid-cols-3 lg:grid-cols-5 gap-1 pt-2 bg-muted/30 p-1 rounded-lg">
                 <RadioGroupItem value="shape" id="mode-shape" className="sr-only" />
                 <Label htmlFor="mode-shape" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'shape' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
                    {t('voxGenerator.modes.shape')}
@@ -1337,6 +1530,10 @@ export function VoxGenerator() {
                  <RadioGroupItem value="qr" id="mode-qr" className="sr-only" />
                 <Label htmlFor="mode-qr" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'qr' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
                     {t('voxGenerator.modes.qr')}
+                </Label>
+                <RadioGroupItem value="sign" id="mode-sign" className="sr-only" />
+                <Label htmlFor="mode-sign" className={cn("flex-1 text-center py-2 px-4 rounded-md cursor-pointer", mode === 'sign' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent/50')}>
+                    {t('voxGenerator.modes.sign')}
                 </Label>
             </RadioGroup>
 
@@ -1385,6 +1582,8 @@ export function VoxGenerator() {
                 renderTextInputs()
             ) : mode === 'pixelart' ? (
                 renderPixelArtInputs()
+            ) : mode === 'sign' ? (
+                renderSignInputs()
             ) : (
                 renderQrInputs()
             )}
