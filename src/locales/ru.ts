@@ -239,6 +239,9 @@ export default {
         height: 'Высота таблички',
         frameWidth: 'Толщина рамки',
         iconLabel: 'Иконка',
+        findIcons: 'Найти иконки',
+        uploadButton: 'Выбрать иконку',
+        textHint: 'Только английские символы. Рекомендуется: 2 слова, до 8 символов каждое.',
         layout: 'Макет',
         iconScale: 'Масштаб иконки',
         iconOffsetY: 'Смещение иконки по вертикали',
@@ -347,4 +350,5 @@ export default {
 } as const;
 
     
+
 

@@ -10,13 +10,13 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
-import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic, rasterizePixelText } from '@/lib/schematic-utils';
+import { type VoxShape, type SchematicOutput, rasterizePixelText, type FontStyle, type TextOrientation, imageToSchematic } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput, type TextToVoxOutput } from '@/ai/flows/text-to-vox-flow';
 import { generatePixelArtToVoxFlow, type PixelArtToVoxInput, type PixelArtToVoxOutput } from '@/ai/flows/pixelart-to-vox-flow';
 import { generateSignToVoxFlow, type SignToVoxInput, type SignToVoxOutput } from '@/ai/flows/sign-to-vox-flow';
-import { Loader2, Upload, QrCode, HelpCircle, UploadCloud, X, RefreshCw, AlertTriangle, Signpost } from 'lucide-react';
+import { Loader2, Upload, QrCode, HelpCircle, UploadCloud, X, RefreshCw, AlertTriangle, Signpost, ExternalLink } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from './ui/switch';
@@ -239,15 +239,8 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const { pixels, width, height } = await rasterizeText({
-            text, 
-            font: font,
-            fontSize: fontSize[0], 
-            fontUrl: fontFileUrlRef.current ?? undefined,
-            orientation: textOrientation,
-            outline: textOutline,
-            outlineGap: textOutlineGap[0],
-            outlineWidth: textOutlineWidth[0],
+        const { pixels, width, height } = await rasterizePixelText({
+            text: text, 
         });
 
         if (width === 0 || height === 0) {
@@ -1471,12 +1464,19 @@ export function VoxGenerator() {
                 </div>
             </div>
              <div className="space-y-2">
-                <Label htmlFor="sign-icon-upload">{t('voxGenerator.sign.iconLabel')}</Label>
+                <div className="flex justify-between items-center">
+                    <Label htmlFor="sign-icon-upload">{t('voxGenerator.sign.iconLabel')}</Label>
+                    <Button asChild variant="link" size="sm" className="text-muted-foreground -mr-3">
+                        <a href="https://ru.freepik.com/icons" target="_blank" rel="noopener noreferrer">
+                            {t('voxGenerator.sign.findIcons')} <ExternalLink className="ml-2 h-4 w-4" />
+                        </a>
+                    </Button>
+                </div>
                 <div className="flex gap-2">
                     <Button asChild variant="outline" className="flex-1">
                         <label className="cursor-pointer flex items-center justify-center">
                             <Upload className="mr-2 h-4 w-4" />
-                            {signIconFile ? signIconFile.name : t('textConstructor.uploadButton')}
+                            {signIconFile ? signIconFile.name : t('voxGenerator.sign.uploadButton')}
                             <input ref={signIconInputRef} id="sign-icon-upload" type="file" className="sr-only" onChange={handleSignIconFileChange} accept="image/png, image/jpeg, image/gif, image/svg+xml" />
                         </label>
                     </Button>
@@ -1487,6 +1487,7 @@ export function VoxGenerator() {
             <div className="space-y-2 pt-4 border-t border-primary/20">
                 <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
+                <p className="text-xs text-muted-foreground bg-black/20 p-2 rounded-md border border-input">{t('voxGenerator.sign.textHint')}</p>
             </div>
 
             
@@ -1626,6 +1627,7 @@ export function VoxGenerator() {
 
 
     
+
 
 
 

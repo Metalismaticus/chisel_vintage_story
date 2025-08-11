@@ -239,6 +239,9 @@ export default {
         height: 'Sign Height',
         frameWidth: 'Frame Width',
         iconLabel: 'Icon',
+        findIcons: 'Find icons',
+        uploadButton: 'Choose Icon',
+        textHint: 'Only English characters. Recommended: 2 words, up to 8 characters each.',
         layout: 'Layout',
         iconScale: 'Icon Scale',
         iconOffsetY: 'Icon Vertical Offset',
@@ -347,4 +350,5 @@ export default {
 } as const;
 
     
+
 
