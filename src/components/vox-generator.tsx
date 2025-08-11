@@ -621,7 +621,7 @@ export function VoxGenerator() {
             height: signHeight,
             frameWidth: signFrameWidth,
             icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
-            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: textOffsetY },
+            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: signTextOffsetY },
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -1625,6 +1625,7 @@ export function VoxGenerator() {
 
 
     
+
 
 
 
