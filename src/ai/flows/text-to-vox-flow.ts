@@ -62,8 +62,10 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     xyziValues.push({ x: Math.round(px), y: Math.round(py), z: Math.round(pz), i: colorIndex });
   };
   
+  // Add anchor point conditionally
   if (mode === 'extrude') {
-      addVoxel(0,0,0,2);
+      const zAnchor = (orientation === 'vertical-lr' && stickerMode) ? 15 : 0;
+      addVoxel(0, 0, zAnchor, 2);
   }
 
   let pixels = originalPixels;
@@ -135,6 +137,10 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelDepth;
     finalDepth = modelHeight;
     
+    // Rotate 90 degrees around X-axis
+    // (x, y, z) -> (x, -z, y)
+    // In our coordinate system, Y is up, Z is depth.
+    // So a voxel at (v.x, v.y, v.z) maps to final (v.x, v.z, v.y)
     finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
 
   } else { // Horizontal
