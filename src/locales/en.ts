@@ -239,6 +239,10 @@ export default {
         height: 'Sign Height',
         frameWidth: 'Frame Width',
         iconLabel: 'Icon',
+        layout: 'Layout',
+        iconScale: 'Icon Scale',
+        iconOffsetY: 'Icon Vertical Offset',
+        textOffsetY: 'Text Vertical Offset',
     },
     button: 'Generate .vox File',
     help: {
@@ -343,3 +347,4 @@ export default {
 } as const;
 
     
+

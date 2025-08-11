@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SchematicPreview } from './schematic-preview';
 import { useToast } from '@/hooks/use-toast';
-import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic } from '@/lib/schematic-utils';
+import { type VoxShape, type SchematicOutput, rasterizeText, type FontStyle, type TextOrientation, imageToSchematic, rasterizePixelText } from '@/lib/schematic-utils';
 import { useI18n } from '@/locales/client';
 import { generateVoxFlow, type VoxOutput } from '@/ai/flows/vox-flow';
 import { generateTextToVoxFlow, type TextToVoxInput, type TextToVoxOutput } from '@/ai/flows/text-to-vox-flow';
@@ -130,17 +130,14 @@ export function VoxGenerator() {
   // Sign state
   const [signIconFile, setSignIconFile] = useState<File | null>(null);
   const [signIconUrl, setSignIconUrl] = useState<string | null>(null);
-  const [signText, setSignText] = useState('GEARSTED\nPATH');
-  const [signFont, setSignFont] = useState<FontStyle>('monospace');
-  const [signFontSize, setSignFontSize] = useState([8]);
-  const [signFontFile, setSignFontFile] = useState<File | null>(null);
-  const signFontFileUrlRef = useRef<string | null>(null);
+  const [signText, setSignText] = useState('GEARSTED PATH');
   const [signWidth, setSignWidth] = useState(128);
   const [signHeight, setSignHeight] = useState(64);
   const [signFrameWidth, setSignFrameWidth] = useState(4);
-  const isSignDragging = useRef(false);
   const signIconInputRef = useRef<HTMLInputElement>(null);
-
+  const [signIconScale, setSignIconScale] = useState(50);
+  const [signIconOffsetY, setSignIconOffsetY] = useState(0);
+  const [signTextOffsetY, setSignTextOffsetY] = useState(0);
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
   const [isPending, setIsPending] = useState(false);
@@ -148,16 +145,18 @@ export function VoxGenerator() {
 
   const checkForCrashRisk = useCallback(() => {
     let isRisky = false;
-    if (shape === 'column') {
-        const colR = parseInt(dimensions.columnRadius, 10);
-        const baseR = parseInt(dimensions.baseRadius, 10);
-        isRisky = (colR > 0 && colR % 8 === 0) || ((withBase || withCapital) && baseR > 0 && baseR % 8 === 0);
-    } else if (shape === 'sphere') {
-        const sphereR = parseInt(dimensions.radius, 10);
-        isRisky = sphereR > 0 && (sphereR * 2) % 8 === 0;
+    if (mode === 'shape') {
+      if (shape === 'column') {
+          const colR = parseInt(dimensions.columnRadius, 10);
+          const baseR = parseInt(dimensions.baseRadius, 10);
+          isRisky = (colR > 0 && colR % 8 === 0) || ((withBase || withCapital) && baseR > 0 && baseR % 8 === 0);
+      } else if (shape === 'sphere') {
+          const sphereR = parseInt(dimensions.radius, 10);
+          isRisky = sphereR > 0 && (sphereR * 2) % 8 === 0;
+      }
     }
     setShowCrashWarning(isRisky);
-  }, [shape, dimensions.columnRadius, dimensions.baseRadius, dimensions.radius, withBase, withCapital]);
+  }, [mode, shape, dimensions.columnRadius, dimensions.baseRadius, dimensions.radius, withBase, withCapital]);
 
   useEffect(() => {
     checkForCrashRisk();
@@ -178,7 +177,6 @@ export function VoxGenerator() {
       if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
       if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
       if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
-      if (signFontFileUrlRef.current) { URL.revokeObjectURL(signFontFileUrlRef.current); }
     };
   }, [paPreviewUrl, signIconUrl]);
   
@@ -381,53 +379,28 @@ export function VoxGenerator() {
           break;
         }
         case 'column': { 
-            const { 
+            const colRadius = validateAndParse(dimensions.columnRadius, t('voxGenerator.dims.radius')) ?? 0;
+            const totalHeight = validateAndParse(dimensions.columnHeight, t('voxGenerator.dims.height')) ?? 0;
+            const baseRadius = validateAndParse(dimensions.baseRadius, t('voxGenerator.column.baseRadius')) ?? 0;
+            const baseHeight = validateAndParse(dimensions.baseHeight, t('voxGenerator.column.baseHeight')) ?? 0;
+            const debrisLengthNum = validateAndParse(dimensions.debrisLength, t('voxGenerator.column.debrisLength')) ?? 0;
+
+            shapeParams = { 
+                type: 'column', 
                 radius: colRadius, 
-                height: totalHeight,
-                withBase = false,
-                withCapital = false,
-                baseStyle = 'simple',
-                capitalStyle = 'simple',
-                brokenTop = false,
-                withDebris = false,
-                debrisLength = 16,
-            } = shape;
-
-            const breakAngleX = brokenTop ? (shape.breakAngleX ?? (Math.random() * 60 - 30)) : 0;
-            const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? (Math.random() * 60 - 30)) : 0;
-
-            const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
-            const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-            const capitalHeight = baseHeight;
-            
-            const hasCapital = withCapital;
-
-            let finalBaseH = withBase ? baseHeight : 0;
-            let finalCapitalH = hasCapital ? capitalHeight : 0;
-            
-            if (finalBaseH + finalCapitalH > totalHeight) {
-                const partsH = finalBaseH + finalCapitalH;
-                finalBaseH = Math.floor(finalBaseH * (totalHeight / partsH));
-                finalCapitalH = totalHeight - finalBaseH;
-            }
-            const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
-            
-            const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, hasCapital ? baseRadius : 0);
-            const mainColWidth = maxRadius * 2;
-            const debrisWidth = (withDebris && brokenTop) ? Math.max(colRadius, withCapital ? baseRadius : 0) * 2 : 0;
-            
-            const debrisOffsetX = withDebris ? mainColWidth + 4 : 0;
-
-            let width = mainColWidth + (withDebris ? Math.max(debrisWidth, debrisLength) + 4 : 0);
-            let depth = Math.max(mainColWidth, (withDebris ? debrisWidth : 0));
-            let height = totalHeight;
-
-            if (totalHeight <= 0) {
-                 width = height = depth = 0;
-                 break;
-            }
-
-            shapeParams = { type: 'column', radius: colRadius, height: totalHeight, withBase, withCapital, baseRadius, baseHeight, baseStyle, capitalStyle, brokenTop, withDebris, debrisLength: debrisLength, breakAngleX, breakAngleZ };
+                height: totalHeight, 
+                withBase, 
+                withCapital, 
+                baseRadius, 
+                baseHeight, 
+                baseStyle, 
+                capitalStyle, 
+                brokenTop, 
+                withDebris, 
+                debrisLength: debrisLengthNum, 
+                breakAngleX, 
+                breakAngleZ 
+            };
             break;
         }
         case 'cone': {
@@ -598,29 +571,9 @@ export function VoxGenerator() {
     }
   };
 
-  const handleSignFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (signFontFileUrlRef.current) { URL.revokeObjectURL(signFontFileUrlRef.current); }
-      setSignFontFile(file);
-      signFontFileUrlRef.current = URL.createObjectURL(file);
-      setSignFont('custom');
-    }
-  };
-
-  const handleSignFontChange = (value: FontStyle) => {
-    setSignFont(value);
-    if (value !== 'custom') {
-      setSignFontFile(null);
-      if (signFontFileUrlRef.current) {
-        URL.revokeObjectURL(signFontFileUrlRef.current);
-        signFontFileUrlRef.current = null;
-      }
-    }
-  };
 
     const imageToPixels = async (img: HTMLImageElement, targetWidth: number): Promise<{pixels: boolean[], width: number, height: number}> => {
-        const aspectRatio = img.height / img.width;
+        const aspectRatio = img.naturalHeight / img.naturalWidth;
         const width = targetWidth;
         const height = Math.round(width * aspectRatio);
 
@@ -654,32 +607,29 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const contentWidth = signWidth - signFrameWidth * 4;
+        const contentWidth = signWidth - signFrameWidth * 2;
 
         // Process Icon
         const img = document.createElement('img');
-        await new Promise((resolve, reject) => {
-            img.onload = resolve;
+        const imgPromise = new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
             img.onerror = reject;
             img.src = URL.createObjectURL(signIconFile);
         });
-        const iconTargetWidth = Math.floor(contentWidth * 0.5);
+        await imgPromise;
+
+        const iconTargetWidth = Math.floor(contentWidth * (signIconScale / 100));
         const { pixels: iconPixels, width: iconWidth, height: iconHeight } = await imageToPixels(img, iconTargetWidth);
 
         // Process Text
-        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizeText({ 
-            text: signText, 
-            font: signFont, 
-            fontSize: signFontSize[0], 
-            fontUrl: signFontFileUrlRef.current ?? undefined 
-        });
+        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText(signText);
 
         const input: SignToVoxInput = {
             width: signWidth,
             height: signHeight,
             frameWidth: signFrameWidth,
-            icon: { pixels: iconPixels, width: iconWidth, height: iconHeight },
-            text: { pixels: textPixels, width: textWidth, height: textHeight },
+            icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
+            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: signTextOffsetY },
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -1455,9 +1405,12 @@ export function VoxGenerator() {
   }
   
   const renderSignInputs = () => {
+    const maxIconOffset = Math.floor(signHeight / 4);
+    const maxTextOffset = Math.floor(signHeight / 4);
+    
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="sign-width">{t('voxGenerator.sign.width')}</Label>
                     <Input id="sign-width" type="number" value={signWidth} onChange={e => setSignWidth(parseInt(e.target.value) || 0)} placeholder="e.g. 128" />
@@ -1488,33 +1441,21 @@ export function VoxGenerator() {
                 <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>{t('textConstructor.fontLabel')}</Label>
-                    <Select value={signFont} onValueChange={(v) => handleSignFontChange(v as FontStyle)}>
-                    <SelectTrigger><SelectValue placeholder={t('textConstructor.fontPlaceholder')} /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="monospace">{t('textConstructor.fonts.monospace')}</SelectItem>
-                        <SelectItem value="serif">{t('textConstructor.fonts.serif')}</SelectItem>
-                        <SelectItem value="sans-serif">{t('textConstructor.fonts.sans-serif')}</SelectItem>
-                        {signFontFile && <SelectItem value="custom" disabled>{signFontFile.name}</SelectItem>}
-                    </SelectContent>
-                    </Select>
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="sign-font-upload">{t('textConstructor.uploadLabel')}</Label>
-                    <Button asChild variant="outline" className="w-full">
-                    <label className="cursor-pointer flex items-center justify-center">
-                        <Upload className="mr-2 h-4 w-4" />
-                        {signFontFile ? signFontFile.name : t('textConstructor.uploadButton')}
-                        <input id="sign-font-upload" type="file" className="sr-only" onChange={handleSignFontFileChange} accept=".ttf,.otf,.woff,.woff2" />
-                    </label>
-                    </Button>
-                </div>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="sign-font-size">{t('textConstructor.sizeLabel')}: {signFontSize[0]}px</Label>
-                <Slider id="sign-font-size" min={6} max={64} step={1} value={signFontSize} onValueChange={setSignFontSize}/>
+            
+            <div className="space-y-4 pt-4 border-t border-primary/20">
+              <Label>{t('voxGenerator.sign.layout')}</Label>
+              <div className="space-y-2">
+                  <Label htmlFor="sign-icon-scale">{t('voxGenerator.sign.iconScale')}: {signIconScale}%</Label>
+                  <Slider id="sign-icon-scale" min={10} max={100} step={1} value={[signIconScale]} onValueChange={(v) => setSignIconScale(v[0])} />
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="sign-icon-offset-y">{t('voxGenerator.sign.iconOffsetY')}: {signIconOffsetY}px</Label>
+                  <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={maxIconOffset} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
+              </div>
+               <div className="space-y-2">
+                  <Label htmlFor="sign-text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {signTextOffsetY}px</Label>
+                  <Slider id="sign-text-offset-y" min={-maxTextOffset} max={maxTextOffset} step={1} value={[signTextOffsetY]} onValueChange={(v) => setSignTextOffsetY(v[0])} />
+              </div>
             </div>
         </div>
     );
@@ -1637,3 +1578,4 @@ export function VoxGenerator() {
 
 
     
+

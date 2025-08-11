@@ -239,6 +239,10 @@ export default {
         height: 'Высота таблички',
         frameWidth: 'Толщина рамки',
         iconLabel: 'Иконка',
+        layout: 'Макет',
+        iconScale: 'Масштаб иконки',
+        iconOffsetY: 'Смещение иконки по вертикали',
+        textOffsetY: 'Смещение текста по вертикали',
     },
     button: 'Сгенерировать .vox файл',
     help: {
@@ -343,3 +347,4 @@ export default {
 } as const;
 
     
+

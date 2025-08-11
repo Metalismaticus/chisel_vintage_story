@@ -1,5 +1,6 @@
 
 
+
 import type { ConversionMode } from './schematic-utils';
 const writeVox = require('vox-saver');
 
@@ -34,7 +35,7 @@ type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
 type CircularArchOrientation = 'top' | 'bottom';
-export type ColumnStyle = 'simple' | 'decorative';
+export type ColumnStyle = 'simple' | 'decorative' | 'ionic';
 
 
 type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
@@ -91,6 +92,91 @@ interface RasterizeTextParams {
   outline?: boolean;
   outlineGap?: number;
   orientation?: TextOrientation;
+}
+
+const TINY_FONT_DATA: { [char: string]: string[] } = {
+  'A': [' █ ', '█ █', '███', '█ █', '█ █'], 'B': ['██ ', '█ █', '██ ', '█ █', '██ '], 'C': [' ██', '█  ', '█  ', '█  ', ' ██'],
+  'D': ['██ ', '█ █', '█ █', '█ █', '██ '], 'E': ['███', '█  ', '██ ', '█  ', '███'], 'F': ['███', '█  ', '██ ', '█  ', '█  '],
+  'G': [' ██', '█  ', '█ ██', '█ █', ' ██'], 'H': ['█ █', '█ █', '███', '█ █', '█ █'], 'I': ['███', ' █ ', ' █ ', ' █ ', '███'],
+  'J': ['  █', '  █', '  █', '█ █', ' ██'], 'K': ['█ █', '█ █', '██ ', '█ █', '█ █'], 'L': ['█  ', '█  ', '█  ', '█  ', '███'],
+  'M': ['█ █', '███', '█ █', '█ █', '█ █'], 'N': ['█ █', '███', '█ █', '█ █', '█ █'], 'O': [' ██ ', '█  █', '█  █', '█  █', ' ██ '],
+  'P': ['██ ', '█ █', '██ ', '█  ', '█  '], 'Q': [' ██ ', '█  █', '█  █', '█ ██', ' ██ '], 'R': ['██ ', '█ █', '██ ', '█ █', '█ █'],
+  'S': [' ██', '█  ', ' ██', '  █', '██ '], 'T': ['███', ' █ ', ' █ ', ' █ ', ' █ '], 'U': ['█ █', '█ █', '█ █', '█ █', ' ██'],
+  'V': ['█ █', '█ █', '█ █', ' █ ', ' █ '], 'W': ['█ █', '█ █', '█ █', '███', '█ █'], 'X': ['█ █', ' █ ', ' █ ', ' █ ', '█ █'],
+  'Y': ['█ █', '█ █', ' ██', ' █ ', ' █ '], 'Z': ['███', '  █', ' █ ', '█  ', '███'],
+  '0': [' ██ ', '█ █', '█ █', '█ █', ' ██ '], '1': [' █ ', '██ ', ' █ ', ' █ ', '███'], '2': ['██ ', '  █', ' █ ', '█  ', '███'],
+  '3': ['██ ', '  █', ' ██', '  █', '██ '], '4': ['█ █', '█ █', '███', '  █', '  █'], '5': ['███', '█  ', '██ ', '  █', '██ '],
+  '6': [' ██', '█  ', '██ ', '█ █', ' ██'], '7': ['███', '  █', ' █ ', ' █ ', ' █ '], '8': [' ██ ', '█ █', ' ██ ', '█ █', ' ██ '],
+  '9': [' ██ ', '█ █', ' ██', '  █', ' ██'],
+  '.': ['   ', '   ', '   ', '   ', ' █ '], ',': ['   ', '   ', '   ', ' █ ', '█  '], '!': [' █ ', ' █ ', ' █ ', '   ', ' █ '],
+  '?': ['██ ', '  █', ' █ ', '   ', ' █ '], ' ': ['   ', '   ', '   ', '   ', '   '],
+  '_': ['   ', '   ', '   ', '   ', '███'], '-': ['   ', '   ', '███', '   ', '   '], '+': ['   ', ' █ ', '███', ' █ ', '   '],
+};
+
+export async function rasterizePixelText(text: string): Promise<{ pixels: boolean[], width: number, height: number }> {
+    const lines = text.toUpperCase().split('\n');
+    const FONT_HEIGHT = 5;
+    const FONT_WIDTH = 3;
+    const FONT_SPACING = 1;
+
+    let maxWidth = 0;
+    const linePixels: boolean[][] = [];
+
+    for (const line of lines) {
+        const linePixelData = Array(FONT_HEIGHT).fill(0).map(() => [] as boolean[]);
+        let currentLineWidth = 0;
+        for (const char of line) {
+            const charData = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
+            const charWidth = charData[0].length;
+            for (let y = 0; y < FONT_HEIGHT; y++) {
+                for (let x = 0; x < charWidth; x++) {
+                    linePixelData[y].push(charData[y][x] === '█');
+                }
+                // Add spacing
+                if (FONT_SPACING > 0) {
+                   for (let s = 0; s < FONT_SPACING; s++) linePixelData[y].push(false);
+                }
+            }
+            currentLineWidth += charWidth + FONT_SPACING;
+        }
+        if (currentLineWidth > maxWidth) {
+            maxWidth = currentLineWidth;
+        }
+        linePixels.push(...linePixelData.flat());
+    }
+    
+    const totalHeight = lines.length * FONT_HEIGHT + (lines.length - 1); // with line breaks
+    const finalPixels: boolean[] = [];
+
+     for (let l = 0; l < lines.length; l++) {
+        const line = lines[l].toUpperCase();
+        for (let y = 0; y < FONT_HEIGHT; y++) {
+            let line_has_pixel = false;
+            for (let x = 0; x < maxWidth; x++) {
+                let char_pixel = false;
+                let current_x = 0;
+                for (const char of line) {
+                    const charData = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
+                    const charWidth = charData[0].length;
+                    if (x >= current_x && x < current_x + charWidth) {
+                       char_pixel = charData[y][x - current_x] === '█';
+                    }
+                    current_x += charWidth + FONT_SPACING;
+                }
+                finalPixels.push(char_pixel);
+                if (char_pixel) line_has_pixel = true;
+            }
+        }
+        // Add line break
+        if (l < lines.length - 1) {
+            for (let x = 0; x < maxWidth; x++) {
+                finalPixels.push(false);
+            }
+        }
+    }
+
+
+    return { pixels: finalPixels, width: maxWidth, height: totalHeight };
 }
 
 export async function rasterizeText({
@@ -630,20 +716,18 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 capitalStyle = 'simple',
                 brokenTop = false,
                 withDebris = false,
-                debrisLength = 16,
             } = shape;
-
-            const breakAngleX = brokenTop ? (shape.breakAngleX ?? (Math.random() * 60 - 30)) : 0;
-            const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? (Math.random() * 60 - 30)) : 0;
+            
+            const breakAngleX = brokenTop ? (shape.breakAngleX ?? 0) : 0;
+            const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? 0) : 0;
 
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.5);
             const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
             const capitalHeight = baseHeight;
+            const debrisLength = shape.debrisLength || 0;
             
-            const hasCapital = withCapital;
-
             let finalBaseH = withBase ? baseHeight : 0;
-            let finalCapitalH = hasCapital ? capitalHeight : 0;
+            let finalCapitalH = withCapital ? capitalHeight : 0;
             
             if (finalBaseH + finalCapitalH > totalHeight) {
                 const partsH = finalBaseH + finalCapitalH;
@@ -652,7 +736,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             const finalShaftH = totalHeight - finalBaseH - finalCapitalH;
             
-            const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, hasCapital ? baseRadius : 0);
+            const maxRadius = Math.max(colRadius, withBase ? baseRadius : 0, withCapital ? baseRadius : 0);
             const mainColWidth = maxRadius * 2;
             const debrisWidth = (withDebris && brokenTop) ? Math.max(colRadius, withCapital ? baseRadius : 0) * 2 : 0;
             
@@ -668,7 +752,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                  break;
             }
             
-            const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle) => {
+             const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle) => {
                 const voxels: {x: number, y: number, z: number}[] = [];
                 const center = radius - 0.5; 
                 
@@ -694,16 +778,94 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 }
                 return voxels;
             };
-            
+
+            const generateIonicCapital = (capitalH: number, shaftR: number, capitalR: number): {x: number, y: number, z: number}[] => {
+                const capitalVoxels: {x: number, y: number, z: number}[] = [];
+                
+                const abacusHeight = Math.max(1, Math.floor(capitalH * 0.25));
+                const abacusSize = capitalR * 2;
+                const abacusYStart = capitalH - abacusHeight;
+                for (let y = 0; y < abacusHeight; y++) {
+                    for (let z = 0; z < abacusSize; z++) {
+                        for (let x = 0; x < abacusSize; x++) {
+                            capitalVoxels.push({x, y: y + abacusYStart, z});
+                        }
+                    }
+                }
+
+                const echinusHeight = Math.max(1, Math.floor(capitalH * 0.2));
+                const echinusYStart = capitalH - abacusHeight - echinusHeight;
+                for (let y = 0; y < echinusHeight; y++) {
+                    const progress = y / (echinusHeight > 1 ? echinusHeight - 1 : 1);
+                    const currentRadius = shaftR + (capitalR - shaftR) * progress;
+                    const centerX = capitalR - 0.5;
+                    const centerZ = capitalR - 0.5;
+                    
+                    for (let z = 0; z < abacusSize; z++) {
+                        for (let x = 0; x < abacusSize; x++) {
+                            const dx = x - centerX;
+                            const dz = z - centerZ;
+                            if (dx * dx + dz * dz <= currentRadius * currentRadius) {
+                                capitalVoxels.push({x, y: y + echinusYStart, z});
+                            }
+                        }
+                    }
+                }
+
+                const voluteHeight = capitalH - abacusHeight;
+                const voluteThickness = Math.max(2, Math.floor(shaftR * 0.5));
+                const voluteCenterY = voluteHeight / 2;
+                
+                const generateVolute = (centerZ: number, flip: boolean) => {
+                    const spiralVoxels = new Set<string>();
+                    const a = 1.5;
+                    const b = 0.5;
+                    const maxRadius = capitalR - shaftR - 1;
+
+                    for (let angle = 0; angle < Math.PI * 4; angle += 0.1) {
+                        const r = a + b * angle;
+                        if (r > maxRadius) break;
+                        
+                        const relY = r * Math.sin(angle);
+                        const relX = r * Math.cos(angle);
+
+                        const vx = Math.round(shaftR + (flip ? -relX : relX));
+                        const vy = Math.round(voluteCenterY + relY);
+
+                        if (vy >= 0 && vy < voluteHeight) {
+                            for (let z_thick = 0; z_thick < voluteThickness; z_thick++) {
+                                const vz = Math.round(centerZ - voluteThickness / 2 + z_thick);
+                                spiralVoxels.add(`${vx},${vy},${vz}`);
+                            }
+                        }
+                    }
+                    return Array.from(spiralVoxels).map(s => {
+                        const [x, y, z] = s.split(',').map(Number);
+                        return {x, y, z};
+                    });
+                };
+
+                const voluteOffsetX = Math.floor((abacusSize - shaftR * 2) / 2);
+                
+                const volute1 = generateVolute(voluteThickness / 2, false);
+                volute1.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+                
+                const volute2 = generateVolute(voluteThickness / 2, true);
+                volute2.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+
+                const volute3 = generateVolute(abacusSize - voluteThickness / 2, false);
+                volute3.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+                
+                const volute4 = generateVolute(abacusSize - voluteThickness / 2, true);
+                volute4.forEach(v => capitalVoxels.push({x: v.x + voluteOffsetX, y: v.y, z: v.z}));
+
+                return capitalVoxels;
+            };
+
             const tanX = brokenTop ? Math.tan(breakAngleX * Math.PI / 180) : 0;
             const tanZ = brokenTop ? Math.tan(breakAngleZ * Math.PI / 180) : 0;
             
             // Standing Column Part
-            let standingShaftHeight = finalShaftH;
-            if (brokenTop && withDebris && withCapital) {
-                 standingShaftHeight += finalCapitalH;
-            }
-
             if (withBase && finalBaseH > 0) {
                 const baseVoxels = generateCylinder(baseRadius, finalBaseH, baseStyle);
                 const offsetX = Math.floor((mainColWidth / 2) - baseRadius);
@@ -711,8 +873,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 baseVoxels.forEach(v => addVoxel(v.x + offsetX, v.y, v.z + offsetZ));
             }
             
-            if (standingShaftHeight > 0) {
-                 const shaftVoxels = generateCylinder(colRadius, standingShaftHeight, 'simple');
+            if (finalShaftH > 0) {
+                 const shaftVoxels = generateCylinder(colRadius, finalShaftH, 'simple');
                  const offsetX = Math.floor((mainColWidth / 2) - colRadius);
                  const offsetZ = Math.floor((depth / 2) - colRadius);
                  const shaftStartY = finalBaseH;
@@ -731,64 +893,67 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                  });
             }
             
-            if (hasCapital && !brokenTop) {
-                const capitalVoxels = generateCylinder(baseRadius, finalCapitalH, capitalStyle);
-                const offsetX = Math.floor((mainColWidth / 2) - baseRadius);
-                const offsetZ = Math.floor((depth / 2) - baseRadius);
-                const capitalStartY = finalBaseH + finalShaftH;
-                capitalVoxels.forEach(v => {
-                     addVoxel(v.x + offsetX, capitalStartY + v.y, v.z + offsetZ);
-                });
+            if (withCapital && !brokenTop) {
+                 const capitalStartY = finalBaseH + finalShaftH;
+                 const offsetX = Math.floor((mainColWidth / 2) - baseRadius);
+                 const offsetZ = Math.floor((depth / 2) - baseRadius);
+
+                 if (capitalStyle === 'ionic') {
+                    const capitalVoxels = generateIonicCapital(finalCapitalH, colRadius, baseRadius);
+                    capitalVoxels.forEach(v => addVoxel(v.x + offsetX, v.y + capitalStartY, v.z + offsetZ));
+                 } else {
+                    const capitalVoxels = generateCylinder(baseRadius, finalCapitalH, capitalStyle);
+                    capitalVoxels.forEach(v => addVoxel(v.x + offsetX, v.y + capitalStartY, v.z + offsetZ));
+                 }
             }
 
             // Debris Part
             if (brokenTop && withDebris && debrisLength > 0) {
-                 const debrisHasCapital = hasCapital;
-                 let debrisCapitalH = debrisHasCapital ? capitalHeight : 0;
-                 let debrisShaftH = debrisLength - debrisCapitalH;
+                let debrisCapitalH = withCapital ? capitalHeight : 0;
+                let debrisShaftH = debrisLength - debrisCapitalH;
                  if (debrisShaftH < 0) {
                      debrisCapitalH = debrisLength;
                      debrisShaftH = 0;
                  }
                 
-                 let currentDebrisLength = 0;
+                const debrisVoxels: {x: number, y: number, z: number}[] = [];
 
-                 if (debrisShaftH > 0) {
+                if (debrisShaftH > 0) {
                     const shaftVoxels = generateCylinder(colRadius, debrisShaftH, 'simple');
                     shaftVoxels.forEach(v => {
                         const xFromCenter = v.x - colRadius + 0.5;
                         const zFromCenter = v.z - colRadius + 0.5;
                         const breakPlaneY = finalShaftH - (xFromCenter * tanX + zFromCenter * tanZ);
-                        
-                        if (v.y + finalShaftH > breakPlaneY) {
-                            const rotatedX = v.y + currentDebrisLength;
-                            const rotatedY = v.x;
-                            const rotatedZ = v.z;
-
-                            addVoxel(
-                                rotatedX + debrisOffsetX, 
-                                rotatedY,
-                                rotatedZ + Math.floor((depth / 2) - colRadius)
-                            );
+                        if (finalShaftH + v.y > breakPlaneY) {
+                            debrisVoxels.push({x: v.x, y: v.y, z: v.z });
                         }
                     });
-                    currentDebrisLength += debrisShaftH;
-                 }
-                 
-                 if (debrisHasCapital && debrisCapitalH > 0) {
-                    const capVoxels = generateCylinder(baseRadius, debrisCapitalH, capitalStyle);
-                     capVoxels.forEach(v => {
-                        const rotatedX = v.y + currentDebrisLength;
-                        const rotatedY = v.x;
-                        const rotatedZ = v.z;
-                        
-                        addVoxel(
-                            rotatedX + debrisOffsetX, 
-                            rotatedY, 
-                            rotatedZ + Math.floor((depth / 2) - baseRadius)
-                        );
+                }
+                
+                if (withCapital && debrisCapitalH > 0) {
+                    const capitalVoxels = (capitalStyle === 'ionic') 
+                        ? generateIonicCapital(debrisCapitalH, colRadius, baseRadius)
+                        : generateCylinder(baseRadius, debrisCapitalH, capitalStyle);
+                    
+                    const capOffsetX = Math.floor(baseRadius - colRadius);
+
+                    capitalVoxels.forEach(v => {
+                        debrisVoxels.push({x: v.x - capOffsetX, y: v.y + debrisShaftH, z: v.z - capOffsetX});
                     });
-                 }
+                }
+                
+                // Rotate and place debris
+                debrisVoxels.forEach(v => {
+                    const rotatedX = v.y; // Laying on its side
+                    const rotatedY = v.x;
+                    const rotatedZ = v.z;
+                    
+                    addVoxel(
+                        rotatedX + debrisOffsetX,
+                        rotatedY,
+                        rotatedZ + Math.floor((depth - colRadius * 2) / 2)
+                    );
+                });
             }
             break;
         }
@@ -817,7 +982,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
              if (shape.archType === 'circular') {
                 width = shape.width;
                 const outerRadius = width / 2;
-                height = outerRadius;
+                height = Math.floor(outerRadius);
                 const innerRadius = outerRadius - shape.thickness;
                 const centerX = (width - 1) / 2.0;
                 
@@ -1046,7 +1211,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         }
     }
     
-    totalVoxels = xyziValues.length -1; // Subtract the anchor voxel
+    totalVoxels = xyziValues.length > 1 ? xyziValues.length -1 : 0;
     
     const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
     palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // MagicaVoxel palette is 1-indexed, so 0 is empty

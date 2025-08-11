@@ -16,6 +16,7 @@ const PixelDataSchema = z.object({
     pixels: z.array(z.boolean()),
     width: z.number().int(),
     height: z.number().int(),
+    offsetY: z.number().int().optional(),
 });
 
 const SignToVoxInputSchema = z.object({
@@ -103,10 +104,11 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   }
   
   const contentHeight = signHeight - frameWidth * 2;
+  const contentCenterY = Math.floor(signHeight / 2);
   
   // 2. Place Icon
   const iconXOffset = Math.floor((signWidth - icon.width) / 2);
-  const iconYOffset = signHeight - frameWidth - Math.floor(contentHeight * 0.1) - icon.height;
+  const iconYOffset = contentCenterY + Math.floor(contentHeight * 0.25) - Math.floor(icon.height / 2) + (icon.offsetY || 0);
 
   for (let y = 0; y < icon.height; y++) {
       for (let x = 0; x < icon.width; x++) {
@@ -118,7 +120,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
 
   // 3. Place Text
   const textXOffset = Math.floor((signWidth - text.width) / 2);
-  const textYOffset = iconYOffset - Math.floor(contentHeight * 0.1) - text.height;
+  const textYOffset = contentCenterY - Math.floor(contentHeight * 0.25) - Math.floor(text.height / 2) + (text.offsetY || 0);
 
   for (let y = 0; y < text.height; y++) {
       for (let x = 0; x < text.width; x++) {
