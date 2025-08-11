@@ -1216,15 +1216,6 @@ export function VoxGenerator() {
            {textVoxMode === 'engrave' && (
             <div className="space-y-4">
                  <div className="space-y-2">
-                    <Label htmlFor="background-depth">{t('voxGenerator.text.backgroundDepth')}: {backgroundDepth[0]}px</Label>
-                    <Slider
-                        id="background-depth"
-                        min={1} max={50} step={1}
-                        value={backgroundDepth}
-                        onValueChange={setBackgroundDepth}
-                    />
-                </div>
-                 <div className="space-y-2">
                     <Label htmlFor="engrave-depth">{t('voxGenerator.text.engraveDepth')}: {engraveDepth[0]}px</Label>
                     <Slider
                         id="engrave-depth"
@@ -1603,6 +1594,7 @@ export function VoxGenerator() {
 
 
     
+
 
 
 

@@ -50,11 +50,13 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     height: textHeight, 
     mode, 
     letterDepth, 
-    backgroundDepth, 
+    // backgroundDepth is now fixed for engrave mode
     engraveDepth,
     orientation,
     stickerMode,
   } = TextToVoxInputSchema.parse(input);
+
+  const backgroundDepth = 16; // Locked value
 
   let xyziValues: {x: number, y: number, z: number, i: number}[] = [];
   
@@ -100,7 +102,8 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
   };
 
   if (mode === 'extrude') {
-    const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - letterDepth : 0;
+    // For vertical sticker mode, text should be at z=0, so zOffset is 0.
+    const zOffset = (stickerMode && orientation === 'horizontal') ? STICKER_BLOCK_DEPTH - letterDepth : 0;
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : letterDepth;
 
     for (let py = 0; py < modelHeight; py++) {
@@ -114,16 +117,18 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     }
   } else if (mode === 'engrave') {
     modelDepth = stickerMode ? STICKER_BLOCK_DEPTH : backgroundDepth;
-    const zOffset = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
+    // Engraving should happen from the "top" of the block.
+    const zStart = stickerMode ? STICKER_BLOCK_DEPTH - backgroundDepth : 0;
     
     for (let py = 0; py < modelHeight; py++) {
       for (let px = 0; px < modelWidth; px++) {
         const isTextPixel = pixels[py * modelWidth + px];
         
-        const startDepth = isTextPixel ? engraveDepth : 0;
+        // If it's a text pixel, don't place voxels for the engrave depth.
+        const startDepthForPixel = isTextPixel ? engraveDepth : 0;
 
-        for (let pz = startDepth; pz < backgroundDepth; pz++) {
-             placeVoxel(px, py, pz, zOffset);
+        for (let pz = startDepthForPixel; pz < backgroundDepth; pz++) {
+             placeVoxel(px, py, pz, zStart);
         }
       }
     }
@@ -137,10 +142,6 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelDepth;
     finalDepth = modelHeight;
     
-    // Rotate 90 degrees around X-axis
-    // (x, y, z) -> (x, -z, y)
-    // In our coordinate system, Y is up, Z is depth.
-    // So a voxel at (v.x, v.y, v.z) maps to final (v.x, v.z, v.y)
     finalXyzi = xyziValues.map(v => ({ x: v.x, y: v.z, z: v.y, i: v.i }));
 
   } else { // Horizontal
@@ -148,7 +149,6 @@ export async function generateTextToVoxFlow(input: TextToVoxInput): Promise<Text
     finalHeight = modelHeight;
     finalDepth = modelDepth;
     
-    // Default mapping for horizontal
     finalXyzi = xyziValues;
   }
  
