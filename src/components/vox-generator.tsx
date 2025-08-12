@@ -711,7 +711,6 @@ export function VoxGenerator() {
     if (file) {
       setFontFile(file);
       setFont('custom');
-      setIsPending(true);
     }
   };
 
