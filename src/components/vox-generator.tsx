@@ -71,6 +71,8 @@ export function VoxGenerator() {
     ringThickness: '4',
     ringHeight: '4',
     debrisLength: '16',
+    haystackRadius: '8',
+    haystackHeight: '12',
   });
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
@@ -454,6 +456,13 @@ export function VoxGenerator() {
             part = `half`;
           }
           shapeParams = { type: 'ring', radius, thickness, height, part, orientation: ringOrientation };
+          break;
+        }
+        case 'haystack': {
+          const radius = validateAndParse(dimensions.haystackRadius, t('voxGenerator.dims.baseRadius'));
+          const height = validateAndParse(dimensions.haystackHeight, t('voxGenerator.dims.height'));
+          if (radius === null || height === null) return;
+          shapeParams = { type: 'haystack', radius, height };
           break;
         }
         default:
@@ -1081,6 +1090,19 @@ export function VoxGenerator() {
                   </div>
                 </div>
               );
+            case 'haystack':
+              return (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="haystackRadius">{t('voxGenerator.dims.baseRadius')} (voxels)</Label>
+                    <Input id="haystackRadius" type="number" value={dimensions.haystackRadius} onChange={e => handleDimensionChange('haystackRadius', e.target.value)} placeholder="e.g. 8" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="haystackHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
+                    <Input id="haystackHeight" type="number" value={dimensions.haystackHeight} onChange={e => handleDimensionChange('haystackHeight', e.target.value)} placeholder="e.g. 12" />
+                  </div>
+                </div>
+              );
             default:
               return null;
           }
@@ -1576,6 +1598,10 @@ export function VoxGenerator() {
                          <div className="flex items-center space-x-2">
                             <RadioGroupItem value="ring" id="r-ring" />
                             <Label htmlFor="r-ring">{t('voxGenerator.shapes.ring')}</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="haystack" id="r-haystack" />
+                            <Label htmlFor="r-haystack">{t('voxGenerator.shapes.haystack')}</Label>
                         </div>
                         </RadioGroup>
                     </div>

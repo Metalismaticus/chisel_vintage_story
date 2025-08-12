@@ -132,6 +132,7 @@ export default {
       arch: 'Арка',
       disk: 'Диск',
       ring: 'Кольцо',
+      haystack: 'Стог сена',
     },
     dims: {
       width: 'Ширина',
@@ -351,4 +352,3 @@ export default {
 } as const;
 
     
-

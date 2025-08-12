@@ -132,6 +132,7 @@ export default {
       arch: 'Arch',
       disk: 'Disk',
       ring: 'Ring',
+      haystack: 'Haystack',
     },
     dims: {
       width: 'Width',
