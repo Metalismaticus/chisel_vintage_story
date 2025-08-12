@@ -96,7 +96,6 @@ export function VoxGenerator() {
   const [fontSize, setFontSize] = useState([24]);
   const [font, setFont] = useState<FontStyle>('monospace');
   const [fontFile, setFontFile] = useState<File | null>(null);
-  const fontFileUrlRef = useRef<string | null>(null);
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
   const [textStickerMode, setTextStickerMode] = useState(true);
   const [letterDepth, setLetterDepth] = useState([5]);
@@ -139,6 +138,7 @@ export function VoxGenerator() {
   const [signIconScale, setSignIconScale] = useState(50);
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
   const [textOffsetY, setTextOffsetY] = useState(0);
+  const [signFrame, setSignFrame] = useState(true);
   
 
 
@@ -179,7 +179,6 @@ export function VoxGenerator() {
     return () => {
       if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
       if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
-      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
     };
   }, [paPreviewUrl, signIconUrl]);
   
@@ -231,13 +230,18 @@ export function VoxGenerator() {
     
     setIsPending(true);
     setSchematicOutput(null);
+    let fontUrl: string | undefined = undefined;
 
     try {
+        if (fontFile && font === 'custom') {
+            fontUrl = URL.createObjectURL(fontFile);
+        }
+
         const { pixels, width, height } = await rasterizeText({
             text, 
             font, 
             fontSize: fontSize[0], 
-            fontUrl: fontFileUrlRef.current ?? undefined, 
+            fontUrl: fontUrl,
             outline: textOutline,
             outlineGap: textOutlineGap[0],
         });
@@ -273,6 +277,9 @@ export function VoxGenerator() {
         });
         setSchematicOutput(null);
     } finally {
+        if (fontUrl) {
+            URL.revokeObjectURL(fontUrl);
+        }
         setIsPending(false);
     }
   }
@@ -576,7 +583,7 @@ export function VoxGenerator() {
     }
 
   const handleGenerateSign = async () => {
-     if (!signText.trim() && !signIconFile) {
+    if (!signText.trim() && !signIconFile) {
         toast({ title: t('voxGenerator.errors.noIcon'), description: t('voxGenerator.errors.noIconDesc'), variant: 'destructive' });
         return;
     }
@@ -585,7 +592,7 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const contentWidth = signWidth - signFrameWidth * 2;
+        const contentWidth = signWidth - (signFrame ? signFrameWidth * 2 : 0);
         
         let iconPixels: boolean[] = [], iconWidth = 0, iconHeight = 0;
         
@@ -597,6 +604,7 @@ export function VoxGenerator() {
                 img.src = URL.createObjectURL(signIconFile);
             });
             await imgPromise;
+            URL.revokeObjectURL(img.src);
 
             const iconTargetWidth = Math.floor(contentWidth * (signIconScale / 100));
             const iconData = await imageToPixels(img, iconTargetWidth);
@@ -616,6 +624,7 @@ export function VoxGenerator() {
             frameWidth: signFrameWidth,
             icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
             text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: textOffsetY },
+            frame: signFrame,
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -691,13 +700,9 @@ export function VoxGenerator() {
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (fontFileUrlRef.current) {
-        URL.revokeObjectURL(fontFileUrlRef.current);
-      }
       setFontFile(file);
-      const url = URL.createObjectURL(file);
-      fontFileUrlRef.current = url;
-      setFont('custom'); 
+      setFont('custom');
+      setIsPending(true);
     }
   };
 
@@ -705,10 +710,6 @@ export function VoxGenerator() {
     setFont(value);
     if (value !== 'custom') {
       setFontFile(null);
-      if (fontFileUrlRef.current) {
-        URL.revokeObjectURL(fontFileUrlRef.current);
-        fontFileUrlRef.current = null;
-      }
     }
   }
 
@@ -1425,7 +1426,7 @@ export function VoxGenerator() {
   }
   
   const renderSignInputs = () => {
-    const contentHeight = signHeight - (signFrameWidth * 2);
+    const contentHeight = signHeight - (signFrame ? signFrameWidth * 2 : 0);
     const maxIconOffset = Math.floor(contentHeight / 2);
     const maxTextOffset = Math.floor(contentHeight / 2);
 
@@ -1457,7 +1458,11 @@ export function VoxGenerator() {
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
                 <p className="text-xs text-muted-foreground bg-black/20 p-2 rounded-md border border-input">{t('voxGenerator.sign.textHint')}</p>
             </div>
-
+            
+            <div className="flex items-center space-x-2">
+                <Switch id="sign-frame" checked={signFrame} onCheckedChange={setSignFrame} />
+                <Label htmlFor="sign-frame">{t('voxGenerator.sign.withFrame')}</Label>
+            </div>
             
             <div className="space-y-4 pt-4 border-t border-primary/20">
               <Label>{t('voxGenerator.sign.layout')}</Label>
@@ -1613,3 +1618,4 @@ export function VoxGenerator() {
     
 
     
+
