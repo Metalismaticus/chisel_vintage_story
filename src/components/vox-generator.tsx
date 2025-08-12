@@ -139,7 +139,7 @@ export function VoxGenerator() {
   const [signIconOffsetY, setSignIconOffsetY] = useState(0);
   const [textOffsetY, setTextOffsetY] = useState(0);
   const [signFrame, setSignFrame] = useState(true);
-  
+  const [signWithIcon, setSignWithIcon] = useState(true);
 
 
   const [schematicOutput, setSchematicOutput] = useState<any | null>(null);
@@ -583,7 +583,7 @@ export function VoxGenerator() {
     }
 
   const handleGenerateSign = async () => {
-    if (!signText.trim() && !signIconFile) {
+    if (!signText.trim() && (!signIconFile || !signWithIcon)) {
         toast({ title: t('voxGenerator.errors.noIcon'), description: t('voxGenerator.errors.noIconDesc'), variant: 'destructive' });
         return;
     }
@@ -596,7 +596,7 @@ export function VoxGenerator() {
         
         let iconPixels: boolean[] = [], iconWidth = 0, iconHeight = 0;
         
-        if (signIconFile) {
+        if (signIconFile && signWithIcon) {
             const img = document.createElement('img');
             const imgPromise = new Promise<void>((resolve, reject) => {
                 img.onload = () => resolve();
@@ -1432,52 +1432,61 @@ export function VoxGenerator() {
 
     return (
         <div className="space-y-6">
-             <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                    <Label htmlFor="sign-icon-upload">{t('voxGenerator.sign.iconLabel')}</Label>
-                    <Button asChild variant="link" size="sm" className="text-muted-foreground -mr-3">
-                        <a href="https://ru.freepik.com/icons" target="_blank" rel="noopener noreferrer">
-                            {t('voxGenerator.sign.findIcons')} <ExternalLink className="ml-2 h-4 w-4" />
-                        </a>
-                    </Button>
-                </div>
-                <div className="flex gap-2">
-                    <Button asChild variant="outline" className="flex-1">
-                        <label className="cursor-pointer flex items-center justify-center">
-                            <Upload className="mr-2 h-4 w-4" />
-                            {signIconFile ? signIconFile.name : t('voxGenerator.sign.uploadButton')}
-                            <input ref={signIconInputRef} id="sign-icon-upload" type="file" className="sr-only" onChange={handleSignIconFileChange} accept="image/png, image/jpeg, image/gif, image/svg+xml" />
-                        </label>
-                    </Button>
-                    {signIconUrl && <img src={signIconUrl} alt="Icon Preview" className="h-10 w-10 p-1 border rounded-md" />}
-                </div>
-            </div>
-            
-            <div className="space-y-2 pt-4 border-t border-primary/20">
+            <div className="space-y-2">
                 <Label htmlFor="sign-text-input">{t('textConstructor.textLabel')}</Label>
                 <Input id="sign-text-input" value={signText} onChange={(e) => setSignText(e.target.value)} placeholder={t('textConstructor.textPlaceholder')} />
                 <p className="text-xs text-muted-foreground bg-black/20 p-2 rounded-md border border-input">{t('voxGenerator.sign.textHint')}</p>
             </div>
             
-            <div className="flex items-center space-x-2">
-                <Switch id="sign-frame" checked={signFrame} onCheckedChange={setSignFrame} />
-                <Label htmlFor="sign-frame">{t('voxGenerator.sign.withFrame')}</Label>
+            <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                    <Switch id="sign-frame" checked={signFrame} onCheckedChange={setSignFrame} />
+                    <Label htmlFor="sign-frame">{t('voxGenerator.sign.withFrame')}</Label>
+                </div>
+                <div className="flex items-center space-x-2 pt-2">
+                    <Switch id="sign-with-icon" checked={signWithIcon} onCheckedChange={setSignWithIcon} />
+                    <Label htmlFor="sign-with-icon">{t('voxGenerator.sign.iconLabel')}</Label>
+                </div>
             </div>
             
-            <div className="space-y-4 pt-4 border-t border-primary/20">
-              <Label>{t('voxGenerator.sign.layout')}</Label>
-              <div className="space-y-2">
-                  <Label htmlFor="sign-icon-scale">{t('voxGenerator.sign.iconScale')}: {signIconScale}%</Label>
-                  <Slider id="sign-icon-scale" min={10} max={100} step={1} value={[signIconScale]} onValueChange={(v) => setSignIconScale(v[0])} />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="sign-icon-offset-y">{t('voxGenerator.sign.iconOffsetY')}: {signIconOffsetY}px</Label>
-                  <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={0} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
-              </div>
-              <div className="space-y-2">
-                  <Label htmlFor="text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {textOffsetY}px</Label>
-                  <Slider id="text-offset-y" min={0} max={maxTextOffset} step={1} value={[textOffsetY]} onValueChange={(v) => setTextOffsetY(v[0])} />
-              </div>
+            {signWithIcon && (
+                <div className="space-y-4 pt-4 border-t border-primary/20">
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <Label htmlFor="sign-icon-upload">{t('voxGenerator.sign.iconLabel')}</Label>
+                            <Button asChild variant="link" size="sm" className="text-muted-foreground -mr-3">
+                                <a href="https://ru.freepik.com/icons" target="_blank" rel="noopener noreferrer">
+                                    {t('voxGenerator.sign.findIcons')} <ExternalLink className="ml-2 h-4 w-4" />
+                                </a>
+                            </Button>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button asChild variant="outline" className="flex-1">
+                                <label className="cursor-pointer flex items-center justify-center">
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    {signIconFile ? signIconFile.name : t('voxGenerator.sign.uploadButton')}
+                                    <input ref={signIconInputRef} id="sign-icon-upload" type="file" className="sr-only" onChange={handleSignIconFileChange} accept="image/png, image/jpeg, image/gif, image/svg+xml" />
+                                </label>
+                            </Button>
+                            {signIconUrl && <img src={signIconUrl} alt="Icon Preview" className="h-10 w-10 p-1 border rounded-md" />}
+                        </div>
+                    </div>
+                
+                    <Label className="pt-2">{t('voxGenerator.sign.layout')}</Label>
+                    <div className="space-y-2">
+                        <Label htmlFor="sign-icon-scale">{t('voxGenerator.sign.iconScale')}: {signIconScale}%</Label>
+                        <Slider id="sign-icon-scale" min={10} max={100} step={1} value={[signIconScale]} onValueChange={(v) => setSignIconScale(v[0])} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="sign-icon-offset-y">{t('voxGenerator.sign.iconOffsetY')}: {signIconOffsetY}px</Label>
+                        <Slider id="sign-icon-offset-y" min={-maxIconOffset} max={0} step={1} value={[signIconOffsetY]} onValueChange={(v) => setSignIconOffsetY(v[0])} />
+                    </div>
+                </div>
+            )}
+            
+            <div className="space-y-2 pt-4 border-t border-primary/20">
+              <Label htmlFor="text-offset-y">{t('voxGenerator.sign.textOffsetY')}: {textOffsetY}px</Label>
+              <Slider id="text-offset-y" min={0} max={maxTextOffset} step={1} value={[textOffsetY]} onValueChange={(v) => setTextOffsetY(v[0])} />
             </div>
         </div>
     );
@@ -1619,3 +1628,6 @@ export function VoxGenerator() {
 
     
 
+
+
+    
