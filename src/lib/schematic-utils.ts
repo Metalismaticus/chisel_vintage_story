@@ -341,7 +341,7 @@ Object.assign(TINY_FONT_DATA, {
   'Л': [[0,0,0,0],[0,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'П': [[0,0,0,0],[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'Ф': [[0,0,0,0,0],[1,1,1,1,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0]],
-  'Ц': [[0,0,0,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,0,1]],
+  'Ц': [[0,0,0,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,0,1]], // Tail
   'Ч': [[0,0,0,0],[1,0,0,1],[1,0,0,1],[0,1,1,1],[0,0,0,1],[0,0,0,1],[0,0,0,0]],
   'Ш': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,0,0,0]],
   'Щ': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,0],[0,0,0,0,1]],
@@ -934,6 +934,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const generateIonicCapital = (capitalHeight: number, shaftRadius: number, capitalRadius: number) => {
                 const voxels: {x: number, y: number, z: number}[] = [];
                 const capitalSize = capitalRadius * 2;
+                const centerX = capitalRadius - 0.5;
+                const centerZ = capitalRadius - 0.5;
 
                 const abacusHeight = Math.max(1, Math.floor(capitalHeight * 0.25));
                 const abacusYStart = capitalHeight - abacusHeight;
@@ -950,8 +952,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 for (let y = 0; y < echinusHeight; y++) {
                     const progress = echinusHeight > 1 ? y / (echinusHeight - 1) : 1;
                     const currentRadius = shaftRadius + (capitalRadius - shaftRadius) * progress;
-                    const centerX = capitalRadius - 0.5;
-                    const centerZ = capitalRadius - 0.5;
+                    
                     for (let z = 0; z < capitalSize; z++) {
                         for (let x = 0; x < capitalSize; x++) {
                             const dx = x - centerX;
@@ -1048,7 +1049,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 }
                 if (withCapital && debrisCapitalH > 0) {
                     let capitalVoxels;
-                    const r = (capitalStyle === 'ionic') ? baseRadius : colRadius;
+                    const r = baseRadius;
                      if (capitalStyle === 'ionic') {
                         capitalVoxels = generateIonicCapital(debrisCapitalH, colRadius, baseRadius);
                      } else {
@@ -1059,6 +1060,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                      capitalVoxels.forEach(v => debrisVoxels.push({x: v.x + capitalOffsetX, y: v.y + capitalOffsetY, z: v.z + capitalOffsetX}));
                 }
                 
+                const debrisOffsetX = mainColWidth + 4;
                 debrisVoxels.forEach(v => {
                     const r = colRadius;
                     const debrisAreaWidth = Math.max(colRadius, baseRadius) * 2;
@@ -1429,6 +1431,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 
