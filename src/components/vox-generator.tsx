@@ -795,11 +795,11 @@ export function VoxGenerator() {
                             </Select>
                         </div>
                         <div className="flex items-center space-x-2 pt-2">
-                            <Switch id="carve-mode" checked={carveMode} onCheckedChange={setCarveMode} />
+                            <Switch id="carve-mode" checked={carveMode} onCheckedChange={(checked) => { setCarveMode(checked); if(checked) setIsHollow(false); }} />
                             <Label htmlFor="carve-mode">{t('voxGenerator.sphere.carveMode')}</Label>
                         </div>
                          <div className="flex items-center space-x-2 pt-2">
-                            <Switch id="hollow-mode" checked={isHollow} onCheckedChange={setIsHollow} />
+                            <Switch id="hollow-mode" checked={isHollow} onCheckedChange={(checked) => { setIsHollow(checked); if(checked) setCarveMode(false); }} />
                             <Label htmlFor="hollow-mode">{t('voxGenerator.sphere.domeMode')}</Label>
                         </div>
                         {isHollow && (
