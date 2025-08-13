@@ -768,11 +768,11 @@ const generateDecorativePart = (
     const step2Offset = Math.floor((step1R - step2R) / 2);
 
     if (isCapital) {
-        // Wider part on top
-        generateCylinder(voxels, step1R, step1H, yOffset + step2H, xzOffset);
-        generateCylinder(voxels, step2R, step2H, yOffset, xzOffset + step2Offset);
+        // Wider part on top for capital
+        generateCylinder(voxels, step1R, step2H, yOffset + step1H, xzOffset);
+        generateCylinder(voxels, step2R, step1H, yOffset, xzOffset + step2Offset);
     } else {
-        // Wider part at bottom
+        // Wider part at bottom for base
         generateCylinder(voxels, step1R, step1H, yOffset, xzOffset);
         generateCylinder(voxels, step2R, step2H, yOffset + step1H, xzOffset + step2Offset);
     }
@@ -945,16 +945,17 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'column': {
-             const {
+            const {
                 radius: colRadius,
                 height: totalHeight,
                 withBase = false,
-                withCapital = false,
                 baseStyle = 'simple',
                 capitalStyle = 'simple',
                 brokenTop = false,
                 withDebris = false,
             } = shape;
+
+            let withCapital = brokenTop ? false : (shape.withCapital ?? false);
             
             const breakAngleX = brokenTop ? (shape.breakAngleX ?? 0) : 0;
             const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? 0) : 0;
@@ -976,7 +977,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const finalBaseH = withBase ? baseHeight : 0;
             const finalCapitalH = withCapital ? baseHeight : 0;
             const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
-            const center = mainColWidth / 2 - 0.5;
             
             if (withBase) {
                  const baseOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
@@ -1399,5 +1399,6 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 

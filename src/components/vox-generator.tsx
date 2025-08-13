@@ -386,7 +386,7 @@ export function VoxGenerator() {
                 radius: colRadius, 
                 height: totalHeight, 
                 withBase, 
-                withCapital, 
+                withCapital: brokenTop ? false : withCapital, 
                 baseRadius, 
                 baseHeight, 
                 baseStyle, 
@@ -871,10 +871,10 @@ export function VoxGenerator() {
                               <Label htmlFor="with-base">{t('voxGenerator.column.withBase')}</Label>
                           </div>
                            <div className="flex items-center space-x-2 pt-2">
-                              <Switch id="with-capital" checked={withCapital} onCheckedChange={(checked) => { setWithCapital(checked); }} disabled={brokenTop && !withDebris}/>
-                              <Label htmlFor="with-capital" className={cn(brokenTop && !withDebris && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
+                              <Switch id="with-capital" checked={withCapital} onCheckedChange={setWithCapital} disabled={brokenTop}/>
+                              <Label htmlFor="with-capital" className={cn(brokenTop && "text-muted-foreground")}>{t('voxGenerator.column.withCapital')}</Label>
                           </div>
-                           {(withBase || withCapital) && (
+                           {(withBase || withCapital) && !brokenTop && (
                               <div className="pt-2 pl-1 space-y-4 border-l-2 border-primary/20 ml-2">
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4">
                                       <div className="space-y-2">
@@ -915,7 +915,7 @@ export function VoxGenerator() {
                      </div>
                       <div className="space-y-2">
                           <div className="flex items-center space-x-2 pt-2">
-                              <Switch id="broken-top" checked={brokenTop} onCheckedChange={setBrokenTop}/>
+                              <Switch id="broken-top" checked={brokenTop} onCheckedChange={(checked) => { setBrokenTop(checked); if (checked) setWithCapital(false); }}/>
                               <Label htmlFor="broken-top" >{t('voxGenerator.column.brokenTop')}</Label>
                           </div>
                            {brokenTop && (
@@ -1710,4 +1710,5 @@ export function VoxGenerator() {
 
 
     
+
 
