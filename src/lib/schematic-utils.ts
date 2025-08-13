@@ -954,7 +954,8 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 brokenTop = false,
                 withDebris = false,
             } = shape;
-        
+
+            const debrisLength = shape.debrisLength ?? 0;
             let withCapital = brokenTop ? false : (shape.withCapital ?? false);
         
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.25);
@@ -1019,7 +1020,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
         
             // --- Process and place debris ---
             if (brokenTop && withDebris && debrisPartVoxels.length > 0) {
-                const debrisLength = shape.debrisLength ?? totalHeight;
                 const debrisToPlace = debrisPartVoxels.filter(v => v.y < totalHeight + debrisLength); // Limit length
         
                 let minDebrisY = Infinity;
@@ -1035,7 +1035,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 });
             }
         
-            width = mainColWidth + (withDebris && brokenTop ? (debrisLength) + 4 : 0);
+            width = mainColWidth + (withDebris && brokenTop ? (debrisLength ?? 0) + 4 : 0);
             depth = mainColWidth;
             height = totalHeight;
         
@@ -1405,3 +1405,6 @@ function grayscale(r: number, g: number, b: number): number {
 
 
 
+
+
+    

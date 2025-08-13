@@ -140,7 +140,7 @@ export function VoxGenerator() {
   // Sign state
   const [signIconFile, setSignIconFile] = useState<File | null>(null);
   const [signIconUrl, setSignIconUrl] = useState<string | null>(null);
-  const [signText, setSignText] = useState('Путь Шестерёнок');
+  const [signText, setSignText] = useState('GEARSTED PATH');
   const signWidth = 48;
   const signHeight = 40;
   const signFrameWidth = 2;
@@ -1521,7 +1521,7 @@ export function VoxGenerator() {
   const renderSignInputs = () => {
     const contentHeight = signHeight - (signFrame ? signFrameWidth * 2 : 0);
     const maxIconOffset = Math.floor(contentHeight / 2);
-    const maxTextOffset = Math.floor(contentHeight / 2);
+    const maxTextOffset = 18;
 
     return (
         <div className="space-y-6">
@@ -1712,3 +1712,6 @@ export function VoxGenerator() {
     
 
 
+
+
+    
