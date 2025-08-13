@@ -885,9 +885,6 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 withDebris = false,
             } = shape;
             
-            xyziValues = []; // Fresh start
-            addVoxel(0,0,0,2); 
-
             const breakAngleX = brokenTop ? (shape.breakAngleX ?? 0) : 0;
             const breakAngleZ = brokenTop ? (shape.breakAngleZ ?? 0) : 0;
             const tanX = Math.tan(breakAngleX * Math.PI / 180);
@@ -899,86 +896,70 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             const finalBaseH = withBase ? baseHeight : 0;
             const finalCapitalH = withCapital ? baseHeight : 0;
-            const shaftHeight = totalHeight - finalBaseH - (brokenTop ? 0 : finalCapitalH);
+            const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
             
             const maxRadius = withBase || withCapital ? Math.max(colRadius, baseRadius) : colRadius;
             const mainColWidth = maxRadius * 2;
-            const sceneWidth = mainColWidth + (withDebris ? debrisLength + 4 : 0);
-            const sceneDepth = mainColWidth;
-            
-            width = sceneWidth;
-            depth = sceneDepth;
+            width = mainColWidth + (withDebris && brokenTop ? debrisLength + 4 : 0);
+            depth = mainColWidth;
             height = totalHeight;
 
-            const generateCylinder = (radius: number, cylinderHeight: number, style: ColumnStyle): {x: number, y: number, z: number}[] => {
-                const voxels: {x: number, y: number, z: number}[] = [];
+            // Generate full column first, then split
+            const fullColumnVoxels: {x: number, y: number, z: number}[] = [];
+
+            const placePart = (radius: number, partHeight: number, style: ColumnStyle, yOffset: number) => {
                 const center = radius - 0.5;
                 const rSq = radius * radius;
-                
-                for (let y = 0; y < cylinderHeight; y++) {
-                    let currentRadius = radius;
-                    if (style === 'decorative' && radius > 1) {
-                        const patternStep = y % 4;
-                        if (patternStep === 1 || patternStep === 2) {
-                             currentRadius = radius - 1;
-                        }
-                    }
-                    const currentRSq = currentRadius * currentRadius;
+                const xzOffset = Math.floor((maxRadius - radius));
+                for(let y = 0; y < partHeight; y++) {
                     for (let z = 0; z < radius * 2; z++) {
                         for (let x = 0; x < radius * 2; x++) {
                             const dx = x - center;
                             const dz = z - center;
-                            if (dx * dx + dz * dz <= currentRSq) {
-                                voxels.push({ x, y, z });
+                             if (dx * dx + dz * dz <= rSq) {
+                                fullColumnVoxels.push({x: x + xzOffset, y: y + yOffset, z: z + xzOffset});
                             }
                         }
                     }
                 }
-                return voxels;
             };
             
-            // --- Generate Main Column Parts ---
-            const mainColumnParts: {voxels: {x: number, y: number, z: number}[], radius: number, yOffset: number}[] = [];
-            if(withBase && finalBaseH > 0) mainColumnParts.push({voxels: generateCylinder(baseRadius, finalBaseH, baseStyle), radius: baseRadius, yOffset: 0});
-            if(shaftHeight > 0) mainColumnParts.push({voxels: generateCylinder(colRadius, shaftHeight, 'simple'), radius: colRadius, yOffset: finalBaseH});
-            if(withCapital && !brokenTop) mainColumnParts.push({voxels: generateCylinder(baseRadius, finalCapitalH, capitalStyle), radius: baseRadius, yOffset: finalBaseH + shaftHeight});
+            if(withBase) placePart(baseRadius, finalBaseH, baseStyle, 0);
+            placePart(colRadius, shaftHeight, 'simple', finalBaseH);
+            if(withCapital) placePart(baseRadius, finalCapitalH, capitalStyle, finalBaseH + shaftHeight);
 
-            // --- Place Main Column (applying break plane) ---
-            mainColumnParts.forEach(part => {
-                const xzOffset = Math.floor((mainColWidth / 2) - part.radius);
-                part.voxels.forEach(v => {
-                    const finalY = v.y + part.yOffset;
-                    const breakPlaneY = (totalHeight - 1) - ((v.x - (part.radius - 0.5)) * tanX + (v.z - (part.radius-0.5)) * tanZ);
-                    if (!brokenTop || finalY < breakPlaneY) {
-                        addVoxel(v.x + xzOffset, finalY, v.z + xzOffset);
-                    }
-                });
+            const mainVoxels: {x: number, y: number, z: number, i: number}[] = [];
+            const debrisVoxels: {x: number, y: number, z: number, i: number}[] = [];
+            const breakPlaneYIntercept = totalHeight - 1; 
+
+            fullColumnVoxels.forEach(v => {
+                const centerOffset = maxRadius - 0.5;
+                const breakPlaneY = breakPlaneYIntercept - ((v.x - centerOffset) * tanX + (v.z - centerOffset) * tanZ);
+                if (brokenTop && v.y >= breakPlaneY) {
+                    debrisVoxels.push({...v, i: 1});
+                } else {
+                    mainVoxels.push({...v, i: 1});
+                }
             });
+            
+            xyziValues = [...mainVoxels];
 
-            // --- Generate and Place Debris ---
-            if(brokenTop && withDebris && debrisLength > 0){
-                const debrisParts: {voxels: {x: number, y: number, z: number}[], radius: number, yOffset: number}[] = [];
-                const debrisShaftH = debrisLength - (withCapital ? finalCapitalH : 0);
-                
-                if(debrisShaftH > 0) debrisParts.push({voxels: generateCylinder(colRadius, debrisShaftH, 'simple'), radius: colRadius, yOffset: 0});
-                if(withCapital) debrisParts.push({voxels: generateCylinder(baseRadius, finalCapitalH, capitalStyle), radius: baseRadius, yOffset: debrisShaftH > 0 ? debrisShaftH : 0});
-                
-                debrisParts.forEach(part => {
-                    part.voxels.forEach(v => {
-                        // This logic places the debris part rotated and on the ground
-                        const x = v.y; // Rotate y to x
-                        const y = v.x; // Rotate x to y
-                        const z = v.z;
-                        
-                        const r = part.radius;
-                        const debrisAreaWidth = Math.max(colRadius, baseRadius) * 2;
-                        const debrisXOffset = mainColWidth + 4;
-                        const offsetX = debrisXOffset + Math.floor((debrisAreaWidth / 2) - r);
-                        const offsetZ = Math.floor((sceneDepth / 2) - r);
+            if (brokenTop && withDebris && debrisVoxels.length > 0) {
+                 const rotatedDebris: {x: number, y: number, z: number, i: number}[] = [];
+                 let minDebrisY = Infinity;
+                 
+                 debrisVoxels.forEach(v => {
+                     minDebrisY = Math.min(minDebrisY, v.y);
+                 });
 
-                        addVoxel(x + offsetX, y, z + offsetZ);
-                    });
-                });
+                 const debrisXOffset = mainColWidth + 4;
+                 
+                 debrisVoxels.forEach(v => {
+                    const relativeY = v.y - minDebrisY;
+                    // Rotate 90 degrees around Z axis and place on the ground
+                    rotatedDebris.push({ x: debrisXOffset + relativeY, y: v.x, z: v.z, i: v.i });
+                 });
+                 xyziValues.push(...rotatedDebris);
             }
             break;
         }
@@ -1342,28 +1323,3 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
