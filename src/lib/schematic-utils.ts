@@ -336,21 +336,21 @@ Object.assign(TINY_FONT_DATA, {
   'Ж': [[0,0,0,0,0],[1,0,1,0,1],[0,1,1,1,0],[0,0,1,0,0],[0,1,1,1,0],[1,0,1,0,1],[0,0,0,0,0]],
   'З': [[0,0,0,0],[1,1,1,0],[0,0,0,1],[0,1,1,0],[0,0,0,1],[1,1,1,0],[0,0,0,0]],
   'И': [[0,0,0,0],[1,0,0,1],[1,0,1,1],[1,1,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
-  'Й': [[0,1,0,0,0],[1,0,0,1,0],[1,0,1,1,0],[1,1,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]], // Accent on top
+  'Й': [[0,1,0,0,0],[1,0,0,1,0],[1,0,1,1,0],[1,1,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]],
   'Л': [[0,0,0,0],[0,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'П': [[0,0,0,0],[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'Ф': [[0,0,0,0,0],[1,1,1,1,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0]],
-  'Ц': [[0,0,0,0,0],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,1,0],[0,0,0,0,1]], // Tail
+  'Ц': [[0,0,0,0,0],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,1,0],[0,0,0,0,1]],
   'Ч': [[0,0,0,0],[1,0,0,1],[1,0,0,1],[0,1,1,1],[0,0,0,1],[0,0,0,1],[0,0,0,0]],
   'Ш': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,0,0,0]],
-  'Щ': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,0],[0,0,0,0,1]], // Tail
+  'Щ': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,0],[0,0,0,0,1]],
   'Ъ': [[0,0,0,0,0],[1,1,0,0,0],[0,1,0,0,0],[0,1,1,1,0],[0,1,0,0,1],[0,1,1,1,0],[0,0,0,0,0]],
   'Ы': [[0,0,0,0,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,0,1],[1,0,0,1,1],[1,1,1,0,1],[0,0,0,0,0]],
   'Ь': [[0,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,0],[1,0,0,1],[1,1,1,0],[0,0,0,0]],
   'Э': [[0,0,0,0],[1,1,1,0],[0,0,0,1],[0,1,1,1],[0,0,0,1],[1,1,1,0],[0,0,0,0]],
   'Ю': [[0,0,0,0,0],[1,0,1,1,0],[1,0,1,0,1],[1,1,1,0,1],[1,0,1,0,1],[1,0,1,1,0],[0,0,0,0,0]],
   'Я': [[0,0,0,0],[0,1,1,0],[1,0,0,1],[0,1,1,0],[0,1,0,1],[1,0,0,1],[0,0,0,0]],
-  'Ё': [[0,1,0,1,0],[1,1,1,1,1],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0]], // Dots on top
+  'Ё': [[0,1,0,1,0],[1,1,1,1,1],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0]],
 });
 
 const normalizeChar = (ch: string): string => {
@@ -766,60 +766,59 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const center = (sphereDiameter - 1) / 2.0;
 
             if (carveMode && part.startsWith('hemisphere')) {
-                const BLOCK_SIZE = 16;
-                const gridW = Math.ceil(sphereDiameter / BLOCK_SIZE);
-                const gridH = Math.ceil(radius / BLOCK_SIZE);
-                const gridD = Math.ceil(sphereDiameter / BLOCK_SIZE);
+                // Determine grid size based on orientation
+                let gridW: number, gridH: number, gridD: number;
+                 if (part === 'hemisphere-vertical') {
+                    gridW = Math.ceil(radius / 16);
+                    gridH = Math.ceil(sphereDiameter / 16);
+                    gridD = Math.ceil(sphereDiameter / 16);
+                } else { // top or bottom
+                    gridW = Math.ceil(sphereDiameter / 16);
+                    gridH = Math.ceil(radius / 16);
+                    gridD = Math.ceil(sphereDiameter / 16);
+                }
 
-                width = gridW * BLOCK_SIZE;
-                height = gridH * BLOCK_SIZE;
-                depth = gridD * BLOCK_SIZE;
+                width = gridW * 16;
+                height = gridH * 16;
+                depth = gridD * 16;
                 
                 const allVoxels = new Set<string>();
 
                 // 1. Fill the entire block grid
-                for (let by = 0; by < gridH; by++) {
-                    for (let bz = 0; bz < gridD; bz++) {
-                        for (let bx = 0; bx < gridW; bx++) {
-                             for (let y = 0; y < BLOCK_SIZE; y++) {
-                                for (let z = 0; z < BLOCK_SIZE; z++) {
-                                    for (let x = 0; x < BLOCK_SIZE; x++) {
-                                        const worldX = bx * BLOCK_SIZE + x;
-                                        const worldY = by * BLOCK_SIZE + y;
-                                        const worldZ = bz * BLOCK_SIZE + z;
-                                        allVoxels.add(`${worldX},${worldY},${worldZ}`);
-                                    }
-                                }
-                            }
+                for (let y = 0; y < height; y++) {
+                    for (let z = 0; z < depth; z++) {
+                        for (let x = 0; x < width; x++) {
+                            allVoxels.add(`${x},${y},${z}`);
                         }
                     }
                 }
 
-                // 2. Carve out the hemisphere
-                for (let y = 0; y < radius; y++) {
+                // 2. Carve out the hemisphere from the set
+                const carveCenterY = part === 'hemisphere-bottom' ? -0.5 : radius - 0.5;
+                
+                const carveLoopHeight = part === 'hemisphere-vertical' ? sphereDiameter : radius;
+                const carveLoopWidth = part === 'hemisphere-vertical' ? radius : sphereDiameter;
+
+                for (let y = 0; y < carveLoopHeight ; y++) {
                     for (let z = 0; z < sphereDiameter; z++) {
-                        for (let x = 0; x < sphereDiameter; x++) {
-                            const dx = x - center;
-                            const dy = y; // Measure from the flat bottom of the hemisphere
-                            const dz = z - center;
+                        for (let x = 0; x < carveLoopWidth; x++) {
+                            
+                            let dx: number, dy: number, dz: number;
+
+                            if (part === 'hemisphere-vertical') {
+                                dx = x; // Measures from the flat side of the hemisphere
+                                dy = y - center;
+                                dz = z - center;
+                            } else { // top or bottom
+                                dx = x - center;
+                                dy = y - carveCenterY; // Measure from the flat top/bottom of the hemisphere
+                                dz = z - center;
+                            }
+                            
                             const distSq = dx * dx + dy * dy + dz * dz;
 
                             if (distSq <= radius * radius) {
-                                let worldX = x;
-                                let worldY = y;
-                                let worldZ = z;
-
-                                if (part === 'hemisphere-top') {
-                                    // Y is already correct for top hemisphere
-                                } else if (part === 'hemisphere-bottom') {
-                                    worldY = -y + radius - 1; // Invert for bottom
-                                } else if (part === 'hemisphere-vertical') {
-                                    // Swap X and Y for vertical carving
-                                    worldX = y;
-                                    worldY = x - center;
-                                }
-                                
-                                allVoxels.delete(`${Math.round(worldX)},${Math.round(worldY)},${Math.round(worldZ)}`);
+                               allVoxels.delete(`${x},${y},${z}`);
                             }
                         }
                     }
@@ -1453,6 +1452,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 
