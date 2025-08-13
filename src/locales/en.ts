@@ -155,6 +155,7 @@ export default {
         bottom: 'Bottom half',
         vertical: 'Vertical cut',
       },
+      carveMode: 'Carve from blocks',
     },
     disk: {
       type: 'Type',

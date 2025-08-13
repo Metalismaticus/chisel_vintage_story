@@ -44,7 +44,7 @@ type ArchCircular = { archType: 'circular', width: number, thickness: number, de
 
 export type VoxShape = 
     | { type: 'cuboid', width: number, height: number, depth: number }
-    | { type: 'sphere', radius: number, part?: 'full' | HemispherePart }
+    | { type: 'sphere', radius: number, part?: 'full' | HemispherePart, carveMode?: boolean }
     | { type: 'pyramid', base: number, height: number }
     | { type: 'cone', radius: number, height: number }
     | { 
@@ -760,32 +760,80 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
 
-        case 'sphere':
-            width = height = depth = shape.radius * 2;
-            const { radius, part = 'full' } = shape;
+        case 'sphere': {
+            const { radius, part = 'full', carveMode = false } = shape;
+             width = height = depth = radius * 2;
             const center = (width - 1) / 2.0;
 
-            for (let y = 0; y < height; y++) {
-              for (let z = 0; z < depth; z++) {
-                for (let x = 0; x < width; x++) {
-                  const dx = x - center;
-                  const dy = y - center;
-                  const dz = z - center;
-                  if (dx * dx + dy * dy + dz * dz <= radius * radius) {
-                    if (part === 'full') {
-                        addVoxel(x, y, z);
-                    } else if (part === 'hemisphere-top' && y >= center) {
-                        addVoxel(x, y, z);
-                    } else if (part === 'hemisphere-bottom' && y < center) {
-                        addVoxel(x, y, z);
-                    } else if (part === 'hemisphere-vertical' && x < center) {
-                        addVoxel(x, y, z);
+            if (carveMode && part.startsWith('hemisphere')) {
+                const BLOCK_SIZE = 16;
+                const gridW = Math.ceil(width / BLOCK_SIZE);
+                const gridH = Math.ceil(height / BLOCK_SIZE);
+                const gridD = Math.ceil(depth / BLOCK_SIZE);
+
+                width = gridW * BLOCK_SIZE;
+                height = gridH * BLOCK_SIZE;
+                depth = gridD * BLOCK_SIZE;
+
+                for (let by = 0; by < gridH; by++) {
+                    for (let bz = 0; bz < gridD; bz++) {
+                        for (let bx = 0; bx < gridW; bx++) {
+                             for (let y = 0; y < BLOCK_SIZE; y++) {
+                                for (let z = 0; z < BLOCK_SIZE; z++) {
+                                    for (let x = 0; x < BLOCK_SIZE; x++) {
+                                        const worldX = bx * BLOCK_SIZE + x;
+                                        const worldY = by * BLOCK_SIZE + y;
+                                        const worldZ = bz * BLOCK_SIZE + z;
+
+                                        const dx = worldX - center;
+                                        const dy = worldY - center;
+                                        const dz = worldZ - center;
+                                        const distSq = dx * dx + dy * dy + dz * dz;
+                                        
+                                        if (distSq <= radius * radius) {
+                                            let isPartOfHemi = false;
+                                            if (part === 'hemisphere-top' && worldY >= center) isPartOfHemi = true;
+                                            if (part === 'hemisphere-bottom' && worldY < center) isPartOfHemi = true;
+                                            if (part === 'hemisphere-vertical' && worldX < center) isPartOfHemi = true;
+                                            
+                                            // Add voxel if it's NOT part of the hemisphere (carving)
+                                            if (!isPartOfHemi) {
+                                                addVoxel(worldX, worldY, worldZ);
+                                            }
+                                        } else {
+                                           // Add voxel if it's outside the sphere
+                                           addVoxel(worldX, worldY, worldZ);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
-                  }
                 }
-              }
+            } else {
+                 for (let y = 0; y < height; y++) {
+                    for (let z = 0; z < depth; z++) {
+                        for (let x = 0; x < width; x++) {
+                            const dx = x - center;
+                            const dy = y - center;
+                            const dz = z - center;
+                            if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                                if (part === 'full') {
+                                    addVoxel(x, y, z);
+                                } else if (part === 'hemisphere-top' && y >= center) {
+                                    addVoxel(x, y, z);
+                                } else if (part === 'hemisphere-bottom' && y < center) {
+                                    addVoxel(x, y, z);
+                                } else if (part === 'hemisphere-vertical' && x < center) {
+                                    addVoxel(x, y, z);
+                                }
+                            }
+                        }
+                    }
+                }
             }
             break;
+        }
             
         case 'pyramid':
             width = depth = shape.base;
@@ -1384,6 +1432,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 

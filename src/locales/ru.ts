@@ -155,6 +155,7 @@ export default {
         bottom: 'Нижняя часть',
         vertical: 'Вертикальный срез',
       },
+      carveMode: 'Высекание из блоков',
     },
     disk: {
       type: 'Тип',
