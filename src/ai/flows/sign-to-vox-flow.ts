@@ -125,7 +125,8 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
 
   // 3. Place Text
   if (text && text.pixels.length > 0) {
-      const textXOffset = Math.floor((signWidth - text.width) / 2);
+      const availableWidth = frame ? signWidth - frameWidth * 2 : signWidth;
+      const textXOffset = (frame ? frameWidth : 0) + Math.floor((availableWidth - text.width) / 2);
       let textBaseY;
 
       if(hasIcon) {
@@ -189,3 +190,4 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
 
 
     
+
