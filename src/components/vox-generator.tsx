@@ -1162,11 +1162,11 @@ export function VoxGenerator() {
                   </div>
                   <div className="flex items-center space-x-4 pt-2">
                       <div className="flex items-center space-x-2">
-                          <Switch id="corner-external" checked={cornerExternal} onCheckedChange={setCornerExternal} />
+                          <Switch id="corner-external" checked={cornerExternal} onCheckedChange={(checked) => { setCornerExternal(checked); if (checked) setCornerInternal(false); }} />
                           <Label htmlFor="corner-external">{t('voxGenerator.corner.external')}</Label>
                       </div>
                       <div className="flex items-center space-x-2">
-                          <Switch id="corner-internal" checked={cornerInternal} onCheckedChange={setCornerInternal} />
+                          <Switch id="corner-internal" checked={cornerInternal} onCheckedChange={(checked) => { setCornerInternal(checked); if (checked) setCornerExternal(false); }} />
                           <Label htmlFor="corner-internal">{t('voxGenerator.corner.internal')}</Label>
                       </div>
                   </div>
@@ -1730,4 +1730,5 @@ export function VoxGenerator() {
 
 
     
+
 
