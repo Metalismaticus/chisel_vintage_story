@@ -68,7 +68,8 @@ export type VoxShape =
     | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
     | { type: 'qrcode', pixels: boolean[], size: number, depth: number, withBackdrop?: boolean, backdropDepth?: number, stickerMode?: boolean }
     | { type: 'checkerboard', width: number, length: number, height: number }
-    | { type: 'haystack', radius: number, height: number };
+    | { type: 'haystack', radius: number, height: number }
+    | { type: 'corner', radius: number, height: number, external: boolean, internal: boolean };
 
 
 // A simple helper to generate schematic data string
@@ -768,13 +769,13 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             if (carveMode && part.startsWith('hemisphere')) {
                 let gridW: number, gridH: number, gridD: number;
                  if (part === 'hemisphere-vertical') {
-                    gridW = Math.ceil(radius / 16) * 16;
-                    gridH = Math.ceil(sphereDiameter / 16) * 16;
-                    gridD = Math.ceil(sphereDiameter / 16) * 16;
+                    gridW = radius;
+                    gridH = sphereDiameter;
+                    gridD = sphereDiameter;
                 } else { // top or bottom
-                    gridW = Math.ceil(sphereDiameter / 16) * 16;
-                    gridH = Math.ceil(radius / 16) * 16;
-                    gridD = Math.ceil(sphereDiameter / 16) * 16;
+                    gridW = sphereDiameter;
+                    gridH = radius;
+                    gridD = sphereDiameter;
                 }
                 width = gridW; height = gridH; depth = gridD;
                 
@@ -1406,6 +1407,107 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             }
             break;
         }
+
+        case 'corner': {
+            const { radius, height: cornerHeight, external, internal } = shape;
+            width = depth = radius;
+            height = cornerHeight;
+            const rSq = radius * radius;
+
+            for (let y = 0; y < height; y++) {
+                for (let z = 0; z < radius; z++) {
+                    for (let x = 0; x < radius; x++) {
+                        const distSq = x * x + z * z;
+                        
+                        // External corner (convex)
+                        if (external && distSq <= rSq) {
+                            addVoxel(x, y, z);
+                        }
+                        
+                        // Internal corner (concave)
+                        if (internal && distSq > rSq) {
+                             addVoxel(x, y, z);
+                        }
+                    }
+                }
+            }
+
+            if (internal && !external) {
+                 // If only internal is selected, we need to fill the rest of the cube.
+                 for (let y = 0; y < height; y++) {
+                    for (let z = 0; z < radius; z++) {
+                        for (let x = 0; x < radius; x++) {
+                            const distSq = x * x + z * z;
+                            if (distSq > rSq) {
+                                // This is already handled above, so we need to add the other parts
+                            } else {
+                                // This logic needs to be more robust. Let's rethink.
+                            }
+                        }
+                    }
+                 }
+                 // Let's restart the logic for corner
+                 xyziValues = []; // Clear previous attempts
+                 addVoxel(0,0,0,2); 
+
+                 if (external) {
+                    for (let y = 0; y < height; y++) {
+                        for (let z = 0; z < radius; z++) {
+                            for (let x = 0; x < radius; x++) {
+                                if (x * x + z * z <= rSq) {
+                                    addVoxel(x, y, z);
+                                }
+                            }
+                        }
+                    }
+                 }
+                 if (internal) {
+                    const tempInternal: {x:number, y:number, z:number}[] = [];
+                    // Create the full block first
+                    for (let y = 0; y < height; y++) {
+                        for (let z = 0; z < radius; z++) {
+                            for (let x = 0; x < radius; x++) {
+                                tempInternal.push({x,y,z});
+                            }
+                        }
+                    }
+                    // Carve out the corner
+                    const finalInternal = tempInternal.filter(v => v.x * v.x + v.z * v.z > rSq);
+                    finalInternal.forEach(v => addVoxel(v.x, v.y, v.z));
+                 }
+
+                 // If both are selected, the external part will overwrite the internal's solid part, which is not what we want.
+                 // We need to combine them without overlap.
+                 xyziValues = []; // Clear again
+                 addVoxel(0,0,0,2);
+                 for (let y = 0; y < height; y++) {
+                    for (let z = 0; z < radius; z++) {
+                        for (let x = 0; x < radius; x++) {
+                           const distSq = x * x + z * z;
+                           const isInsideCircle = distSq <= rSq;
+
+                           if (external && internal) {
+                             // Create a 1-block thick wall
+                             const distCenterSq = (x+0.5)*(x+0.5) + (z+0.5)*(z+0.5);
+                             const rOuterSq = (radius + 0.5) * (radius+0.5);
+                             const rInnerSq = (radius - 0.5) * (radius-0.5);
+                             if(distCenterSq <= rOuterSq && distCenterSq >= rInnerSq){
+                                addVoxel(x,y,z);
+                             }
+                           } else if (external) {
+                              if(isInsideCircle) addVoxel(x,y,z);
+                           } else if (internal) {
+                               if(!isInsideCircle) addVoxel(x,y,z);
+                           }
+                        }
+                    }
+                 }
+
+
+            }
+            break;
+        }
+
     }
     
     totalVoxels = xyziValues.length > 1 ? xyziValues.length -1 : 0;
@@ -1449,6 +1551,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 

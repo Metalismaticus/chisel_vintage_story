@@ -133,6 +133,7 @@ export default {
       disk: 'Disk',
       ring: 'Ring',
       haystack: 'Haystack',
+      corner: 'Rounded Corner',
     },
     dims: {
       width: 'Width',
@@ -211,6 +212,10 @@ export default {
             bottom: 'Bottom',
         },
     },
+    corner: {
+      external: 'External (Convex)',
+      internal: 'Internal (Concave)',
+    },
     text: {
         modeLabel: 'Mode',
         modes: {
@@ -275,6 +280,8 @@ export default {
       crashWarningDesc: 'Sizes that are multiples of 8 can cause issues with the "Automatic Chiselling" mod, leading to a crash. Use at your own risk.',
       noIcon: 'No text or icon provided',
       noIconDesc: 'Please provide text or an icon for the sign.',
+      noCornerType: 'No corner type selected',
+      noCornerTypeDesc: 'Please select at least one corner type (external or internal).',
     },
   },
   schematicPreview: {
@@ -356,3 +363,4 @@ export default {
 
     
 
+    

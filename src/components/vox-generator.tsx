@@ -73,6 +73,8 @@ export function VoxGenerator() {
     debrisLength: '16',
     haystackRadius: '8',
     haystackHeight: '12',
+    cornerHeight: '16',
+    cornerRadius: '16',
   });
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
@@ -94,6 +96,8 @@ export function VoxGenerator() {
   const [withDebris, setWithDebris] = useState(false);
   const [breakAngleX, setBreakAngleX] = useState(20);
   const [breakAngleZ, setBreakAngleZ] = useState(-15);
+  const [cornerExternal, setCornerExternal] = useState(true);
+  const [cornerInternal, setCornerInternal] = useState(false);
 
 
   // Text state
@@ -470,6 +474,17 @@ export function VoxGenerator() {
           const height = validateAndParse(dimensions.haystackHeight, t('voxGenerator.dims.height'));
           if (radius === null || height === null) return;
           shapeParams = { type: 'haystack', radius, height };
+          break;
+        }
+        case 'corner': {
+          const radius = validateAndParse(dimensions.cornerRadius, t('voxGenerator.dims.radius'));
+          const height = validateAndParse(dimensions.cornerHeight, t('voxGenerator.dims.height'));
+          if (radius === null || height === null) return;
+          if (!cornerExternal && !cornerInternal) {
+            toast({ title: t('voxGenerator.errors.noCornerType'), description: t('voxGenerator.errors.noCornerTypeDesc'), variant: 'destructive' });
+            return;
+          }
+          shapeParams = { type: 'corner', radius, height, external: cornerExternal, internal: cornerInternal };
           break;
         }
         default:
@@ -1132,6 +1147,31 @@ export function VoxGenerator() {
                   </div>
                 </div>
               );
+            case 'corner':
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="cornerRadius">{t('voxGenerator.dims.radius')} (voxels)</Label>
+                      <Input id="cornerRadius" type="number" value={dimensions.cornerRadius} onChange={e => handleDimensionChange('cornerRadius', e.target.value)} placeholder="e.g. 16" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cornerHeight">{t('voxGenerator.dims.height')} (voxels)</Label>
+                      <Input id="cornerHeight" type="number" value={dimensions.cornerHeight} onChange={e => handleDimensionChange('cornerHeight', e.target.value)} placeholder="e.g. 16" />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-4 pt-2">
+                      <div className="flex items-center space-x-2">
+                          <Switch id="corner-external" checked={cornerExternal} onCheckedChange={setCornerExternal} />
+                          <Label htmlFor="corner-external">{t('voxGenerator.corner.external')}</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                          <Switch id="corner-internal" checked={cornerInternal} onCheckedChange={setCornerInternal} />
+                          <Label htmlFor="corner-internal">{t('voxGenerator.corner.internal')}</Label>
+                      </div>
+                  </div>
+                </div>
+              );
             default:
               return null;
           }
@@ -1632,6 +1672,10 @@ export function VoxGenerator() {
                             <RadioGroupItem value="haystack" id="r-haystack" />
                             <Label htmlFor="r-haystack">{t('voxGenerator.shapes.haystack')}</Label>
                         </div>
+                         <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="corner" id="r-corner" />
+                            <Label htmlFor="r-corner">{t('voxGenerator.shapes.corner')}</Label>
+                        </div>
                         </RadioGroup>
                     </div>
                     {renderShapeInputs()}
@@ -1686,3 +1730,4 @@ export function VoxGenerator() {
 
 
     
+
