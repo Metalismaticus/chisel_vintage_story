@@ -194,7 +194,6 @@ export default {
         styles: {
             simple: 'Simple',
             decorative: 'Decorative',
-            ionic: 'Ionic'
         }
     },
     arch: {
@@ -364,3 +363,4 @@ export default {
     
 
     
+

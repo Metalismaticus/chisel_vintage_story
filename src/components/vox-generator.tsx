@@ -38,7 +38,7 @@ type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart' | 'sign';
 type TextVoxMode = 'extrude' | 'engrave';
 type PixelArtVoxMode = 'extrude' | 'engrave';
 type ColumnPlacement = 'center' | 'corner';
-export type ColumnStyle = 'simple' | 'decorative' | 'ionic';
+export type ColumnStyle = 'simple' | 'decorative';
 
 export function VoxGenerator() {
   const t = useI18n();
@@ -903,7 +903,6 @@ export function VoxGenerator() {
                                               <SelectContent>
                                                   <SelectItem value="simple">{t('voxGenerator.column.styles.simple')}</SelectItem>
                                                   <SelectItem value="decorative">{t('voxGenerator.column.styles.decorative')}</SelectItem>
-                                                  <SelectItem value="ionic">{t('voxGenerator.column.styles.ionic')}</SelectItem>
                                               </SelectContent>
                                           </Select>
                                       </div>
@@ -1730,5 +1729,6 @@ export function VoxGenerator() {
 
 
     
+
 
 
