@@ -737,7 +737,6 @@ const generateCylinder = (
     radius: number, 
     height: number, 
     yOffset: number, 
-    center: number, 
     xzOffset: number
 ) => {
     const rSq = radius * radius;
@@ -759,7 +758,6 @@ const generateDecorativePart = (
     baseRadius: number,
     baseHeight: number,
     yOffset: number,
-    center: number,
     xzOffset: number,
     isCapital: boolean,
 ) => {
@@ -767,16 +765,16 @@ const generateDecorativePart = (
     const step2H = baseHeight - step1H;
     const step1R = baseRadius;
     const step2R = Math.round(baseRadius * 0.8);
-    const step2Offset = Math.floor((step1R - step2R));
+    const step2Offset = Math.floor((step1R - step2R) / 2);
 
     if (isCapital) {
         // Wider part on top
-        generateCylinder(voxels, step1R, step1H, yOffset + step2H, center, xzOffset);
-        generateCylinder(voxels, step2R, step2H, yOffset, center, xzOffset + step2Offset);
+        generateCylinder(voxels, step1R, step1H, yOffset + step2H, xzOffset);
+        generateCylinder(voxels, step2R, step2H, yOffset, xzOffset + step2Offset);
     } else {
         // Wider part at bottom
-        generateCylinder(voxels, step1R, step1H, yOffset, center, xzOffset);
-        generateCylinder(voxels, step2R, step2H, yOffset + step1H, center, xzOffset + step2Offset);
+        generateCylinder(voxels, step1R, step1H, yOffset, xzOffset);
+        generateCylinder(voxels, step2R, step2H, yOffset + step1H, xzOffset + step2Offset);
     }
 };
 
@@ -789,21 +787,19 @@ const generateDebris = (
     capitalStyle: ColumnStyle,
 ) => {
     const debrisVoxels: {x: number, y: number, z: number}[] = [];
-    const mainColWidth = Math.max(colRadius, baseRadius) * 2;
-    const center = mainColWidth / 2 - 0.5;
     const shaftLength = withCapital ? debrisLength - baseHeight : debrisLength;
 
     if (withCapital) {
         const capYOffset = shaftLength;
          if (capitalStyle === 'simple') {
-            generateCylinder(debrisVoxels, baseRadius, baseHeight, capYOffset, center, 0);
+            generateCylinder(debrisVoxels, baseRadius, baseHeight, capYOffset, 0);
         } else {
-            generateDecorativePart(debrisVoxels, baseRadius, baseHeight, capYOffset, center, 0, true);
+            generateDecorativePart(debrisVoxels, baseRadius, baseHeight, capYOffset, 0, true);
         }
     }
     
-    const xzShaftOffset = Math.floor((mainColWidth - colRadius * 2) / 2);
-    generateCylinder(debrisVoxels, colRadius, shaftLength, 0, center, xzShaftOffset);
+    const xzShaftOffset = Math.floor((baseRadius*2 - colRadius*2) / 2);
+    generateCylinder(debrisVoxels, colRadius, shaftLength, 0, xzShaftOffset);
     
     return debrisVoxels;
 };
@@ -971,26 +967,38 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const mainColWidth = Math.max(colRadius, baseRadius) * 2;
             const debrisLength = withDebris ? shape.debrisLength || totalHeight : 0;
             
-            width = mainColWidth + (withDebris && brokenTop ? debrisLength + 4 : 0);
+            width = mainColWidth + (withDebris && brokenTop ? (baseRadius*2) + 4 : 0);
             depth = mainColWidth;
             height = totalHeight;
 
             // --- Generate Main Column ---
             const mainColumnVoxels: {x: number, y: number, z: number}[] = [];
             const finalBaseH = withBase ? baseHeight : 0;
-            const shaftHeight = totalHeight - finalBaseH; // Shaft starts after base
+            const finalCapitalH = withCapital ? baseHeight : 0;
+            const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
             const center = mainColWidth / 2 - 0.5;
             
             if (withBase) {
+                 const baseOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
                 if(baseStyle === 'simple') {
-                    generateCylinder(mainColumnVoxels, baseRadius, finalBaseH, 0, center, 0);
+                    generateCylinder(mainColumnVoxels, baseRadius, finalBaseH, 0, baseOffset);
                 } else {
-                    generateDecorativePart(mainColumnVoxels, baseRadius, finalBaseH, 0, center, 0, false);
+                    generateDecorativePart(mainColumnVoxels, baseRadius, finalBaseH, 0, baseOffset, false);
+                }
+            }
+
+            if (withCapital) {
+                 const capitalOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
+                 const capitalYOffset = totalHeight - finalCapitalH;
+                 if(capitalStyle === 'simple') {
+                    generateCylinder(mainColumnVoxels, baseRadius, finalCapitalH, capitalYOffset, capitalOffset);
+                } else {
+                    generateDecorativePart(mainColumnVoxels, baseRadius, finalCapitalH, capitalYOffset, capitalOffset, true);
                 }
             }
             
             const xzShaftOffset = Math.floor((mainColWidth - colRadius * 2) / 2);
-            generateCylinder(mainColumnVoxels, colRadius, shaftHeight, finalBaseH, center, xzShaftOffset);
+            generateCylinder(mainColumnVoxels, colRadius, shaftHeight, finalBaseH, xzShaftOffset);
             
             // --- Cut and Add to Final xyziValues ---
             const breakPlaneYIntercept = totalHeight; 
@@ -1007,20 +1015,26 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             if (brokenTop && withDebris && debrisLength > 0) {
                  const debrisVoxels = generateDebris(colRadius, debrisLength, withCapital, baseRadius, baseHeight, capitalStyle);
                  
-                 let minDebrisY = Infinity;
-                 debrisVoxels.forEach(v => { minDebrisY = Math.min(minDebrisY, v.y); });
+                 let minDebrisY = Infinity, maxDebrisX = -Infinity, maxDebrisZ = -Infinity;
+                 debrisVoxels.forEach(v => { 
+                    minDebrisY = Math.min(minDebrisY, v.y); 
+                    maxDebrisX = Math.max(maxDebrisX, v.x);
+                    maxDebrisZ = Math.max(maxDebrisZ, v.z);
+                });
                  
-                 const debrisXOffset = mainColWidth + 4;
-                 let minY_rotated = Infinity;
-                 debrisVoxels.forEach(d_v => {
-                     minY_rotated = Math.min(minY_rotated, d_v.x);
-                 });
+                const debrisXOffset = mainColWidth + 4;
+                const debrisCenter = maxDebrisX / 2.0 - 0.5;
                  
                  debrisVoxels.forEach(v => {
                     const rotatedX = debrisXOffset + v.y - minDebrisY;
-                    const rotatedY = v.x - minY_rotated;
+                    const rotatedY = v.x;
                     const rotatedZ = v.z;
-                    addVoxel(rotatedX, rotatedY, rotatedZ, 1);
+                    
+                    const breakPlaneYDebris = debrisLength - ((rotatedY - debrisCenter) * tanX + (rotatedZ - debrisCenter) * tanZ);
+                    
+                    if (v.y >= breakPlaneYDebris) {
+                       addVoxel(rotatedX, rotatedY, rotatedZ, 1);
+                    }
                  });
             }
             break;
@@ -1385,4 +1399,5 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
