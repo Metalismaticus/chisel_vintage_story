@@ -156,6 +156,8 @@ export default {
         vertical: 'Вертикальный срез',
       },
       carveMode: 'Высекание из блоков',
+      domeMode: 'Купол (полый)',
+      wallThickness: 'Толщина стенок',
     },
     disk: {
       type: 'Тип',
@@ -353,3 +355,4 @@ export default {
 } as const;
 
     
+

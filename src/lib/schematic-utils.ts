@@ -44,7 +44,7 @@ type ArchCircular = { archType: 'circular', width: number, thickness: number, de
 
 export type VoxShape = 
     | { type: 'cuboid', width: number, height: number, depth: number }
-    | { type: 'sphere', radius: number, part?: 'full' | HemispherePart, carveMode?: boolean }
+    | { type: 'sphere', radius: number, part?: 'full' | HemispherePart, carveMode?: boolean, hollow?: boolean, thickness?: number }
     | { type: 'pyramid', base: number, height: number }
     | { type: 'cone', radius: number, height: number }
     | { 
@@ -336,21 +336,21 @@ Object.assign(TINY_FONT_DATA, {
   'Ж': [[0,0,0,0,0],[1,0,1,0,1],[0,1,1,1,0],[0,0,1,0,0],[0,1,1,1,0],[1,0,1,0,1],[0,0,0,0,0]],
   'З': [[0,0,0,0],[1,1,1,0],[0,0,0,1],[0,1,1,0],[0,0,0,1],[1,1,1,0],[0,0,0,0]],
   'И': [[0,0,0,0],[1,0,0,1],[1,0,1,1],[1,1,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
-  'Й': [[0,1,0,0,0],[1,0,0,1,0],[1,0,1,1,0],[1,1,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]],
+  'Й': [[0,1,0,0,0],[1,0,0,1,0],[1,0,1,1,0],[1,1,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[0,0,0,0,0]], // Accent on top
   'Л': [[0,0,0,0],[0,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'П': [[0,0,0,0],[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'Ф': [[0,0,0,0,0],[1,1,1,1,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0]],
-  'Ц': [[0,0,0,0,0],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,1,0],[0,0,0,0,1]],
+  'Ц': [[0,0,0,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,0,1]], // Tail
   'Ч': [[0,0,0,0],[1,0,0,1],[1,0,0,1],[0,1,1,1],[0,0,0,1],[0,0,0,1],[0,0,0,0]],
   'Ш': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,0,0,0]],
-  'Щ': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,0],[0,0,0,0,1]],
+  'Щ': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,0],[0,0,0,0,1]], // Tail
   'Ъ': [[0,0,0,0,0],[1,1,0,0,0],[0,1,0,0,0],[0,1,1,1,0],[0,1,0,0,1],[0,1,1,1,0],[0,0,0,0,0]],
   'Ы': [[0,0,0,0,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,0,1],[1,0,0,1,1],[1,1,1,0,1],[0,0,0,0,0]],
   'Ь': [[0,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,0],[1,0,0,1],[1,1,1,0],[0,0,0,0]],
   'Э': [[0,0,0,0],[1,1,1,0],[0,0,0,1],[0,1,1,1],[0,0,0,1],[1,1,1,0],[0,0,0,0]],
   'Ю': [[0,0,0,0,0],[1,0,1,1,0],[1,0,1,0,1],[1,1,1,0,1],[1,0,1,0,1],[1,0,1,1,0],[0,0,0,0,0]],
-  'Я': [[0,0,0,0],[0,1,1,0],[1,0,0,1],[0,1,1,0],[0,1,0,1],[1,0,0,1],[0,0,0,0]],
-  'Ё': [[0,1,0,1,0],[1,1,1,1,1],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0]],
+  'Я': [[0,0,0,0],[0,1,1,1],[1,0,0,1],[0,1,1,1],[0,1,0,1],[1,0,0,1],[0,0,0,0]],
+  'Ё': [[0,1,0,1,0],[1,1,1,1,1],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0]], // Dots on top
 });
 
 const normalizeChar = (ch: string): string => {
@@ -761,30 +761,25 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
 
         case 'sphere': {
-            const { radius, part = 'full', carveMode = false } = shape;
+            const { radius, part = 'full', carveMode = false, hollow = false, thickness = 1 } = shape;
             const sphereDiameter = radius * 2;
             const center = (sphereDiameter - 1) / 2.0;
 
             if (carveMode && part.startsWith('hemisphere')) {
-                // Determine grid size based on orientation
                 let gridW: number, gridH: number, gridD: number;
                  if (part === 'hemisphere-vertical') {
-                    gridW = Math.ceil(radius / 16);
-                    gridH = Math.ceil(sphereDiameter / 16);
-                    gridD = Math.ceil(sphereDiameter / 16);
+                    gridW = Math.ceil(radius / 16) * 16;
+                    gridH = Math.ceil(sphereDiameter / 16) * 16;
+                    gridD = Math.ceil(sphereDiameter / 16) * 16;
                 } else { // top or bottom
-                    gridW = Math.ceil(sphereDiameter / 16);
-                    gridH = Math.ceil(radius / 16);
-                    gridD = Math.ceil(sphereDiameter / 16);
+                    gridW = Math.ceil(sphereDiameter / 16) * 16;
+                    gridH = Math.ceil(radius / 16) * 16;
+                    gridD = Math.ceil(sphereDiameter / 16) * 16;
                 }
-
-                width = gridW * 16;
-                height = gridH * 16;
-                depth = gridD * 16;
+                width = gridW; height = gridH; depth = gridD;
                 
                 const allVoxels = new Set<string>();
 
-                // 1. Fill the entire block grid
                 for (let y = 0; y < height; y++) {
                     for (let z = 0; z < depth; z++) {
                         for (let x = 0; x < width; x++) {
@@ -792,26 +787,22 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                         }
                     }
                 }
-
-                // 2. Carve out the hemisphere from the set
-                const carveCenterY = part === 'hemisphere-bottom' ? -0.5 : radius - 0.5;
                 
-                const carveLoopHeight = part === 'hemisphere-vertical' ? sphereDiameter : radius;
-                const carveLoopWidth = part === 'hemisphere-vertical' ? radius : sphereDiameter;
+                const carveCenterY = part === 'hemisphere-bottom' ? -0.5 : radius - 0.5;
 
-                for (let y = 0; y < carveLoopHeight ; y++) {
+                for (let y = 0; y < (part === 'hemisphere-vertical' ? sphereDiameter : radius) ; y++) {
                     for (let z = 0; z < sphereDiameter; z++) {
-                        for (let x = 0; x < carveLoopWidth; x++) {
+                        for (let x = 0; x < (part === 'hemisphere-vertical' ? radius : sphereDiameter); x++) {
                             
                             let dx: number, dy: number, dz: number;
 
-                            if (part === 'hemisphere-vertical') {
-                                dx = x; // Measures from the flat side of the hemisphere
+                             if (part === 'hemisphere-vertical') {
+                                dx = x;
                                 dy = y - center;
                                 dz = z - center;
-                            } else { // top or bottom
+                            } else { 
                                 dx = x - center;
-                                dy = y - carveCenterY; // Measure from the flat top/bottom of the hemisphere
+                                dy = y - carveCenterY;
                                 dz = z - center;
                             }
                             
@@ -831,13 +822,19 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             } else {
                  width = height = depth = sphereDiameter;
+                 const innerRadius = hollow ? radius - thickness : -1;
+                 const innerRadiusSq = innerRadius * innerRadius;
+                 const outerRadiusSq = radius * radius;
+                 
                  for (let y = 0; y < height; y++) {
                     for (let z = 0; z < depth; z++) {
                         for (let x = 0; x < width; x++) {
                             const dx = x - center;
                             const dy = y - center;
                             const dz = z - center;
-                            if (dx * dx + dy * dy + dz * dz <= radius * radius) {
+                            const distSq = dx * dx + dy * dy + dz * dz;
+                            
+                            if (distSq <= outerRadiusSq && (!hollow || distSq > innerRadiusSq)) {
                                 if (part === 'full') {
                                     addVoxel(x, y, z);
                                 } else if (part === 'hemisphere-top' && y >= center) {
@@ -1452,6 +1449,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 

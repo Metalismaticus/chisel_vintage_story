@@ -77,6 +77,8 @@ export function VoxGenerator() {
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
   const [carveMode, setCarveMode] = useState(false);
+  const [isHollow, setIsHollow] = useState(false);
+  const [wallThickness, setWallThickness] = useState(1);
   const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
   const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [ringPart, setRingPart] = useState<'full' | 'half'>('full');
@@ -133,7 +135,7 @@ export function VoxGenerator() {
   // Sign state
   const [signIconFile, setSignIconFile] = useState<File | null>(null);
   const [signIconUrl, setSignIconUrl] = useState<string | null>(null);
-  const [signText, setSignText] = useState('GEARSTED PATH');
+  const [signText, setSignText] = useState('Путь Шестерёнок');
   const signWidth = 48;
   const signHeight = 40;
   const signFrameWidth = 2;
@@ -356,11 +358,15 @@ export function VoxGenerator() {
         case 'sphere': {
           const radius = validateAndParse(dimensions.radius, t('voxGenerator.dims.radius'));
           if (radius === null) return;
+           if (isHollow && wallThickness >= radius) {
+                toast({ title: t('voxGenerator.errors.invalid', { name: t('voxGenerator.sphere.wallThickness')}), description: t('voxGenerator.errors.thicknessTooLargeRing'), variant: "destructive" });
+                return;
+            }
           let part: VoxShape['part'] = 'full';
           if (spherePart === 'hemisphere') {
             part = `hemisphere-${hemisphereDirection}`;
           }
-          shapeParams = { type: 'sphere', radius, part, carveMode: carveMode && spherePart === 'hemisphere' };
+          shapeParams = { type: 'sphere', radius, part, carveMode: carveMode && spherePart === 'hemisphere', hollow: isHollow && spherePart === 'hemisphere', thickness: wallThickness };
           break;
         }
         case 'pyramid': {
@@ -792,6 +798,23 @@ export function VoxGenerator() {
                             <Switch id="carve-mode" checked={carveMode} onCheckedChange={setCarveMode} />
                             <Label htmlFor="carve-mode">{t('voxGenerator.sphere.carveMode')}</Label>
                         </div>
+                         <div className="flex items-center space-x-2 pt-2">
+                            <Switch id="hollow-mode" checked={isHollow} onCheckedChange={setIsHollow} />
+                            <Label htmlFor="hollow-mode">{t('voxGenerator.sphere.domeMode')}</Label>
+                        </div>
+                        {isHollow && (
+                            <div className="space-y-2 pl-2 border-l-2 border-primary/20 ml-3">
+                                <Label htmlFor="wall-thickness">{t('voxGenerator.sphere.wallThickness')}: {wallThickness}</Label>
+                                <Slider
+                                    id="wall-thickness"
+                                    min={1}
+                                    max={Math.max(1, parseInt(dimensions.radius, 10) - 1)}
+                                    step={1}
+                                    value={[wallThickness]}
+                                    onValueChange={(val) => setWallThickness(val[0])}
+                                />
+                            </div>
+                        )}
                       </div>
                     )}
                   </div>

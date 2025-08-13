@@ -156,6 +156,8 @@ export default {
         vertical: 'Vertical cut',
       },
       carveMode: 'Carve from blocks',
+      domeMode: 'Dome Mode',
+      wallThickness: 'Wall Thickness',
     },
     disk: {
       type: 'Type',
@@ -353,3 +355,4 @@ export default {
 } as const;
 
     
+
