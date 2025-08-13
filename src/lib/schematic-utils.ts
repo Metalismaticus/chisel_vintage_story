@@ -34,8 +34,6 @@ type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
 type CircularArchOrientation = 'top' | 'bottom';
-export type ColumnStyle = 'simple' | 'decorative';
-
 
 type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
 type ArchRounded = { archType: 'rounded', width: number, height: number, depth: number, outerCornerRadius: number };
@@ -55,8 +53,6 @@ export type VoxShape =
         withCapital?: boolean,
         baseRadius?: number,
         baseHeight?: number,
-        baseStyle?: ColumnStyle,
-        capitalStyle?: ColumnStyle,
         brokenTop?: boolean,
         withDebris?: boolean,
         debrisLength?: number,
@@ -358,91 +354,74 @@ const normalizeChar = (ch: string): string => {
   return ch.toUpperCase();
 };
 
-export async function rasterizePixelText({ text, maxWidth }: { text: string, maxWidth?: number }): Promise<{ pixels: boolean[], width: number, height: number }> {
-    const charHeight = 7; // Use the new character canvas height
+interface LineData {
+    pixels: boolean[];
+    width: number;
+    height: number;
+}
+interface RasterizePixelTextResult {
+    lines: LineData[];
+    totalHeight: number;
+}
+export async function rasterizePixelText({ text, maxWidth }: { text: string, maxWidth?: number }): Promise<RasterizePixelTextResult> {
+    const charHeight = 7;
     const charKerning = 1;
     const maxCharsPerLine = 8;
-
-    const getCharWidth = (char: string): number => {
-        const c = normalizeChar(char);
-        const data = TINY_FONT_DATA[c] || TINY_FONT_DATA['?'];
-        return data[0].length;
-    };
     
-    const getWordWidth = (word: string): number => {
-        let width = 0;
-        for (const char of word) {
-            width += getCharWidth(char) + charKerning;
-        }
-        return width > 0 ? width - charKerning : 0;
-    };
+    const linesAsStrings = text.split('\n');
+    const allLinesData: LineData[] = [];
+    let totalHeight = 0;
 
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
+    for (const lineStr of linesAsStrings) {
+        if (!lineStr.trim()) continue;
 
-    for (const word of words) {
-        if (currentLine.length + (currentLine.length > 0 ? 1 : 0) + word.length > maxCharsPerLine) {
-            if(currentLine.length > 0) lines.push(currentLine);
-            
-            let longWord = word;
-            while (longWord.length > maxCharsPerLine) {
-                lines.push(longWord.substring(0, maxCharsPerLine));
-                longWord = longWord.substring(maxCharsPerLine);
+        const charWidth = TINY_FONT_DATA[normalizeChar(lineStr[0])] ? TINY_FONT_DATA[normalizeChar(lineStr[0])][0].length : 4;
+        const lineMaxChars = maxWidth ? Math.floor(maxWidth / (charWidth + charKerning)) : maxCharsPerLine;
+
+        let words = lineStr.split(' ');
+        let currentLineText = '';
+        let lineSegments: string[] = [];
+
+        for (const word of words) {
+            if ((currentLineText + ' ' + word).length > lineMaxChars && currentLineText.length > 0) {
+                lineSegments.push(currentLineText);
+                currentLineText = word;
+            } else {
+                currentLineText = currentLineText ? `${currentLineText} ${word}` : word;
             }
-            currentLine = longWord;
-
-        } else {
-            if (currentLine.length > 0) {
-                currentLine += ' ';
-            }
-            currentLine += word;
         }
-    }
-    if (currentLine.length > 0) {
-        lines.push(currentLine);
-    }
+        if (currentLineText) lineSegments.push(currentLineText);
+        
+        for (const segment of lineSegments) {
+            let segmentWidth = 0;
+            for (const char of segment) {
+                segmentWidth += (TINY_FONT_DATA[normalizeChar(char)]?.[0].length || 4) + charKerning;
+            }
+            segmentWidth -= charKerning;
 
-    const lineMetrics = lines.map(line => ({
-        text: line,
-        width: getWordWidth(line),
-    }));
-
-    const finalWidth = Math.max(...lineMetrics.map(m => m.width));
-    const finalHeight = lines.length * (charHeight + charKerning) - charKerning;
-
-    if (finalWidth <= 0 || finalHeight <= 0) {
-        return { pixels: [], width: 0, height: 0 };
-    }
-
-    const pixels: boolean[] = Array(finalWidth * finalHeight).fill(false);
-    
-    let currentY = 0;
-    for (const line of lineMetrics) {
-        let currentX = Math.floor((finalWidth - line.width) / 2);
-        for (const rawChar of line.text) {
-            const char = normalizeChar(rawChar);
-            const data = TINY_FONT_DATA[char] || TINY_FONT_DATA['?'];
-            const charWidth = data[0].length;
-            for (let y = 0; y < charHeight; y++) {
-                for (let x = 0; x < charWidth; x++) {
-                    if (data[y] && data[y][x] === 1) {
-                        const px = currentX + x;
-                        const py = currentY + y;
-                        if (px < finalWidth && py < finalHeight) {
-                           pixels[py * finalWidth + px] = true;
+            const linePixels: boolean[] = Array(segmentWidth * charHeight).fill(false);
+            let currentX = 0;
+            for (const char of segment) {
+                const normalized = normalizeChar(char);
+                const data = TINY_FONT_DATA[normalized] || TINY_FONT_DATA['?'];
+                const charWidth = data[0].length;
+                for (let y = 0; y < charHeight; y++) {
+                    for (let x = 0; x < charWidth; x++) {
+                        if (data[y]?.[x] === 1) {
+                            linePixels[y * segmentWidth + (currentX + x)] = true;
                         }
                     }
                 }
+                currentX += charWidth + charKerning;
             }
-            currentX += charWidth + charKerning;
+            allLinesData.push({ pixels: linePixels, width: segmentWidth, height: charHeight });
         }
-        currentY += charHeight + charKerning;
     }
 
-    return { pixels, width: finalWidth, height: finalHeight };
-}
+    totalHeight = allLinesData.reduce((acc, line) => acc + line.height + charKerning, 0) - (allLinesData.length > 0 ? charKerning : 0);
 
+    return { lines: allLinesData, totalHeight };
+}
 
 interface TextToSchematicParams {
   text: string;
@@ -733,12 +712,10 @@ export async function imageToSchematic(ctx: OffscreenCanvasRenderingContext2D, t
 }
 
 const generateCylinder = (
-    voxels: {x: number, y: number, z: number}[], 
     radius: number, 
     height: number, 
-    yOffset: number, 
-    xzOffset: number
 ) => {
+    const voxels: {x: number, y: number, z: number}[] = [];
     const rSq = radius * radius;
     for (let y = 0; y < height; y++) {
         for (let z = 0; z < radius * 2; z++) {
@@ -746,58 +723,12 @@ const generateCylinder = (
                 const dx = x - (radius - 0.5);
                 const dz = z - (radius - 0.5);
                 if (dx * dx + dz * dz <= rSq) {
-                    voxels.push({x: x + xzOffset, y: y + yOffset, z: z + xzOffset});
+                    voxels.push({x: x, y: y, z: z});
                 }
             }
         }
     }
-};
-
-const generateDebris = (
-    colRadius: number, 
-    debrisLength: number, 
-    withCapital: boolean,
-    baseRadius: number,
-    baseHeight: number,
-    capitalStyle: ColumnStyle,
-    breakAngleX: number,
-    breakAngleZ: number
-) => {
-    let debrisVoxels: {x: number, y: number, z: number}[] = [];
-    const mainWidth = Math.max(colRadius, baseRadius) * 2;
-    const shaftLength = withCapital ? debrisLength - baseHeight : debrisLength;
-
-    if (withCapital) {
-        const capYOffset = shaftLength;
-        const capOffset = Math.floor((mainWidth - baseRadius*2) / 2);
-         if (capitalStyle === 'simple') {
-            generateCylinder(debrisVoxels, baseRadius, baseHeight, capYOffset, capOffset);
-        } else {
-            // Decorative Capital
-            const step1H = Math.round(baseHeight * 0.6);
-            const step2H = baseHeight - step1H;
-            const step1R = baseRadius;
-            const step2R = Math.round(baseRadius * 0.8);
-            const step2Offset = Math.floor((step1R - step2R) / 2);
-            generateCylinder(debrisVoxels, step1R, step2H, capYOffset + step1H, capOffset);
-            generateCylinder(debrisVoxels, step2R, step1H, capYOffset, capOffset + step2Offset);
-        }
-    }
-    
-    const xzShaftOffset = Math.floor((mainWidth - colRadius*2) / 2);
-    generateCylinder(debrisVoxels, colRadius, shaftLength, 0, xzShaftOffset);
-    
-    // Apply break plane to the bottom of the debris
-    const tanX = Math.tan(breakAngleX * Math.PI / 180);
-    const tanZ = Math.tan(breakAngleZ * Math.PI / 180);
-    const centerOffset = mainWidth / 2 - 0.5;
-
-    const finalDebris = debrisVoxels.filter(v => {
-        const breakPlaneY = -((v.x - centerOffset) * tanX + (v.z - centerOffset) * tanZ);
-        return v.y >= breakPlaneY;
-    });
-
-    return finalDebris;
+    return voxels;
 };
 
 /**
@@ -941,62 +872,33 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'column': {
-            const {
-                radius: colRadius,
-                height: totalHeight,
-                withBase = false,
-                baseStyle = 'simple',
-                capitalStyle = 'simple',
-                brokenTop = false,
-                withDebris = false,
-            } = shape;
-
+            const { radius: colRadius, height: totalHeight, withBase = false, brokenTop = false } = shape;
             const withCapital = brokenTop ? false : (shape.withCapital ?? false);
             const debrisLength = shape.debrisLength ?? 0;
-        
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.25);
             const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
             const mainColWidth = Math.max(colRadius, baseRadius) * 2;
         
             let mainColumnVoxels: {x: number, y: number, z: number}[] = [];
-            
             const finalBaseH = withBase ? baseHeight : 0;
             const finalCapitalH = withCapital ? baseHeight : 0;
             const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
         
             if (withBase) {
+                const baseVoxels = generateCylinder(baseRadius, finalBaseH);
                 const baseOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
-                if (baseStyle === 'simple') {
-                    generateCylinder(mainColumnVoxels, baseRadius, finalBaseH, 0, baseOffset);
-                } else {
-                    const step1H = baseHeight - Math.round(baseHeight * 0.6);
-                    const step2H = baseHeight - step1H;
-                    const step1R = baseRadius;
-                    const step2R = Math.round(baseRadius * 0.8);
-                    const step2Offset = Math.floor((step1R - step2R) / 2);
-                    generateCylinder(mainColumnVoxels, step1R, step1H, 0, baseOffset);
-                    generateCylinder(mainColumnVoxels, step2R, step2H, step1H, baseOffset + step2Offset);
-                }
+                baseVoxels.forEach(v => mainColumnVoxels.push({ x: v.x + baseOffset, y: v.y, z: v.z + baseOffset }));
             }
+        
+            const shaftVoxels = generateCylinder(colRadius, shaftHeight);
+            const shaftOffset = Math.floor((mainColWidth - colRadius*2) / 2);
+            shaftVoxels.forEach(v => mainColumnVoxels.push({ x: v.x + shaftOffset, y: v.y + finalBaseH, z: v.z + shaftOffset }));
         
             if (withCapital) {
+                const capitalVoxels = generateCylinder(baseRadius, finalCapitalH);
                 const capitalOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
-                const capitalYOffset = totalHeight - finalCapitalH;
-                 if (capitalStyle === 'simple') {
-                    generateCylinder(mainColumnVoxels, baseRadius, finalCapitalH, capitalYOffset, capitalOffset);
-                } else {
-                    const step1H = Math.round(baseHeight * 0.6);
-                    const step2H = baseHeight - step1H;
-                    const step1R = baseRadius;
-                    const step2R = Math.round(baseRadius * 0.8);
-                    const step2Offset = Math.floor((step1R - step2R) / 2);
-                    generateCylinder(mainColumnVoxels, step1R, step2H, capitalYOffset + step1H, capitalOffset);
-                    generateCylinder(mainColumnVoxels, step2R, step1H, capitalYOffset, capitalOffset + step2Offset);
-                }
+                capitalVoxels.forEach(v => mainColumnVoxels.push({ x: v.x + capitalOffset, y: v.y + totalHeight - finalCapitalH, z: v.z + capitalOffset }));
             }
-        
-            const xzShaftOffset = Math.floor((mainColWidth - colRadius * 2) / 2);
-            generateCylinder(mainColumnVoxels, colRadius, shaftHeight, finalBaseH, xzShaftOffset);
         
             if (brokenTop) {
                 const breakAngleX = shape.breakAngleX ?? 0;
@@ -1010,44 +912,45 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                     const breakPlaneY = breakPlaneYIntercept - ((v.x - centerOffset) * tanX + (v.z - centerOffset) * tanZ);
                     return v.y < breakPlaneY;
                 });
-
-                if (withDebris) {
-                    const debrisVoxels = generateDebris(
-                        colRadius, 
-                        debrisLength, 
-                        shape.withCapital ?? false,
-                        baseRadius, 
-                        baseHeight, 
-                        capitalStyle,
-                        breakAngleX,
-                        breakAngleZ
-                    );
-
-                    let rotatedDebris: {x:number, y:number, z:number}[] = debrisVoxels.map(v => ({
-                        x: v.y,
-                        y: v.x,
-                        z: v.z
-                    }));
-
-                    let minRotatedY = Infinity;
-                    rotatedDebris.forEach(v => { minRotatedY = Math.min(minRotatedY, v.y); });
-                    
-                    const debrisXOffset = mainColWidth + 4;
-
-                    rotatedDebris.forEach(v => {
-                        addVoxel(debrisXOffset + v.x, v.y - minRotatedY, v.z, 1);
-                    });
-                }
             }
-
+        
             xyziValues.push(...mainColumnVoxels.map(v => ({...v, i: 1})));
         
-            width = mainColWidth + (withDebris && brokenTop ? (debrisLength) + 4 : 0);
+            if (brokenTop && shape.withDebris && debrisLength > 0) {
+                 const debrisVoxels = generateCylinder(colRadius, debrisLength);
+                 const breakAngleX = shape.breakAngleX ?? 0;
+                 const breakAngleZ = shape.breakAngleZ ?? 0;
+                 const tanX = Math.tan(breakAngleX * Math.PI / 180);
+                 const tanZ = Math.tan(breakAngleZ * Math.PI / 180);
+                 const centerOffset = colRadius - 0.5;
+
+                 const finalDebris = debrisVoxels.filter(v => {
+                    const breakPlaneY = -((v.x - centerOffset) * tanX + (v.z - centerOffset) * tanZ);
+                    return v.y >= breakPlaneY;
+                 });
+
+                let rotatedDebris: {x:number, y:number, z:number}[] = finalDebris.map(v => ({ x: v.y, y: v.x, z: v.z }));
+                
+                let minRotatedY = Infinity;
+                if (rotatedDebris.length > 0) {
+                   rotatedDebris.forEach(v => { minRotatedY = Math.min(minRotatedY, v.y); });
+                } else {
+                   minRotatedY = 0;
+                }
+                
+                const debrisXOffset = mainColWidth + 4;
+                rotatedDebris.forEach(v => {
+                    addVoxel(debrisXOffset + v.x, v.y - minRotatedY, v.z, 1);
+                });
+            }
+
+            width = mainColWidth + (shape.withDebris && brokenTop ? (debrisLength) + 4 : 0);
             depth = mainColWidth;
             height = totalHeight;
         
             break;
         }
+
 
         case 'cone':
             width = depth = shape.radius * 2;

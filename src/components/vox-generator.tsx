@@ -38,7 +38,6 @@ type GeneratorMode = 'shape' | 'text' | 'qr' | 'pixelart' | 'sign';
 type TextVoxMode = 'extrude' | 'engrave';
 type PixelArtVoxMode = 'extrude' | 'engrave';
 type ColumnPlacement = 'center' | 'corner';
-export type ColumnStyle = 'simple' | 'decorative';
 
 export function VoxGenerator() {
   const t = useI18n();
@@ -91,8 +90,6 @@ export function VoxGenerator() {
   const [withCapital, setWithCapital] = useState(false);
   const [brokenTop, setBrokenTop] = useState(false);
   const [showCrashWarning, setShowCrashWarning] = useState(false);
-  const [baseStyle, setBaseStyle] = useState<ColumnStyle>('simple');
-  const [capitalStyle, setCapitalStyle] = useState<ColumnStyle>('simple');
   const [withDebris, setWithDebris] = useState(false);
   const [breakAngleX, setBreakAngleX] = useState(20);
   const [breakAngleZ, setBreakAngleZ] = useState(-15);
@@ -379,8 +376,8 @@ export function VoxGenerator() {
             const totalHeight = validateAndParse(dimensions.columnHeight, t('voxGenerator.dims.height')) ?? 0;
             const baseRadius = validateAndParse(dimensions.baseRadius, t('voxGenerator.column.baseRadius')) ?? 0;
             const baseHeight = validateAndParse(dimensions.baseHeight, t('voxGenerator.column.baseHeight')) ?? 0;
-            const debrisLengthNum = validateAndParse(dimensions.debrisLength, t('voxGenerator.column.debrisLength')) ?? 0;
-
+            const debrisLength = validateAndParse(dimensions.debrisLength, t('voxGenerator.column.debrisLength')) ?? 0;
+            
             shapeParams = { 
                 type: 'column', 
                 radius: colRadius, 
@@ -389,11 +386,9 @@ export function VoxGenerator() {
                 withCapital: brokenTop ? false : withCapital, 
                 baseRadius, 
                 baseHeight, 
-                baseStyle, 
-                capitalStyle, 
                 brokenTop, 
                 withDebris, 
-                debrisLength: debrisLengthNum, 
+                debrisLength, 
                 breakAngleX, 
                 breakAngleZ 
             };
@@ -617,11 +612,10 @@ export function VoxGenerator() {
     setSchematicOutput(null);
 
     try {
-        const contentWidth = signWidth - (signFrame ? signFrameWidth * 2 : 0);
-        
-        let iconPixels: boolean[] = [], iconWidth = 0, iconHeight = 0;
+        let iconData: { pixels: boolean[], width: number, height: number, offsetY?: number } | undefined = undefined;
         
         if (signIconFile && signWithIcon) {
+            const contentWidth = signWidth - (signFrame ? signFrameWidth * 2 : 0);
             const img = document.createElement('img');
             const imgPromise = new Promise<void>((resolve, reject) => {
                 img.onload = () => resolve();
@@ -632,24 +626,20 @@ export function VoxGenerator() {
             URL.revokeObjectURL(img.src);
 
             const iconTargetWidth = Math.floor(contentWidth * (signIconScale / 100));
-            const iconData = await imageToPixels(img, iconTargetWidth);
-            iconPixels = iconData.pixels;
-            iconWidth = iconData.width;
-            iconHeight = iconData.height;
+            iconData = await imageToPixels(img, iconTargetWidth);
         }
         
-        const { pixels: textPixels, width: textWidth, height: textHeight } = await rasterizePixelText({ 
-            text: signText.toUpperCase(),
-            maxWidth: contentWidth,
-        });
-
         const input: SignToVoxInput = {
             width: signWidth,
             height: signHeight,
             frameWidth: signFrameWidth,
-            icon: { pixels: iconPixels, width: iconWidth, height: iconHeight, offsetY: signIconOffsetY },
-            text: { pixels: textPixels, width: textWidth, height: textHeight, offsetY: textOffsetY },
+            icon: iconData,
+            text: signText,
             frame: signFrame,
+            signIconScale: signIconScale,
+            signIconOffsetY: signIconOffsetY,
+            textOffsetY: textOffsetY,
+            signWithIcon: signWithIcon,
         };
 
         const result: SignToVoxOutput = await generateSignToVoxFlow(input);
@@ -886,30 +876,6 @@ export function VoxGenerator() {
                                           <Input id="baseHeight" type="number" value={dimensions.baseHeight} onChange={e => handleDimensionChange('baseHeight', e.target.value)} placeholder="e.g. 4" />
                                       </div>
                                   </div>
-                                   {withBase && (
-                                      <div className="space-y-2 pl-4">
-                                          <Label>{t('voxGenerator.column.baseStyle')}</Label>
-                                          <Select value={baseStyle} onValueChange={(v) => setBaseStyle(v as ColumnStyle)}>
-                                              <SelectTrigger><SelectValue/></SelectTrigger>
-                                              <SelectContent>
-                                                  <SelectItem value="simple">{t('voxGenerator.column.styles.simple')}</SelectItem>
-                                                  <SelectItem value="decorative">{t('voxGenerator.column.styles.decorative')}</SelectItem>
-                                              </SelectContent>
-                                          </Select>
-                                      </div>
-                                  )}
-                                   {withCapital && (
-                                      <div className="space-y-2 pl-4">
-                                          <Label>{t('voxGenerator.column.capitalStyle')}</Label>
-                                           <Select value={capitalStyle} onValueChange={(v) => setCapitalStyle(v as ColumnStyle)}>
-                                              <SelectTrigger><SelectValue/></SelectTrigger>
-                                              <SelectContent>
-                                                  <SelectItem value="simple">{t('voxGenerator.column.styles.simple')}</SelectItem>
-                                                  <SelectItem value="decorative">{t('voxGenerator.column.styles.decorative')}</SelectItem>
-                                              </SelectContent>
-                                          </Select>
-                                      </div>
-                                  )}
                               </div>
                           )}
                      </div>
