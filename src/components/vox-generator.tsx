@@ -105,6 +105,7 @@ export function VoxGenerator() {
   const [fontSize, setFontSize] = useState([24]);
   const [font, setFont] = useState<FontStyle>('monospace');
   const [fontFile, setFontFile] = useState<File | null>(null);
+  const fontFileUrlRef = useRef<string | null>(null);
   const [textVoxMode, setTextVoxMode] = useState<TextVoxMode>('extrude');
   const [textStickerMode, setTextStickerMode] = useState(true);
   const [letterDepth, setLetterDepth] = useState([5]);
@@ -188,6 +189,7 @@ export function VoxGenerator() {
     return () => {
       if (paPreviewUrl) { URL.revokeObjectURL(paPreviewUrl); }
       if (signIconUrl) { URL.revokeObjectURL(signIconUrl); }
+      if (fontFileUrlRef.current) { URL.revokeObjectURL(fontFileUrlRef.current); }
     };
   }, [paPreviewUrl, signIconUrl]);
   
@@ -239,18 +241,13 @@ export function VoxGenerator() {
     
     setIsPending(true);
     setSchematicOutput(null);
-    let fontUrl: string | undefined = undefined;
-
+    
     try {
-        if (fontFile && font === 'custom') {
-            fontUrl = URL.createObjectURL(fontFile);
-        }
-
         const { pixels, width, height } = await rasterizeText({
             text, 
             font, 
             fontSize: fontSize[0], 
-            fontUrl: fontUrl,
+            fontUrl: fontFileUrlRef.current ?? undefined,
             outline: textOutline,
             outlineGap: textOutlineGap[0],
         });
@@ -286,9 +283,6 @@ export function VoxGenerator() {
         });
         setSchematicOutput(null);
     } finally {
-        if (fontUrl) {
-            URL.revokeObjectURL(fontUrl);
-        }
         setIsPending(false);
     }
   }
@@ -731,6 +725,11 @@ export function VoxGenerator() {
   const handleFontFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+      }
+      const newUrl = URL.createObjectURL(file);
+      fontFileUrlRef.current = newUrl;
       setFontFile(file);
       setFont('custom');
     }
@@ -740,6 +739,10 @@ export function VoxGenerator() {
     setFont(value);
     if (value !== 'custom') {
       setFontFile(null);
+       if (fontFileUrlRef.current) {
+        URL.revokeObjectURL(fontFileUrlRef.current);
+        fontFileUrlRef.current = null;
+      }
     }
   }
 
@@ -1707,3 +1710,4 @@ export function VoxGenerator() {
 
 
     
+
