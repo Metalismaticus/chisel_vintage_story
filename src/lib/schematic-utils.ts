@@ -340,7 +340,7 @@ Object.assign(TINY_FONT_DATA, {
   'Л': [[0,0,0,0],[0,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'П': [[0,0,0,0],[1,1,1,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[1,0,0,1],[0,0,0,0]],
   'Ф': [[0,0,0,0,0],[1,1,1,1,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,1,0,0],[0,0,1,0,0]],
-  'Ц': [[0,0,0,0,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,0,0,1,0],[1,1,1,1,1],[0,0,0,0,1]], // Tail
+  'Ц': [[0,0,0,0,0],[1,1,1,1,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,1,0],[0,0,0,0,1]], // Tail
   'Ч': [[0,0,0,0],[1,0,0,1],[1,0,0,1],[0,1,1,1],[0,0,0,1],[0,0,0,1],[0,0,0,0]],
   'Ш': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,1],[0,0,0,0,0]],
   'Щ': [[0,0,0,0,0],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,0,1,0,1],[1,1,1,1,0],[0,0,0,0,1]], // Tail
@@ -349,7 +349,7 @@ Object.assign(TINY_FONT_DATA, {
   'Ь': [[0,0,0,0],[1,0,0,0],[1,0,0,0],[1,1,1,0],[1,0,0,1],[1,1,1,0],[0,0,0,0]],
   'Э': [[0,0,0,0],[1,1,1,0],[0,0,0,1],[0,1,1,1],[0,0,0,1],[1,1,1,0],[0,0,0,0]],
   'Ю': [[0,0,0,0,0],[1,0,1,1,0],[1,0,1,0,1],[1,1,1,0,1],[1,0,1,0,1],[1,0,1,1,0],[0,0,0,0,0]],
-  'Я': [[0,0,0,0],[0,1,1,1],[1,0,0,1],[0,1,1,1],[0,1,0,1],[1,0,0,1],[0,0,0,0]],
+  'Я': [[0,0,0,0],[0,1,1,0],[1,0,0,1],[0,1,1,0],[0,1,0,1],[1,0,0,1],[0,0,0,0]],
   'Ё': [[0,1,0,1,0],[1,1,1,1,1],[1,0,0,0,0],[1,1,1,0,0],[1,0,0,0,0],[1,1,1,1,1],[0,0,0,0,0]], // Dots on top
 });
 
@@ -762,19 +762,22 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
         case 'sphere': {
             const { radius, part = 'full', carveMode = false } = shape;
-             width = height = depth = radius * 2;
-            const center = (width - 1) / 2.0;
+            const sphereDiameter = radius * 2;
+            const center = (sphereDiameter - 1) / 2.0;
 
             if (carveMode && part.startsWith('hemisphere')) {
                 const BLOCK_SIZE = 16;
-                const gridW = Math.ceil(width / BLOCK_SIZE);
-                const gridH = Math.ceil(height / BLOCK_SIZE);
-                const gridD = Math.ceil(depth / BLOCK_SIZE);
+                const gridW = Math.ceil(sphereDiameter / BLOCK_SIZE);
+                const gridH = Math.ceil(radius / BLOCK_SIZE);
+                const gridD = Math.ceil(sphereDiameter / BLOCK_SIZE);
 
                 width = gridW * BLOCK_SIZE;
                 height = gridH * BLOCK_SIZE;
                 depth = gridD * BLOCK_SIZE;
+                
+                const allVoxels = new Set<string>();
 
+                // 1. Fill the entire block grid
                 for (let by = 0; by < gridH; by++) {
                     for (let bz = 0; bz < gridD; bz++) {
                         for (let bx = 0; bx < gridW; bx++) {
@@ -784,33 +787,51 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                                         const worldX = bx * BLOCK_SIZE + x;
                                         const worldY = by * BLOCK_SIZE + y;
                                         const worldZ = bz * BLOCK_SIZE + z;
-
-                                        const dx = worldX - center;
-                                        const dy = worldY - center;
-                                        const dz = worldZ - center;
-                                        const distSq = dx * dx + dy * dy + dz * dz;
-                                        
-                                        if (distSq <= radius * radius) {
-                                            let isPartOfHemi = false;
-                                            if (part === 'hemisphere-top' && worldY >= center) isPartOfHemi = true;
-                                            if (part === 'hemisphere-bottom' && worldY < center) isPartOfHemi = true;
-                                            if (part === 'hemisphere-vertical' && worldX < center) isPartOfHemi = true;
-                                            
-                                            // Add voxel if it's NOT part of the hemisphere (carving)
-                                            if (!isPartOfHemi) {
-                                                addVoxel(worldX, worldY, worldZ);
-                                            }
-                                        } else {
-                                           // Add voxel if it's outside the sphere
-                                           addVoxel(worldX, worldY, worldZ);
-                                        }
+                                        allVoxels.add(`${worldX},${worldY},${worldZ}`);
                                     }
                                 }
                             }
                         }
                     }
                 }
+
+                // 2. Carve out the hemisphere
+                for (let y = 0; y < radius; y++) {
+                    for (let z = 0; z < sphereDiameter; z++) {
+                        for (let x = 0; x < sphereDiameter; x++) {
+                            const dx = x - center;
+                            const dy = y; // Measure from the flat bottom of the hemisphere
+                            const dz = z - center;
+                            const distSq = dx * dx + dy * dy + dz * dz;
+
+                            if (distSq <= radius * radius) {
+                                let worldX = x;
+                                let worldY = y;
+                                let worldZ = z;
+
+                                if (part === 'hemisphere-top') {
+                                    // Y is already correct for top hemisphere
+                                } else if (part === 'hemisphere-bottom') {
+                                    worldY = -y + radius - 1; // Invert for bottom
+                                } else if (part === 'hemisphere-vertical') {
+                                    // Swap X and Y for vertical carving
+                                    worldX = y;
+                                    worldY = x - center;
+                                }
+                                
+                                allVoxels.delete(`${Math.round(worldX)},${Math.round(worldY)},${Math.round(worldZ)}`);
+                            }
+                        }
+                    }
+                }
+                
+                allVoxels.forEach(voxelStr => {
+                    const [x, y, z] = voxelStr.split(',').map(Number);
+                    addVoxel(x, y, z);
+                });
+
             } else {
+                 width = height = depth = sphereDiameter;
                  for (let y = 0; y < height; y++) {
                     for (let z = 0; z < depth; z++) {
                         for (let x = 0; x < width; x++) {
@@ -1432,6 +1453,7 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
 
