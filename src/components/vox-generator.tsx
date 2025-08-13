@@ -76,6 +76,7 @@ export function VoxGenerator() {
   });
   const [spherePart, setSpherePart] = useState<'full' | 'hemisphere'>('full');
   const [hemisphereDirection, setHemisphereDirection] = useState<'top' | 'bottom' | 'vertical'>('top');
+  const [carveMode, setCarveMode] = useState(false);
   const [diskPart, setDiskPart] = useState<'full' | 'half'>('full');
   const [diskOrientation, setDiskOrientation] = useState<'horizontal' | 'vertical'>('horizontal');
   const [ringPart, setRingPart] = useState<'full' | 'half'>('full');
@@ -359,7 +360,7 @@ export function VoxGenerator() {
           if (spherePart === 'hemisphere') {
             part = `hemisphere-${hemisphereDirection}`;
           }
-          shapeParams = { type: 'sphere', radius, part };
+          shapeParams = { type: 'sphere', radius, part, carveMode: carveMode && spherePart === 'hemisphere' };
           break;
         }
         case 'pyramid': {
@@ -758,7 +759,7 @@ export function VoxGenerator() {
                     <Label htmlFor="radius">{t('voxGenerator.dims.radius')} (voxels)</Label>
                     <Input id="radius" type="number" value={dimensions.radius} onChange={e => handleDimensionChange('radius', e.target.value)} placeholder="e.g. 16" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                     <div className="space-y-2">
                       <Label>{t('voxGenerator.sphere.type')}</Label>
                        <RadioGroup value={spherePart} onValueChange={(v) => setSpherePart(v as any)} className="flex pt-2 space-x-4">
@@ -773,18 +774,24 @@ export function VoxGenerator() {
                       </RadioGroup>
                     </div>
                     {spherePart === 'hemisphere' && (
-                      <div className="space-y-2">
-                          <Label htmlFor="hemisphere-direction">{t('voxGenerator.sphere.orientation')}</Label>
-                          <Select value={hemisphereDirection} onValueChange={(v) => setHemisphereDirection(v as any)}>
-                              <SelectTrigger id="hemisphere-direction">
-                                  <SelectValue placeholder={t('voxGenerator.sphere.selectDirection')} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="top">{t('voxGenerator.sphere.orientations.top')}</SelectItem>
-                                  <SelectItem value="bottom">{t('voxGenerator.sphere.orientations.bottom')}</SelectItem>
-                                  <SelectItem value="vertical">{t('voxGenerator.sphere.orientations.vertical')}</SelectItem>
-                              </SelectContent>
-                          </Select>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="hemisphere-direction">{t('voxGenerator.sphere.orientation')}</Label>
+                            <Select value={hemisphereDirection} onValueChange={(v) => setHemisphereDirection(v as any)}>
+                                <SelectTrigger id="hemisphere-direction">
+                                    <SelectValue placeholder={t('voxGenerator.sphere.selectDirection')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="top">{t('voxGenerator.sphere.orientations.top')}</SelectItem>
+                                    <SelectItem value="bottom">{t('voxGenerator.sphere.orientations.bottom')}</SelectItem>
+                                    <SelectItem value="vertical">{t('voxGenerator.sphere.orientations.vertical')}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex items-center space-x-2 pt-2">
+                            <Switch id="carve-mode" checked={carveMode} onCheckedChange={setCarveMode} />
+                            <Label htmlFor="carve-mode">{t('voxGenerator.sphere.carveMode')}</Label>
+                        </div>
                       </div>
                     )}
                   </div>
