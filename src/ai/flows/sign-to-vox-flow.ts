@@ -109,9 +109,10 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
     }
   }
   
-  const contentWidth = signWidth - (frame ? frameWidth * 2 : 0);
-  const contentXStart = frame ? frameWidth : 0;
-  const contentHeight = signHeight - (frame ? frameWidth * 2 : 0);
+  // Calculate content area as if the frame always exists to ensure consistent centering.
+  const contentWidth = signWidth - (frameWidth * 2);
+  const contentXStart = frameWidth;
+  const contentHeight = signHeight - (frameWidth * 2);
   const contentCenterY = Math.floor(signHeight / 2);
   const hasIcon = icon && icon.pixels.length > 0 && signWithIcon;
   
@@ -167,7 +168,7 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
   const modelDepth = 16;
  
   const palette: PaletteColor[] = Array.from({length: 256}, () => ({r:0,g:0,b:0,a:0}));
-  palette[0] = { r: 0, g: 0, b: 0, a: 0 };
+  palette[0] = { r: 0, g: 0, b: 0, a: 0 }; // Main color
   palette[1] = { r: 10, g: 10, b: 10, a: 255 }; // Main color
   palette[2] = { r: 200, g: 164, b: 100, a: 255 }; // Anchor color
 
@@ -203,5 +204,6 @@ export async function generateSignToVoxFlow(input: SignToVoxInput): Promise<Sign
 
 
     
+
 
 
