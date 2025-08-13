@@ -874,7 +874,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'column': {
-            const {
+             const {
                 radius: colRadius,
                 height: totalHeight,
                 withBase = false,
@@ -892,55 +892,51 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
 
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.25);
             const baseHeight = shape.baseHeight || Math.max(1, Math.round(colRadius * 0.5));
-            const debrisLength = shape.debrisLength || 0;
-
-            const finalBaseH = withBase ? baseHeight : 0;
-            const finalCapitalH = withCapital ? baseHeight : 0;
-            const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
             
-            const maxRadius = withBase || withCapital ? Math.max(colRadius, baseRadius) : colRadius;
-            const mainColWidth = maxRadius * 2;
-            width = mainColWidth + (withDebris && brokenTop ? debrisLength : 0);
+            const mainColWidth = Math.max(colRadius, baseRadius) * 2;
+            const debrisLength = withDebris ? shape.debrisLength || totalHeight : 0;
+            
+            width = mainColWidth + (withDebris && brokenTop ? debrisLength + 4 : 0);
             depth = mainColWidth;
             height = totalHeight;
 
-            // Generate full column first
-            const fullColumnVoxels: {x: number, y: number, z: number}[] = [];
+            const fullColumnVoxels: {x: number, y: number, z: number, isCapital: boolean}[] = [];
 
-            const placePart = (radius: number, partHeight: number, yOffset: number) => {
-                const center = radius - 0.5;
+            const generateCylinder = (radius: number, height: number, yOffset: number, isCapital = false) => {
+                const center = mainColWidth / 2 - 0.5;
                 const rSq = radius * radius;
-                const xzOffset = Math.floor((maxRadius - radius));
-                for(let y = 0; y < partHeight; y++) {
+                const xzOffset = Math.floor((mainColWidth - radius*2)/2);
+                for (let y = 0; y < height; y++) {
                     for (let z = 0; z < radius * 2; z++) {
                         for (let x = 0; x < radius * 2; x++) {
-                            const dx = x - center;
-                            const dz = z - center;
-                             if (dx * dx + dz * dz <= rSq) {
-                                fullColumnVoxels.push({x: x + xzOffset, y: y + yOffset, z: z + xzOffset});
+                            const dx = x - (radius - 0.5);
+                            const dz = z - (radius - 0.5);
+                            if (dx * dx + dz * dz <= rSq) {
+                                fullColumnVoxels.push({x: x + xzOffset, y: y + yOffset, z: z + xzOffset, isCapital});
                             }
                         }
                     }
                 }
             };
             
-            if(withBase) placePart(baseRadius, finalBaseH, 0);
-            placePart(colRadius, shaftHeight, finalBaseH);
-            if(withCapital) placePart(baseRadius, finalCapitalH, finalBaseH + shaftHeight);
-
-            // Split column and debris
-            const mainVoxels: {x: number, y: number, z: number, i: number}[] = [];
-            const debrisVoxels: {x: number, y: number, z: number, i: number}[] = [];
+            const finalBaseH = withBase ? baseHeight : 0;
+            const finalCapitalH = withCapital ? baseHeight : 0;
+            const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
             
-            const breakPlaneYIntercept = brokenTop ? (totalHeight - 1 - debrisLength) : totalHeight;
-            const centerOffset = maxRadius - 0.5;
+            if (withBase) generateCylinder(baseRadius, finalBaseH, 0);
+            generateCylinder(colRadius, shaftHeight, finalBaseH);
+            if (withCapital) generateCylinder(baseRadius, finalCapitalH, finalBaseH + shaftHeight, true);
+
+            const mainVoxels: {x: number, y: number, z: number, i: number}[] = [];
+            const debrisVoxels: {x: number, y: number, z: number, i: number, isCapital: boolean}[] = [];
+            
+            const breakPlaneYIntercept = totalHeight - debrisLength;
+            const centerOffset = mainColWidth / 2 - 0.5;
 
             fullColumnVoxels.forEach(v => {
                 const breakPlaneY = breakPlaneYIntercept - ((v.x - centerOffset) * tanX + (v.z - centerOffset) * tanZ);
                 if (brokenTop && v.y >= breakPlaneY) {
-                    if (withDebris) {
-                       debrisVoxels.push({...v, i: 1});
-                    }
+                     debrisVoxels.push({...v, i: 1});
                 } else {
                     mainVoxels.push({...v, i: 1});
                 }
@@ -951,12 +947,26 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             if (brokenTop && withDebris && debrisVoxels.length > 0) {
                  let minDebrisY = Infinity;
                  debrisVoxels.forEach(v => { minDebrisY = Math.min(minDebrisY, v.y); });
-
+                 
                  const debrisXOffset = mainColWidth + 4;
                  
+                 const capitalOnDebris = debrisVoxels.some(v => v.isCapital);
+                 const capitalHeightOnDebris = capitalOnDebris ? finalCapitalH : 0;
+                 const debrisShaftLength = debrisLength - capitalHeightOnDebris;
+
                  debrisVoxels.forEach(v => {
-                    const relativeY = v.y - minDebrisY;
-                    addVoxel(debrisXOffset + relativeY, v.x, v.z, v.i);
+                    // Rotate 90 degrees around Z axis and place on ground
+                    const rotatedX = debrisXOffset + v.y - minDebrisY;
+                    const rotatedY = v.x;
+                    const rotatedZ = v.z;
+
+                    // Find lowest point of rotated debris to place it at y=0
+                    let minY = Infinity;
+                    debrisVoxels.forEach(d_v => {
+                        minY = Math.min(minY, d_v.x);
+                    });
+
+                    addVoxel(rotatedX, rotatedY - minY, rotatedZ, v.i);
                  });
             }
             break;
