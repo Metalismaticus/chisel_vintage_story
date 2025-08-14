@@ -108,7 +108,7 @@ export async function rasterizeText({
         return { width: 0, height: 0, pixels: [] };
     }
 
-    const fontName = fontUrl?.split('/').pop()?.split('.')[0] || 'custom-font';
+    const fontName = 'custom-font-' + Date.now();
     let loadedFontFamily = font;
 
     let fontFace: FontFace | undefined;
@@ -120,7 +120,6 @@ export async function rasterizeText({
         loadedFontFamily = fontName;
       } catch (e) {
         console.error('Font loading failed:', e);
-        // Fallback or re-throw
         throw new Error(`Failed to load font: ${fontUrl}`);
       }
     }
