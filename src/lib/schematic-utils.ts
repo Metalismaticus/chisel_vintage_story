@@ -34,6 +34,7 @@ type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
 type CircularArchOrientation = 'top' | 'bottom';
+type ColumnStyle = 'simple' | 'decorative';
 
 type ArchRectangular = { archType: 'rectangular', width: number, height: number, depth: number, outerCornerRadius?: 0 };
 type ArchRounded = { archType: 'rounded', width: number, height: number, depth: number, outerCornerRadius: number };
@@ -53,6 +54,7 @@ export type VoxShape =
         withCapital?: boolean,
         baseRadius?: number,
         baseHeight?: number,
+        baseStyle?: ColumnStyle,
         brokenTop?: boolean,
         withDebris?: boolean,
         debrisLength?: number,
@@ -730,6 +732,28 @@ const generateCylinder = (
     return voxels;
 };
 
+const generateDecorativeCylinder = (baseRadius: number, baseHeight: number) => {
+    const voxels: { x: number; y: number; z: number }[] = [];
+    const mainHeight = Math.max(1, baseHeight - 2);
+    const flareHeight = 1;
+
+    // Bottom Flare
+    const bottomFlareVoxels = generateCylinder(baseRadius, flareHeight);
+    bottomFlareVoxels.forEach(v => voxels.push({ x: v.x, y: v.y, z: v.z }));
+
+    // Main Part
+    const mainRadius = Math.max(1, baseRadius - 1);
+    const mainVoxels = generateCylinder(mainRadius, mainHeight);
+    const mainOffset = Math.floor((baseRadius*2 - mainRadius*2) / 2);
+    mainVoxels.forEach(v => voxels.push({ x: v.x + mainOffset, y: v.y + flareHeight, z: v.z + mainOffset }));
+    
+    // Top Flare
+    const topFlareVoxels = generateCylinder(baseRadius, flareHeight);
+    topFlareVoxels.forEach(v => voxels.push({ x: v.x, y: v.y + mainHeight + flareHeight, z: v.z }));
+
+    return voxels;
+};
+
 /**
  * Generates a .vox file for a given 3D shape using the vox-saver library.
  */
@@ -871,7 +895,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             break;
         
         case 'column': {
-            const { radius: colRadius, height: totalHeight, withBase = false, brokenTop = false } = shape;
+            const { radius: colRadius, height: totalHeight, withBase = false, brokenTop = false, baseStyle = 'simple' } = shape;
             const withCapital = brokenTop ? false : (shape.withCapital ?? false);
             const debrisLength = shape.debrisLength ?? 0;
             const baseRadius = shape.baseRadius || Math.round(colRadius * 1.25);
@@ -882,9 +906,11 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const finalBaseH = withBase ? baseHeight : 0;
             const finalCapitalH = withCapital ? baseHeight : 0;
             const shaftHeight = totalHeight - finalBaseH - finalCapitalH;
-        
+            
+            const partGenerator = baseStyle === 'decorative' ? generateDecorativeCylinder : generateCylinder;
+
             if (withBase) {
-                const baseVoxels = generateCylinder(baseRadius, finalBaseH);
+                const baseVoxels = partGenerator(baseRadius, finalBaseH);
                 const baseOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
                 baseVoxels.forEach(v => mainColumnVoxels.push({ x: v.x + baseOffset, y: v.y, z: v.z + baseOffset }));
             }
@@ -894,7 +920,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             shaftVoxels.forEach(v => mainColumnVoxels.push({ x: v.x + shaftOffset, y: v.y + finalBaseH, z: v.z + shaftOffset }));
         
             if (withCapital) {
-                const capitalVoxels = generateCylinder(baseRadius, finalCapitalH);
+                const capitalVoxels = partGenerator(baseRadius, finalCapitalH);
                 const capitalOffset = Math.floor((mainColWidth - baseRadius*2) / 2);
                 capitalVoxels.forEach(v => mainColumnVoxels.push({ x: v.x + capitalOffset, y: v.y + totalHeight - finalCapitalH, z: v.z + capitalOffset }));
             }

@@ -65,6 +65,7 @@ export function VoxGeneratorShape() {
   const [circularArchOrientation, setCircularArchOrientation] = useState<'top' | 'bottom'>('top');
   const [withBase, setWithBase] = useState(false);
   const [withCapital, setWithCapital] = useState(false);
+  const [baseStyle, setBaseStyle] = useState<'simple' | 'decorative'>('simple');
   const [brokenTop, setBrokenTop] = useState(false);
   const [showCrashWarning, setShowCrashWarning] = useState(false);
   const [withDebris, setWithDebris] = useState(false);
@@ -160,7 +161,8 @@ export function VoxGeneratorShape() {
                 withBase, 
                 withCapital: brokenTop ? false : withCapital, 
                 baseRadius, 
-                baseHeight, 
+                baseHeight,
+                baseStyle,
                 brokenTop, 
                 withDebris, 
                 debrisLength, 
@@ -413,6 +415,19 @@ export function VoxGeneratorShape() {
                           </div>
                            {(withBase || withCapital) && !brokenTop && (
                               <div className="pt-2 pl-1 space-y-4 border-l-2 border-primary/20 ml-2">
+                                  <div className="space-y-2 pl-4">
+                                    <Label>{t('voxGenerator.column.baseStyle')}</Label>
+                                    <RadioGroup value={baseStyle} onValueChange={(v) => setBaseStyle(v as any)} className="flex pt-2 space-x-4">
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="simple" id="style-simple" />
+                                            <Label htmlFor="style-simple">{t('voxGenerator.column.styles.simple')}</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="decorative" id="style-decorative" />
+                                            <Label htmlFor="style-decorative">{t('voxGenerator.column.styles.decorative')}</Label>
+                                        </div>
+                                    </RadioGroup>
+                                  </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4">
                                       <div className="space-y-2">
                                           <Label htmlFor="baseRadius">{t('voxGenerator.column.baseRadius')}</Label>

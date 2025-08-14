@@ -189,8 +189,7 @@ export default {
             center: 'Center of a block',
             corner: 'On the corner of 4 blocks',
         },
-        baseStyle: 'Base Style',
-        capitalStyle: 'Capital Style',
+        baseStyle: 'Base/Capital Style',
         styles: {
             simple: 'Simple',
             decorative: 'Decorative',
@@ -363,4 +362,3 @@ export default {
     
 
     
-

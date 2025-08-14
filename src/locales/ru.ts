@@ -189,8 +189,7 @@ export default {
             center: 'По центру блока',
             corner: 'На стыке 4 блоков',
         },
-        baseStyle: 'Стиль основания',
-        capitalStyle: 'Стиль капители',
+        baseStyle: 'Стиль осн./капители',
         styles: {
             simple: 'Простой',
             decorative: 'Декоративный',
@@ -361,6 +360,5 @@ export default {
 } as const;
 
     
-
 
 
