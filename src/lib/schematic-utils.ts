@@ -878,12 +878,56 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                 }
                 xyziValues.push(...allVoxels.filter(v => !voxelsToRemove.has(`${v.x},${v.y},${v.z}`)));
 
+            } else if (hollow && part.startsWith('hemisphere')) {
+                width = depth = sphereDiameter;
+                height = radius; // The height of the dome is just the radius
+                const innerRadius = radius - thickness;
+                const innerRadiusSq = innerRadius * innerRadius;
+                const outerRadiusSq = radius * radius;
+
+                for (let y = 0; y < height; y++) {
+                    for (let z = 0; z < depth; z++) {
+                        for (let x = 0; x < width; x++) {
+                            const dx = x - center;
+                            const dz = z - center;
+                            
+                            let dy;
+                            if (part === 'hemisphere-top') {
+                                dy = y;
+                            } else if (part === 'hemisphere-bottom') {
+                                dy = (height - 1 - y);
+                            } else { // vertical, not a dome, handled below
+                                dy = y - center;
+                            }
+                             
+                            const distSq = dx * dx + dy * dy + dz * dz;
+
+                            if (distSq <= outerRadiusSq && distSq > innerRadiusSq) {
+                                addVoxel(x, y, z);
+                            }
+                        }
+                    }
+                }
+                if (part === 'hemisphere-vertical') { // Non-dome hollow hemisphere
+                     width = radius; height = sphereDiameter; depth = sphereDiameter;
+                     xyziValues = []; // Clear and recalculate
+                     addVoxel(0,0,0,2);
+                     for (let y = 0; y < height; y++) {
+                        for (let z = 0; z < depth; z++) {
+                            for (let x = 0; x < width; x++) {
+                                const dx = x;
+                                const dy = y - center;
+                                const dz = z - center;
+                                const distSq = dx * dx + dy * dy + dz * dz;
+                                if (distSq <= outerRadiusSq && distSq > innerRadiusSq) {
+                                    addVoxel(x, y, z);
+                                }
+                            }
+                        }
+                     }
+                }
             } else {
                  width = height = depth = sphereDiameter;
-                 const innerRadius = hollow ? radius - thickness : -1;
-                 const innerRadiusSq = innerRadius * innerRadius;
-                 const outerRadiusSq = radius * radius;
-                 
                  for (let y = 0; y < height; y++) {
                     for (let z = 0; z < depth; z++) {
                         for (let x = 0; x < width; x++) {
@@ -892,7 +936,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                             const dz = z - center;
                             const distSq = dx * dx + dy * dy + dz * dz;
                             
-                            if (distSq <= outerRadiusSq && (!hollow || distSq > innerRadiusSq)) {
+                            if (distSq <= radius * radius) {
                                 if (part === 'full') {
                                     addVoxel(x, y, z);
                                 } else if (part === 'hemisphere-top' && y >= center) {
@@ -1376,5 +1420,6 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
 
