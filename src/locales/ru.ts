@@ -172,6 +172,8 @@ export default {
       orientations: {
         horizontal: 'Горизонтальный срез',
         vertical: 'Вертикальный срез',
+        vertical_up: 'Вертикальный срез (верх)',
+        vertical_down: 'Вертикальный срез (низ)',
       },
     },
     column: {
@@ -361,6 +363,7 @@ export default {
 } as const;
 
     
+
 
 
 

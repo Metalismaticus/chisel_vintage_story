@@ -172,6 +172,8 @@ export default {
       orientations: {
         horizontal: 'Horizontal cut',
         vertical: 'Vertical cut',
+        vertical_up: 'Vertical cut (top)',
+        vertical_down: 'Vertical cut (bottom)',
       },
     },
     column: {
@@ -363,4 +365,5 @@ export default {
     
 
     
+
 

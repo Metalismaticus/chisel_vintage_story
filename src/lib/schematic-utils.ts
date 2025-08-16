@@ -32,6 +32,7 @@ export type TextOrientation = 'horizontal' | 'vertical-lr';
 
 type HemispherePart = `hemisphere-${'top' | 'bottom' | 'vertical'}`;
 type DiskOrientation = 'horizontal' | 'vertical';
+type RingOrientation = 'horizontal' | 'vertical-up' | 'vertical-down';
 type ArchType = 'rectangular' | 'rounded' | 'circular';
 type CircularArchOrientation = 'top' | 'bottom';
 type ColumnStyle = 'simple' | 'decorative';
@@ -63,7 +64,7 @@ export type VoxShape =
       }
     | ({ type: 'arch' } & (ArchRectangular | ArchRounded | ArchCircular))
     | { type: 'disk', radius: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
-    | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: DiskOrientation }
+    | { type: 'ring', radius: number, thickness: number, height: number, part?: 'full' | 'half', orientation: RingOrientation }
     | { type: 'qrcode', pixels: boolean[], size: number, depth: number, withBackdrop?: boolean, backdropDepth?: number, stickerMode?: boolean }
     | { type: 'checkerboard', width: number, length: number, height: number }
     | { type: 'haystack', radius: number, height: number }
@@ -1151,7 +1152,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
             const { radius: outerR, thickness, height: ringHeight, part: ringPart = 'full', orientation: ringOrientation = 'horizontal' } = shape;
             const innerR = outerR - thickness;
 
-            if (ringOrientation === 'vertical') {
+            if (ringOrientation.startsWith('vertical')) {
                 width = ringHeight;
                 height = outerR * 2;
                 depth = outerR * 2;
@@ -1170,7 +1171,7 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                   for (let x = 0; x < width; x++) {
                       let distSq: number;
                       
-                      if (ringOrientation === 'vertical') {
+                      if (ringOrientation.startsWith('vertical')) {
                           const dy = y - centerY;
                           const dz = z - centerZ;
                           distSq = dy * dy + dz * dz;
@@ -1186,7 +1187,9 @@ export function voxToSchematic(shape: VoxShape): SchematicOutput {
                           } else if (ringPart === 'half') {
                               if (ringOrientation === 'horizontal' && z < centerZ) {
                                   addVoxel(x, y, z);
-                              } else if (ringOrientation === 'vertical' && y < centerY) {
+                              } else if (ringOrientation === 'vertical-up' && y >= centerY) {
+                                  addVoxel(x, y, z);
+                              } else if (ringOrientation === 'vertical-down' && y < centerY) {
                                   addVoxel(x, y, z);
                               }
                           }
@@ -1373,4 +1376,5 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+
 
