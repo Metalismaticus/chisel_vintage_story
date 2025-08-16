@@ -26,7 +26,7 @@ export interface SchematicOutput {
   totalVoxels?: number;
 }
 
-export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom';
+export type FontStyle = 'monospace' | 'serif' | 'sans-serif' | 'custom' | 'metalfont';
 export type Shape = 'circle' | 'triangle' | 'rhombus' | 'hexagon';
 export type TextOrientation = 'horizontal' | 'vertical-lr';
 
@@ -109,6 +109,36 @@ export async function rasterizeText({
     if (typeof document === 'undefined' || !text || !text.trim()) {
         return { width: 0, height: 0, pixels: [] };
     }
+    
+    if (font === 'metalfont') {
+        // Use the pixel text rasterizer for metalfont
+        const { lines, totalHeight } = await rasterizePixelText({ text, maxWidth });
+        
+        if (!lines.length) {
+            return { width: 0, height: 0, pixels: [] };
+        }
+
+        // Combine lines into a single pixel grid
+        const totalWidth = Math.max(...lines.map(l => l.width));
+        const combinedPixels = Array(totalWidth * totalHeight).fill(false);
+        let currentY = 0;
+        const lineSpacing = 1;
+
+        for (const line of lines) {
+            const xOffset = Math.floor((totalWidth - line.width) / 2);
+            for (let y = 0; y < line.height; y++) {
+                for (let x = 0; x < line.width; x++) {
+                    if (line.pixels[y * line.width + x]) {
+                        combinedPixels[(currentY + y) * totalWidth + (xOffset + x)] = true;
+                    }
+                }
+            }
+            currentY += line.height + lineSpacing;
+        }
+
+        return { pixels: combinedPixels, width: totalWidth, height: totalHeight };
+    }
+
 
     const fontName = 'custom-font-' + Date.now();
     let loadedFontFamily = font;
@@ -1343,3 +1373,4 @@ function grayscale(r: number, g: number, b: number): number {
 
 
     
+

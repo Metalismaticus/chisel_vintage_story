@@ -62,6 +62,7 @@ export default {
       monospace: 'Monospace',
       serif: 'Serif',
       'sans-serif': 'Sans-Serif',
+      metalfont: 'Metalfont',
     },
     uploadLabel: 'Upload Custom Font (.ttf, .otf, .woff)',
     uploadButton: 'Choose Font',
@@ -362,3 +363,4 @@ export default {
     
 
     
+
